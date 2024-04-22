@@ -201,7 +201,7 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 			if ( this.$cfg.get('player.isMute') ) {
 				this.player.volume = 0;
 			} else {
-				this.player.volume = (this.$cfg.get('player.volume') ?? 50) * 0.01;
+				this.player.volume = (this.$cfg.get('player.volume') ?? 0) * 0.01;
 			}
 			this.alertTimer = setInterval(() => {
 				if ( this.isManager && !this.$store.getters.isSponsor ) {
