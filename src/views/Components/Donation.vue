@@ -63,7 +63,7 @@ export default class Donation extends Mixins(GlobalMixins) {
 		this.$nextTick(async () => {
 			while ( !this.$sopia.logonUser ) await this.$sleep(1000);
 			if ( !this.$store.getters.isSponsor ) {
-				this.open = true;
+				//this.open = true;
 			}
 		});
 		this.$evt.$off('donation:open');
@@ -102,7 +102,7 @@ export default class Donation extends Mixins(GlobalMixins) {
 			await this.refreshSponsor();
 			this.$nextTick(() => {
 				if ( !this.$store.getters.isSponsor ) {
-					this.open = true;
+					//this.open = true;
 				}
 			});
 		}, 1000 * 60 * 30 /* 30min */);
