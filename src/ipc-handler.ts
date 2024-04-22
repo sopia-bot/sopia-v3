@@ -7,6 +7,7 @@ import { install as npmInstall, InstallItem, InstallOptions } from 'npkgi';
 import express, { Application } from 'express';
 import cors from 'cors';
 import { Server as HttpServer } from 'http';
+import axios from 'axios';
 
 import CfgLite from 'cfg-lite';
 import { ZipFile, ZipArchive } from '@arkiv/zip';
@@ -232,6 +233,23 @@ ipcMain.handle('sns-login-open', async (evt, url: string) => {
 	}
 });
 
+function getChromePathWindows() {
+	try {
+		const chromePath = execSync('reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe" /ve', { encoding: 'utf-8' });
+		const chromePathMatch = chromePath.match(/\s*REG_SZ\s*(.*?)\s*$/i);
+	  
+		if (chromePathMatch && chromePathMatch[1]) {
+			const chromeInstallPath = chromePathMatch[1];
+			return chromeInstallPath;
+		} else {
+			console.log('Chrome path not found in the registry.');
+		}
+	} catch (error) {
+		console.error('An error occurred:', error);
+	}
+	return '';
+}
+
 let expressServer: HttpServer|null = null;
 ipcMain.handle('ext-login-open', async (evt, url: string) => {
 	// install extension
@@ -244,20 +262,30 @@ ipcMain.handle('ext-login-open', async (evt, url: string) => {
 			break;
 		case 'win32':
 			executablePath = pickProgram([
+				getChromePathWindows(),
 				`C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe`,
 			]);
 			break;
 	}
 	
 	if ( !executablePath ) {
+		console.log('Can not find Chrome exe file');
 		return {
 			success: false,
 			status: '101',
 		};
 	}
 
-	let extensionPath = '/Users/younyeojoon/proj/@sopia/sopia-studio/extension';
-	
+	const extensionPath = getPath('userData', 'login-ext');
+	if ( !fs.existsSync(extensionPath) ) {
+		console.log('Downloading Chrome extension');
+		const res = await axios.get('https://sopia-v3.s3.ap-northeast-2.amazonaws.com/sopia-login-ext.zip', {
+			responseType: 'arraybuffer',
+		});
+		const buf = res.data;
+		const archive = new ZipArchive('temp_filename', buf);
+		archive.ExtractAll(extensionPath);
+	}
 
 	const callback = new Promise((resolve, reject) => {
 		if ( expressServer ) {
@@ -270,6 +298,7 @@ ipcMain.handle('ext-login-open', async (evt, url: string) => {
 		app.use(express.json());
 		app.post('/spoon-login', (req, res) => {
 			console.log('body', req.body);
+			res.json({});
 			proc?.kill();
 			resolve(req.body);
 		});
