@@ -160,6 +160,10 @@ export default class LoginSpoon extends Mixins(GlobalMixins) {
 		}
 	}
 
+	public async loginSpoonExtension() {
+		await ipcRenderer.invoke('ext-login-open');
+	}
+
 	public async installBrowser() {
 
 		if ( fs.existsSync(this.$path('userData', 'firefox')) ) {

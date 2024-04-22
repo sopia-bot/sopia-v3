@@ -17,7 +17,7 @@
 				<v-col cols="6" class="blue-grey lighten-5"  style="height: 100%;">
 					<v-row style="height: 100%;" align="center">
 						<v-col cols="12" class="text-center">
-							<img alt="" src="../../assets/sopia-sd.png" style="width: 100%">
+							<img @click="upEGG" alt="" src="../../assets/sopia-sd.png" style="width: 100%">
 						</v-col>
 					</v-row>
 				</v-col>
@@ -36,8 +36,9 @@ import { UserDto } from '@sopia-bot/api-dto';
 import { LogonUser } from '@sopia-bot/core';
 
 import LoginSopia from '@/views/Login/LoginSopia.vue';
-import LoginSpoon from '@/views/Login/LoginSpoon.vue';
+import LoginSpoon from '@/views/Login/LoginSpoonNew.vue';
 import GlobalMixins from '@/plugins/mixins';
+const { ipcRenderer } = window.require('electron');
 
 @Component({
 	components: {
@@ -52,6 +53,15 @@ export default class Login extends Mixins(GlobalMixins) {
 	public spoonShow: boolean = false;
 
 	public sopiaUser!: UserDto;
+	public countEGG: number = 0;
+
+	public upEGG() {
+		this.countEGG += 1;
+		if ( this.countEGG > 5 ) {
+			this.countEGG = 0;
+			ipcRenderer.send('open-dev-tools');
+		}
+	}
 
 	public created() {
 		this.$evt.$on('login:skip-sopia-login', (user: UserDto) => {

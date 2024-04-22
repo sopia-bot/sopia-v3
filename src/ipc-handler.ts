@@ -2,8 +2,11 @@ import path from 'path';
 import { app, BrowserWindow , ipcMain, IpcMainEvent, dialog } from 'electron';
 import puppeteer from 'puppeteer-core';
 import { URL } from 'url';
-import { execSync } from 'child_process';
+import { ChildProcess, execSync, spawn } from 'child_process';
 import { install as npmInstall, InstallItem, InstallOptions } from 'npkgi';
+import express, { Application } from 'express';
+import cors from 'cors';
+import { Server as HttpServer } from 'http';
 
 import CfgLite from 'cfg-lite';
 import { ZipFile, ZipArchive } from '@arkiv/zip';
@@ -227,6 +230,69 @@ ipcMain.handle('sns-login-open', async (evt, url: string) => {
 	} catch (err) {
 		return;
 	}
+});
+
+let expressServer: HttpServer|null = null;
+ipcMain.handle('ext-login-open', async (evt, url: string) => {
+	// install extension
+	let executablePath = '';
+	switch ( process.platform ) {
+		case 'darwin':
+			executablePath = pickProgram([
+				'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+			]);
+			break;
+		case 'win32':
+			executablePath = pickProgram([
+				`C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe`,
+			]);
+			break;
+	}
+	
+	if ( !executablePath ) {
+		return {
+			success: false,
+			status: '101',
+		};
+	}
+
+	let extensionPath = '/Users/younyeojoon/proj/@sopia/sopia-studio/extension';
+	
+
+	const callback = new Promise((resolve, reject) => {
+		if ( expressServer ) {
+			expressServer.close();
+			expressServer = null;
+		}
+		let proc: ChildProcess|null = null;
+		const app = express();
+		app.use(cors())
+		app.use(express.json());
+		app.post('/spoon-login', (req, res) => {
+			console.log('body', req.body);
+			proc?.kill();
+			resolve(req.body);
+		});
+		expressServer = app.listen(19595, () => {
+			console.log('express listen', 19595);
+
+			const url = 'https://www.spooncast.net/kr';
+			proc = spawn(executablePath, [
+				`--disable-extensions-except=${extensionPath}`,
+				`--load-extension=${extensionPath}`,
+				`${url}`
+			]);
+		});
+	});
+
+	const userInfo = await callback;
+	expressServer?.close();
+	expressServer = null;
+	return {
+		success: true,
+		status: '100',
+		data: userInfo,
+	};
 });
 
 ipcMain.handle('open-dialog', async (event, options: any) => {
