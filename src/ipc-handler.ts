@@ -250,6 +250,40 @@ function getChromePathWindows() {
 	return '';
 }
 
+function getChromeProcessWindows() {
+	try {
+		const stdbuf = execSync('wmic process where "name like \'%chrome.exe%\'" get processid,workingsetsize');
+		const stdout = stdbuf.toString('utf-8');
+		
+		const processes = stdout.trim().split('\n').slice(1); // 헤더 행 제거
+	
+		if (processes.length === 0) {
+			console.log('실행 중인 크롬 브라우저 프로세스가 없습니다.');
+		} else {
+			console.log('실행 중인 크롬 브라우저 프로세스:');
+			return processes.map(line => {
+				const [pid, memory] = line.trim().split(/\s+/);
+				console.log(`- PID: ${pid}, 메모리 사용량: ${(parseInt(memory) / 1024).toFixed(2)} MB`);
+				return pid;
+			});
+		}
+	} catch (err) {
+		if (err) {
+			console.error('프로세스 정보 가져오기 실패:', err);
+		}
+	}
+	return [];
+}
+
+function isChromeRunning() {
+	switch ( process.platform ) {
+		case 'win32':
+			const pids = getChromeProcessWindows();
+			return pids.length > 0;
+	}
+	return false;	
+}
+
 let expressServer: HttpServer|null = null;
 ipcMain.handle('ext-login-open', async (evt, url: string) => {
 	// install extension
@@ -285,6 +319,26 @@ ipcMain.handle('ext-login-open', async (evt, url: string) => {
 		const buf = res.data;
 		const archive = new ZipArchive('temp_filename', buf);
 		archive.ExtractAll(extensionPath);
+	}
+
+	if ( isChromeRunning() ) {
+		console.log('Chrome is already running');
+		const result = await dialog.showMessageBox({
+			message: 'Chrome이 이미 실행 중입니다. 로그인을 위해서는 실행중인 프로세스를 종료해야 합니다. 종료하시겠습니까?',
+			type: 'question',
+			buttons: ['예', '아니오'],
+		});
+		console.log(result);
+		if ( result.response === 1 ) {
+			// 아니오
+			return {
+				success: false,
+				status: '102',
+			};	
+		}
+		
+		// 예
+		execSync('taskkill /f /im chrome.exe');
 	}
 
 	const callback = new Promise((resolve, reject) => {
