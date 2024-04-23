@@ -12,6 +12,7 @@ import axios from 'axios';
 import CfgLite from 'cfg-lite';
 import { ZipFile, ZipArchive } from '@arkiv/zip';
 import fs from 'fs';
+import pkg from '../package.json';
 
 export const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36';
 
@@ -284,6 +285,15 @@ function isChromeRunning() {
 	return false;	
 }
 
+function checkExtVersion(version: string) {
+	if ( fs.existsSync(getPath('userData', `ext-${version}`)) ) {
+		return true;
+	}
+	fs.rmdirSync(getPath('userData', 'login-ext'), { recursive: true });
+	fs.writeFileSync(getPath('userData', `ext-${version}`), '');
+	return true;
+}
+
 let expressServer: HttpServer|null = null;
 ipcMain.handle('ext-login-open', async (evt, url: string) => {
 	// install extension
@@ -309,6 +319,8 @@ ipcMain.handle('ext-login-open', async (evt, url: string) => {
 			status: '101',
 		};
 	}
+
+	checkExtVersion(pkg.version);
 
 	const extensionPath = getPath('userData', 'login-ext');
 	if ( !fs.existsSync(extensionPath) ) {

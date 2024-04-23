@@ -71,9 +71,9 @@ export default class LoginSpoon extends Mixins(GlobalMixins) {
 			return;
 		}
 		const userInfo = result.data as LogonUser;
-		console.log('userInfo', userInfo);
-		// api 로그인을 사용했기 때문에 직접 로그인 결과를 삽입함.
-		this.$sopia.logonUser = userInfo;
+		await this.$sopia.loginToken(userInfo.id, userInfo.token, userInfo.refresh_token)
+		
+		console.log(userInfo);
 		this.$emit('logon', userInfo);
 	}
 
