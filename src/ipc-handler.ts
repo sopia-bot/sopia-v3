@@ -310,6 +310,7 @@ ipcMain.handle('ext-login-open', async (evt, url: string) => {
 			executablePath = pickProgram([
 				getChromePathWindows(),
 				`C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe`,
+				`C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe`,
 			]);
 			break;
 	}
