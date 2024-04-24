@@ -298,99 +298,109 @@ function checkExtVersion(version: string) {
 
 let expressServer: HttpServer|null = null;
 ipcMain.handle('ext-login-open', async (evt, url: string) => {
-	// install extension
-	let executablePath = '';
-	switch ( process.platform ) {
-		case 'darwin':
-			executablePath = pickProgram([
-				'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-			]);
-			break;
-		case 'win32':
-			executablePath = pickProgram([
-				getChromePathWindows(),
-				`C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe`,
-				`C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe`,
-			]);
-			break;
-	}
-	
-	if ( !executablePath ) {
-		console.log('Can not find Chrome exe file');
-		return {
-			success: false,
-			status: '101',
-		};
-	}
-
-	checkExtVersion(pkg.version);
-
-	const extensionPath = getPath('userData', 'login-ext');
-	if ( !fs.existsSync(extensionPath) ) {
-		console.log('Downloading Chrome extension');
-		const res = await axios.get('https://sopia-v3.s3.ap-northeast-2.amazonaws.com/sopia-login-ext.zip', {
-			responseType: 'arraybuffer',
-		});
-		const buf = res.data;
-		const archive = new ZipArchive('temp_filename', buf);
-		archive.ExtractAll(extensionPath);
-	}
-
-	if ( isChromeRunning() ) {
-		console.log('Chrome is already running');
-		const result = await dialog.showMessageBox({
-			message: 'Chrome이 이미 실행 중입니다. 로그인을 위해서는 실행중인 프로세스를 종료해야 합니다. 종료하시겠습니까?',
-			type: 'question',
-			buttons: ['예', '아니오'],
-		});
-		console.log(result);
-		if ( result.response === 1 ) {
-			// 아니오
-			return {
-				success: false,
-				status: '102',
-			};	
+	try {
+		// install extension
+		let executablePath = '';
+		switch ( process.platform ) {
+			case 'darwin':
+				executablePath = pickProgram([
+					'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+				]);
+				break;
+			case 'win32':
+				executablePath = pickProgram([
+					getChromePathWindows(),
+					`C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe`,
+					`C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe`,
+				]);
+				break;
 		}
 		
-		// 예
-		execSync('taskkill /f /im chrome.exe');
-	}
-
-	const callback = new Promise((resolve, reject) => {
-		if ( expressServer ) {
-			expressServer.close();
-			expressServer = null;
+		if ( !executablePath ) {
+			dialog.showErrorBox('Error', '크롬 실행 파일을 찾을 수 없습니다.');
+			console.log('Can not find Chrome exe file');
+			return {
+				success: false,
+				status: '101',
+			};
 		}
-		let proc: ChildProcess|null = null;
-		const app = express();
-		app.use(cors())
-		app.use(express.json());
-		app.post('/spoon-login', (req, res) => {
-			console.log('body', req.body);
-			res.json({});
-			proc?.kill();
-			resolve(req.body);
-		});
-		expressServer = app.listen(19595, () => {
-			console.log('express listen', 19595);
 
-			const url = 'https://www.spooncast.net/kr';
-			proc = spawn(executablePath, [
-				`--disable-extensions-except=${extensionPath}`,
-				`--load-extension=${extensionPath}`,
-				`${url}`
-			]);
-		});
-	});
+		checkExtVersion(pkg.version);
 
-	const userInfo = await callback;
-	expressServer?.close();
-	expressServer = null;
-	return {
-		success: true,
-		status: '100',
-		data: userInfo,
-	};
+		const extensionPath = getPath('userData', 'login-ext');
+		if ( !fs.existsSync(extensionPath) ) {
+			console.log('Downloading Chrome extension');
+			const res = await axios.get('https://sopia-v3.s3.ap-northeast-2.amazonaws.com/sopia-login-ext.zip', {
+				responseType: 'arraybuffer',
+			});
+			const buf = res.data;
+			const archive = new ZipArchive('temp_filename', buf);
+			archive.ExtractAll(extensionPath);
+		}
+
+		if ( isChromeRunning() ) {
+			console.log('Chrome is already running');
+			const result = await dialog.showMessageBox({
+				message: 'Chrome이 이미 실행 중입니다. 로그인을 위해서는 실행중인 프로세스를 종료해야 합니다. 종료하시겠습니까?',
+				type: 'question',
+				buttons: ['예', '아니오'],
+			});
+			console.log(result);
+			if ( result.response === 1 ) {
+				// 아니오
+				return {
+					success: false,
+					status: '102',
+				};	
+			}
+			
+			// 예
+			execSync('taskkill /f /im chrome.exe');
+		}
+
+		const callback = new Promise((resolve, reject) => {
+			if ( expressServer ) {
+				expressServer.close();
+				expressServer = null;
+			}
+			let proc: ChildProcess|null = null;
+			const app = express();
+			app.use(cors())
+			app.use(express.json());
+			app.post('/spoon-login', (req, res) => {
+				console.log('body', req.body);
+				res.json({});
+				proc?.kill();
+				resolve(req.body);
+			});
+			expressServer = app.listen(19595, () => {
+				console.log('express listen', 19595);
+
+				const url = 'https://www.spooncast.net/kr';
+				proc = spawn(executablePath, [
+					`--disable-extensions-except=${extensionPath}`,
+					`--load-extension=${extensionPath}`,
+					`${url}`
+				]);
+			});
+		});
+
+		const userInfo = await callback;
+		expressServer?.close();
+		expressServer = null;
+		return {
+			success: true,
+			status: '100',
+			data: userInfo,
+		};
+	} catch (err: Error) {
+		dialog.showErrorBox('Error', '알 수 없는 오류가 발생했습니다.\n' + err.message);
+		console.error(err);
+		return {
+			success: false,
+			status: '999',
+		};
+	}
 });
 
 ipcMain.handle('open-dialog', async (event, options: any) => {
