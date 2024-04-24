@@ -289,7 +289,9 @@ function checkExtVersion(version: string) {
 	if ( fs.existsSync(getPath('userData', `ext-${version}`)) ) {
 		return true;
 	}
-	fs.rmdirSync(getPath('userData', 'login-ext'), { recursive: true });
+	if ( fs.existsSync(getPath('userData', 'login-ext')) ) {
+		fs.rmSync(getPath('userData', 'login-ext'), { recursive: true });
+	}
 	fs.writeFileSync(getPath('userData', `ext-${version}`), '');
 	return true;
 }
