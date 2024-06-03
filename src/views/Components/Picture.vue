@@ -45,8 +45,3 @@ export default class Picture extends Mixins(GlobalMixins) {
     }
 }
 </script>
-<style scope>
-div.v-dialog {
-	width: unset;
-}
-</style>

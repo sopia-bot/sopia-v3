@@ -41,5 +41,8 @@ export default {
 	'dose-not-work-sns-login': 'SNS 로그인이 안 되시나요?',
 	'install-firefox': 'SNS 로그인 문제는 최신 브라우저가 보안 문제로 차단하기 때문에, 구버전 브라우저를 설치하여서 해결합니다.<br>아래 확인 버튼을 누르면 로그인 전용 브라우저를 설치합니다.',
 	'already-firefox': '이미 브라우저가 설치되어 있습니다.',
-	'login-webpage': '스푼 페이지에서 로그인하기'
+	'login-webpage': '스푼 페이지에서 로그인하기',
+	'login-help': '로그인이 안 돼요!',
+	'login-help-desc': '<p>로그인 문제의 대부분은 한 가지의 파일에서부터 시작됩니다.</p><p>여기 마법의 버튼을 눌러 해결해 보세요.</p>',
+	'login-help-button': '로그인 문제 해결하기',
 };

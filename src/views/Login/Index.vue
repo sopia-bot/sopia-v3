@@ -6,7 +6,7 @@
 -->
 <template>
 	<!-- S: Login Dialog -->
-	<div>
+	<div style="position: relative;">
 		<v-row class="ma-0" style="height: 100vh;">
 			<!-- <v-col cols="6" class="blue-grey lighten-5"  style="height: 100%;">
 				<v-row style="height: 100%;" align="center">
@@ -15,13 +15,58 @@
 					</v-col>
 				</v-row>
 			</v-col> -->
-			<v-col cols="8" offset="2" align="center" style="position: relative">
+			<v-col cols="8" lg="6" offset="2" offset-lg="3" align="center" style="position: relative">
 				<v-scroll-x-reverse-transition>
-						<login-sopia v-if="sopiaShow" @logon="sopiaLogon"/>
-						<login-spoon v-if="spoonShow" @logon="spoonLogon"/>
+					<login-sopia v-if="sopiaShow" @logon="sopiaLogon"/>
+					<login-spoon v-if="spoonShow" @logon="spoonLogon"/>
 				</v-scroll-x-reverse-transition>
 			</v-col>
+			<v-col cols="12" class="text-center">
+			</v-col>
 		</v-row>
+		<div style="position: absolute; right: 0; top: 0;">
+			<v-dialog
+				v-model="dialog"
+				width="500"
+			>
+				<template v-slot:activator="{ on, attrs }">
+					<v-btn
+						class="ma-4"
+						fab
+						dark
+						color="deep-orange"
+						v-bind="attrs"
+          				v-on="on"
+					>
+						<v-icon dark>
+							mdi-exclamation-thick
+						</v-icon>
+					</v-btn>
+				</template>
+				<v-card>
+					<v-card-title class="text-h5">
+						{{ $t('app.login.login-help') }}
+					</v-card-title>
+
+					<v-card-text class="py-0">
+						<div class="text-body-1" v-html="$t('app.login.login-help-desc')"></div>
+					</v-card-text>
+
+					<v-divider></v-divider>
+
+					<v-card-actions>
+					<v-spacer></v-spacer>
+					<v-btn
+						color="primary"
+						text
+						@click="removeAppCfg"
+					>
+						{{ $t('app.login.login-help-button') }}
+					</v-btn>
+					</v-card-actions>
+				</v-card>
+			</v-dialog>
+		</div>
 	</div>
 	<!-- E: Login Dialog -->
 </template>
@@ -49,6 +94,7 @@ export default class Login extends Mixins(GlobalMixins) {
 
 	public sopiaUser!: UserDto;
 	public countEGG: number = 0;
+	public dialog: boolean = false;
 
 	public upEGG() {
 		this.countEGG += 1;
@@ -142,6 +188,14 @@ export default class Login extends Mixins(GlobalMixins) {
 		this.$api.activityLog('logon');
 		
 		this.$assign('/');
+	}
+
+	public removeAppCfg() {
+		this.$cfg.delete('auth');
+		this.$cfg.save();
+		setTimeout(() => {
+			window.location.reload();
+		}, 100);
 	}
 
 }
