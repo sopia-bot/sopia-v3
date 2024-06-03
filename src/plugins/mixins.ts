@@ -67,7 +67,7 @@ export default class Mixin extends VueDecorator {
 
 	public $assign(url: string, newTab: boolean = false) {
 		if ( newTab ) {
-			window.open(url);
+			window.open(url, '', 'toolbar=no,location=no,menubar=no,status=no,width=1200,height=800');
 			return;
 		}
 

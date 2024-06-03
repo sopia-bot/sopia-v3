@@ -64,6 +64,14 @@ export default class SideMenu extends Mixins(GlobalMixins) {
 			},
 		},
 		{
+			href: 'https://stupendous-pram-b49.notion.site/04fbc60c0efa47b0b312ec1c947d2c06?v=5a13f1e5185544b5ae86effc0c00046a&pvs=74',
+			label: this.$t('page.guide'),
+			icon: 'mdi-book-open-page-variant',
+			activeIcon: 'mdi-book-open-page-variant-outline',
+			openNew: true,
+			isActive: () => false,
+		},
+		{
 			href: 'https://github.com/sopia-bot/SOPIA',
 			label: this.$t('page.github'),
 			icon: 'mdi-github',

@@ -12,4 +12,5 @@ export default {
 	Bundle: '번들',
 	store: '스토어',
 	github: '깃허브',
+	guide: '사용법',
 };
