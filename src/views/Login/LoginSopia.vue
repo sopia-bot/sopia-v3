@@ -5,7 +5,7 @@
  * Copyright (c) raravel. Licensed under the MIT License.
 -->
 <template>
-	<div>
+	<div style="position:absolute; top: 0; left: 0; height: 100vh; width: 100%;">
 		<v-dialog
 			v-model="dialog">
 			<v-card>
@@ -44,88 +44,92 @@
 			</v-card>
 		</v-dialog>
 
-		<v-card-title class="text-center d-block">
-			{{ signinMode ? $t('app.login.sign-title') : $t('app.login.title') }}
-		</v-card-title>
-		<v-card-text class="px-14">
-			<v-text-field
-				:label="$t('app.login.id')"
-				v-model="auth.id"
-				color="indigo"
-				prepend-icon="mdi-account"
-				type="text"
-				></v-text-field>
+		<v-row class="ma-0 h-100v" align="center">
+			<v-col cols="12" align="center" style="width: 100%;">
+				<v-card-title class="text-center d-block">
+					{{ signinMode ? $t('app.login.sign-title') : $t('app.login.title') }}
+				</v-card-title>
+				<v-card-text class="px-14">
+					<v-text-field
+						:label="$t('app.login.id')"
+						v-model="auth.id"
+						color="indigo"
+						prepend-icon="mdi-account"
+						type="text"
+						></v-text-field>
 
-			<v-text-field
-				:label="$t('app.login.password')"
-				v-model="auth.pw"
-				color="indigo"
-				prepend-icon="mdi-lock"
-				type="password"
-				></v-text-field>
+					<v-text-field
+						:label="$t('app.login.password')"
+						v-model="auth.pw"
+						color="indigo"
+						prepend-icon="mdi-lock"
+						type="password"
+						></v-text-field>
 
-			<v-text-field
-				v-if="signinMode"
-				:label="$t('app.login.password-check')"
-				v-model="auth.pwChk"
-				color="indigo"
-				prepend-icon="mdi-lock"
-				type="password"
-				></v-text-field>
+					<v-text-field
+						v-if="signinMode"
+						:label="$t('app.login.password-check')"
+						v-model="auth.pwChk"
+						color="indigo"
+						prepend-icon="mdi-lock"
+						type="password"
+						></v-text-field>
 
-			<v-checkbox
-				v-if="signinMode"
-				v-model="policy"
-				color="indigo darken-2">
-				<template v-slot:label>
-					<div>
-						<a
-							class="indigo--text text--darken-1"
-							href="#"
-							@click.stop="showTerm">{{ $t('app.login.policy-agree-0') }}</a>
-						{{ $t('app.login.policy-agree-1') }}
-						<a
-							class="indigo--text text--darken-1"
-							href="#"
-							@click.stop="showPrivacy">{{ $t('app.login.policy-agree-2') }}</a>
-						{{ $t('app.login.policy-agree-3') }}
+					<v-checkbox
+						v-if="signinMode"
+						v-model="policy"
+						color="indigo darken-2">
+						<template v-slot:label>
+							<div>
+								<a
+									class="indigo--text text--darken-1"
+									href="#"
+									@click.stop="showTerm">{{ $t('app.login.policy-agree-0') }}</a>
+								{{ $t('app.login.policy-agree-1') }}
+								<a
+									class="indigo--text text--darken-1"
+									href="#"
+									@click.stop="showPrivacy">{{ $t('app.login.policy-agree-2') }}</a>
+								{{ $t('app.login.policy-agree-3') }}
+							</div>
+						</template>
+					</v-checkbox>
+
+					<p class="red--text">{{ errorMsg }}</p>
+
+					<div v-if="signinMode">
+						<v-btn
+							block dark
+							tile depressed
+							@click="signinSopia"
+							color="indigo darken-3">{{ $t('app.login.sign-in') }}</v-btn>
+						<v-btn
+							block depressed
+							tile text
+							color="red darken-1"
+							@click="signinMode = false; errorMsg = ''"
+							>{{ $t('app.login.return-login') }}</v-btn>
 					</div>
-				</template>
-			</v-checkbox>
-
-			<p class="red--text">{{ errorMsg }}</p>
-
-			<div v-if="signinMode">
-				<v-btn
-					block dark
-					tile depressed
-					@click="signinSopia"
-					color="indigo darken-3">{{ $t('app.login.sign-in') }}</v-btn>
-				<v-btn
-					block depressed
-					tile text
-					color="red darken-1"
-					@click="signinMode = false; errorMsg = ''"
-					>{{ $t('app.login.return-login') }}</v-btn>
-			</div>
-			<div v-else>
-				<v-btn
-					block dark
-					tile depressed
-					@click="loginSopia"
-					color="indigo darken-3">{{ $t('login') }}</v-btn>
-				<p class="text-caption mt-6">
-					{{ $t('app.login.sign-description') }}
-					<span
-						class="indigo--text text--darken-2 font-weight-bold"
-						style="cursor: pointer;"
-						@click="signinMode = true; errorMsg = ''">{{ $t('app.login.sign-in') }}</span>
-				</p>
-				<p class="text-caption mt-4 link" @click="findIdDiag = true; findedId = '';">
-					{{ $t('app.login.find-id') }}
-				</p>
-			</div>
-		</v-card-text>
+					<div v-else>
+						<v-btn
+							block dark
+							tile depressed
+							@click="loginSopia"
+							color="indigo darken-3">{{ $t('login') }}</v-btn>
+						<p class="text-caption mt-6">
+							{{ $t('app.login.sign-description') }}
+							<span
+								class="indigo--text text--darken-2 font-weight-bold"
+								style="cursor: pointer;"
+								@click="signinMode = true; errorMsg = ''">{{ $t('app.login.sign-in') }}</span>
+						</p>
+						<p class="text-caption mt-4 link" @click="findIdDiag = true; findedId = '';">
+							{{ $t('app.login.find-id') }}
+						</p>
+					</div>
+				</v-card-text>
+			</v-col>
+		</v-row>
 	</div>
 </template>
 <script lang="ts">

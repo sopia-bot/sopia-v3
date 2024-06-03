@@ -6,29 +6,32 @@
 -->
 <template>
 	<v-app style="">
-		<title-bar />
-		<update-dialog />
+		<title-bar :isLogin="isLogin" />
 		<donation />
-		<login-dialog v-if="$store.state.loginDialog" v-model="$store.state.loginDialog"/>
-		<bundle-update-dialog v-model="bundleUpdateDialogShow" :items="bundleUpdateList" />
-		<side-menu />
+		<update-dialog v-if="isLogin"/>
+		<bundle-update-dialog v-if="isLogin" v-model="bundleUpdateDialogShow" :items="bundleUpdateList" />
+		<side-menu v-if="isLogin"/>
 		<div class="ma-0 d-flex">
-			<v-sheet id="router-view" tile :key="$route.fullPath" color="white" style="flex-basis: 80%; flex-grow: 1; flex-shrink: 1;">
+			<v-sheet id="router-view" tile :key="$route.fullPath" color="white" style="max-width: 100vw; flex-basis: 80%; flex-grow: 1; flex-shrink: 1;">
 				<transition name="scroll-y-reverse-transition">
 					<router-view></router-view>
 				</transition>
 			</v-sheet>
-			<live-player v-if="currentLive.id" :live="currentLive" />
+			<live-player v-if="isLogin && currentLive.id" :live="currentLive" />
 		</div>
 		<!--<tutorials/>-->
 	</v-app>
 </template>
 <style>
+@import './assets/suit/SUIT-Variable.css';
 .h-100v {
 	height: 100vh;
 }
 html, body {
 	overflow: hidden;
+}
+* {
+	font-family: 'SUIT Variable';
 }
 </style>
 <script lang="ts">
@@ -77,6 +80,7 @@ export default class App extends Mixins(GlobalMixins) {
 	public currentLive: Live = {} as Live;
 	public bundleUpdateDialogShow: boolean = false;
 	public bundleUpdateList: BundlePackage[] = [];
+	public isLogin: boolean = false;
 
 	public enter(...args: any[]) {
 		console.log('enter transition', args);
@@ -102,7 +106,8 @@ export default class App extends Mixins(GlobalMixins) {
 			const res = await this.$api.req('GET', `/user/${auth.sopia.user_id}`);
 			if ( res.error ) {
 				this.$cfg.delete('auth');
-				this.$store.state.loginDialog = true;
+				this.isLogin = false;
+				this.$assign('/login');
 			} else {
 				this.$api.user = auth.sopia;
 				this.$sopia.loginToken(auth.spoon.id, auth.spoon.token, auth.spoon.refresh_token)
@@ -115,6 +120,8 @@ export default class App extends Mixins(GlobalMixins) {
 							this.$cfg.set('auth.spoon.token', token);
 							this.$cfg.save();
 
+							this.isLogin = true;
+
 							await this.$api.activityLog('logon');
 						} else {
 							throw Error('Invalid token');
@@ -122,11 +129,13 @@ export default class App extends Mixins(GlobalMixins) {
 					})
 					.catch((err) => {
 						this.$evt.$emit('login:skip-sopia-login', auth.sopia);
-						this.$store.state.loginDialog = true;
+						this.isLogin = false;
+						this.$assign('/login');
 					});
 			}
 		} else {
-			this.$store.state.loginDialog = true;
+			this.isLogin = false;
+			this.$assign('/login');
 		}
 
 		this.$evt.$off('live-join');
@@ -141,6 +150,11 @@ export default class App extends Mixins(GlobalMixins) {
 		this.$evt.$off('live-leave');
 		this.$evt.$on('live-leave', () => {
 			this.currentLive = {} as Live;
+		});
+
+		this.$evt.$off('user');
+		this.$evt.$on('user', (user: User) => {
+			this.isLogin = true;
 		});
 
 		if ( !this.$store.state.loginDialog ) {

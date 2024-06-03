@@ -5,7 +5,7 @@
  * Copyright (c) raravel. Licensed under the MIT License.
 -->
 <template>
-	<div>
+	<div style="position:absolute; top: 0; left: 0; height: 100vh; width: 100%;">
 		<v-dialog v-model="dialog" max-width="600px">
 			<v-card>
 				<v-container>
@@ -30,90 +30,94 @@
 				</v-container>
 			</v-card>
 		</v-dialog>
-		<v-tabs
-			v-model="tab"
-	 		color="red"
-			class="px-14"
-	 		grow>
-			<v-tab
-	   			v-for="item in tabItem"
-	   			:key="item">
-				{{ $t('app.login.' + item) }}
-			</v-tab>
-		</v-tabs>
-		<v-card-text class="px-14">
-			<v-text-field
-				:label="$t('app.login.spoon-id')"
-				v-model="auth.id"
-				color="red darken-1"
-				prepend-icon="mdi-account"
-				type="text"
-				></v-text-field>
+		<v-row class="ma-0 h-100v" align="center">
+			<v-col cols="12" align="center" style="width: 100%;">
+				<v-tabs
+					v-model="tab"
+					color="red"
+					class="px-14"
+					grow>
+					<v-tab
+						v-for="item in tabItem"
+						:key="item">
+						{{ $t('app.login.' + item) }}
+					</v-tab>
+				</v-tabs>
+				<v-card-text class="px-14">
+					<v-text-field
+						:label="$t('app.login.spoon-id')"
+						v-model="auth.id"
+						color="red darken-1"
+						prepend-icon="mdi-account"
+						type="text"
+						></v-text-field>
 
-			<v-text-field
-				:label="$t('app.login.spoon-password')"
-				v-model="auth.pw"
-				color="red darken-1"
-				prepend-icon="mdi-lock"
-				type="password"
-				></v-text-field>
+					<v-text-field
+						:label="$t('app.login.spoon-password')"
+						v-model="auth.pw"
+						color="red darken-1"
+						prepend-icon="mdi-lock"
+						type="password"
+						></v-text-field>
 
-			<p class="red--text ma-0 mb-3">{{ errorMsg }}</p>
+					<p class="red--text ma-0 mb-3">{{ errorMsg }}</p>
 
-			<v-btn
-				block dark
-				text
-				@click="loginSpoon"
-				style="background: #FE4101;"
-				rounded large
-				:elevation="3"
-				color="white">{{ $t('login') }}</v-btn>
+					<v-btn
+						block dark
+						text
+						@click="loginSpoon"
+						style="background: #FE4101;"
+						rounded large
+						:elevation="3"
+						color="white">{{ $t('login') }}</v-btn>
 
-			<v-btn
-					block dark
-					text tile large
-					class="mt-4"
-					:elevation="3"
-					@click="snsLoginSpoon('google')"
-					color="black">
-				<img src="../../assets/google.png" width="25px" alt="">
-				<v-spacer></v-spacer>
-				<span class="font-weight-light">{{ $t('app.login.google') }}</span>
-				<v-spacer></v-spacer>
-			</v-btn>
+					<v-btn
+							block dark
+							text tile large
+							class="mt-4"
+							:elevation="3"
+							@click="snsLoginSpoon('google')"
+							color="black">
+						<img src="../../assets/google.png" width="25px" alt="">
+						<v-spacer></v-spacer>
+						<span class="font-weight-light">{{ $t('app.login.google') }}</span>
+						<v-spacer></v-spacer>
+					</v-btn>
 
-			<v-btn
-				block dark
-				tile depressed
-				style="background-color: #475993;"
-				large
-				class="mt-2"
-				:elevation="3"
-				@click="snsLoginSpoon('facebook')">
-				<div style="background: white; width: 20px; height: 25px;">
-					<img src="../../assets/facebook.png" width="25px" alt="" style="margin-left: -3px;">
-				</div>
-				<v-spacer></v-spacer>
-				{{ $t('app.login.facebook') }}
-				<v-spacer></v-spacer>
-			</v-btn>
+					<v-btn
+						block dark
+						tile depressed
+						style="background-color: #475993;"
+						large
+						class="mt-2"
+						:elevation="3"
+						@click="snsLoginSpoon('facebook')">
+						<div style="background: white; width: 20px; height: 25px;">
+							<img src="../../assets/facebook.png" width="25px" alt="" style="margin-left: -3px;">
+						</div>
+						<v-spacer></v-spacer>
+						{{ $t('app.login.facebook') }}
+						<v-spacer></v-spacer>
+					</v-btn>
 
-			<v-btn
-				block dark
-				tile depressed
-				large
-				class="mt-2"
-				:elevation="3"
-				@click="snsLoginSpoon('apple')"
-				color="black darken-3">
-				<img src="../../assets/apple.png" width="25px" alt="">
-				<v-spacer></v-spacer>
-				{{ $t('app.login.apple') }}
-				<v-spacer></v-spacer>
-			</v-btn>
+					<v-btn
+						block dark
+						tile depressed
+						large
+						class="mt-2"
+						:elevation="3"
+						@click="snsLoginSpoon('apple')"
+						color="black darken-3">
+						<img src="../../assets/apple.png" width="25px" alt="">
+						<v-spacer></v-spacer>
+						{{ $t('app.login.apple') }}
+						<v-spacer></v-spacer>
+					</v-btn>
 
-			<p class="ma-0 mt-6 text-title link" @click="dialog = true;">{{ $t('app.login.dose-not-work-sns-login') }}</p>
-		</v-card-text>
+					<p class="ma-0 mt-6 text-title link" @click="dialog = true;">{{ $t('app.login.dose-not-work-sns-login') }}</p>
+				</v-card-text>
+			</v-col>
+		</v-row>
 	</div>
 </template>
 <script lang="ts">

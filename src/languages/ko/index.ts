@@ -51,4 +51,5 @@ export default {
 	'show-release-note': '릴리즈 노트 전부 보기',
 	'update': '업데이트',
 	'donation': '후원하기',
+	'click-picture': '클릭하여 사진 크게 보기',
 };

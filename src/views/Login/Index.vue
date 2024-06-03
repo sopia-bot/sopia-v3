@@ -6,28 +6,23 @@
 -->
 <template>
 	<!-- S: Login Dialog -->
-	<v-dialog
-		v-model="value"
-		persistent
-		fullscreen
-		max-width="450px"
-		width="80%">
-		<v-card>
-			<v-row class="ma-0" style="height: 100vh;" align="center">
-				<v-col cols="6" class="blue-grey lighten-5"  style="height: 100%;">
-					<v-row style="height: 100%;" align="center">
-						<v-col cols="12" class="text-center">
-							<img @click="upEGG" alt="" src="../../assets/sopia-sd.png" style="width: 100%">
-						</v-col>
-					</v-row>
-				</v-col>
-				<v-col cols="6" align="center" transition="fade-transition">
-					<login-sopia v-if="sopiaShow" @logon="sopiaLogon"/>
-					<login-spoon v-if="spoonShow" @logon="spoonLogon"/>
-				</v-col>
-			</v-row>
-		</v-card>
-	</v-dialog>
+	<div>
+		<v-row class="ma-0" style="height: 100vh;">
+			<!-- <v-col cols="6" class="blue-grey lighten-5"  style="height: 100%;">
+				<v-row style="height: 100%;" align="center">
+					<v-col cols="12" class="text-center">
+						<img @click="upEGG" alt="" src="../../assets/sopia-sd.png" style="width: 100%">
+					</v-col>
+				</v-row>
+			</v-col> -->
+			<v-col cols="8" offset="2" align="center" style="position: relative">
+				<v-scroll-x-reverse-transition>
+						<login-sopia v-if="sopiaShow" @logon="sopiaLogon"/>
+						<login-spoon v-if="spoonShow" @logon="spoonLogon"/>
+				</v-scroll-x-reverse-transition>
+			</v-col>
+		</v-row>
+	</div>
 	<!-- E: Login Dialog -->
 </template>
 <script lang="ts">
@@ -132,6 +127,7 @@ export default class Login extends Mixins(GlobalMixins) {
 		this.$cfg.set('auth.spoon.refresh_token', refresh_token);
 		this.$cfg.set('auth.sopia', this.sopiaUser);
 		this.$cfg.save();
+		console.log('spoon login complete', id, token, refresh_token);
 
 		this.loginSpoon(this.$sopia.logonUser);
 	}
@@ -144,6 +140,8 @@ export default class Login extends Mixins(GlobalMixins) {
 		this.spoonShow = false;
 
 		this.$api.activityLog('logon');
+		
+		this.$assign('/');
 	}
 
 }

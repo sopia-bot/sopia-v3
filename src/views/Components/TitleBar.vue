@@ -5,7 +5,7 @@
 		:elevation="0"
 		style="max-height: 48px; z-index: 10;"
 		class="sopia-title-bar">
-		<v-btn icon plain class="mr-2 no-drag" v-if="$route.name !== 'Home'" @click="$assign('/')">
+		<v-btn icon plain class="mr-2 no-drag" v-if="$route.name !== 'Home' && isLogin" @click="$assign('/')">
 			<v-icon>mdi-arrow-left-thin</v-icon>
 		</v-btn>
 
@@ -14,50 +14,52 @@
 			<span class="text-caption">SOPIA - {{ version }}</span>
 		</div>
 		<v-spacer></v-spacer>
-		<search-box></search-box>
-		<v-spacer></v-spacer>
-		<v-menu
-			v-model="avatarMenu"
-			:close-on-content-click="false"
-			offset-y
-			left
-			transition="slide-y-transition"
-			:nudge-width="250"
-			:nudge-bottom="10">
-			<template v-slot:activator="{ on, attrs }">
-				<v-avatar size="32" class="no-drag" v-bind="attrs" v-on="on">
-					<img :src="$store.getters.user.profile_url">
-				</v-avatar>
-			</template>
-			<v-card color="blue-grey lighten-4">
-				<v-list-item class="px-2" link @click="$assign(userLink)">
-					<v-list-item-avatar color="black">
-						<v-img :src="$store.getters.user.profile_url"></v-img>
-					</v-list-item-avatar>
+		<template v-if="isLogin">
+			<search-box></search-box>
+			<v-spacer></v-spacer>
+			<v-menu
+				v-model="avatarMenu"
+				:close-on-content-click="false"
+				offset-y
+				left
+				transition="slide-y-transition"
+				:nudge-width="250"
+				:nudge-bottom="10">
+				<template v-slot:activator="{ on, attrs }">
+					<v-avatar size="32" class="no-drag" v-bind="attrs" v-on="on">
+						<img :src="$store.getters.user.profile_url">
+					</v-avatar>
+				</template>
+				<v-card color="blue-grey lighten-4">
+					<v-list-item class="px-2" link @click="$assign(userLink)">
+						<v-list-item-avatar color="black">
+							<v-img :src="$store.getters.user.profile_url"></v-img>
+						</v-list-item-avatar>
 
-					<v-list-item-content>
-						<v-list-item-title class="title" style="font-size: 1rem !important;">{{ $store.getters.user.nickname }}</v-list-item-title>
-						<v-list-item-subtitle style="font-size: 0.6rem !important;">@{{ $store.getters.user.tag }}</v-list-item-subtitle>
-						<v-list-item-action-text class="mt-2">
-							<v-btn x-small text class="text-caption text-decoration-underline py-3" @click.stop="spoonLogout">
-								<span style="font-size: 0.7rem;">{{ $t('spoon-logout') }}</span>
-							</v-btn>
-						</v-list-item-action-text>
-					</v-list-item-content>
-				</v-list-item>
-				<v-list-item class="px-2 white" link @click="$assign('/release-note')">
-					<v-list-item>
-						{{ $t('show-release-note') }}
+						<v-list-item-content>
+							<v-list-item-title class="title" style="font-size: 1rem !important;">{{ $store.getters.user.nickname }}</v-list-item-title>
+							<v-list-item-subtitle style="font-size: 0.6rem !important;">@{{ $store.getters.user.tag }}</v-list-item-subtitle>
+							<v-list-item-action-text class="mt-2">
+								<v-btn x-small text class="text-caption text-decoration-underline py-3" @click.stop="spoonLogout">
+									<span style="font-size: 0.7rem;">{{ $t('spoon-logout') }}</span>
+								</v-btn>
+							</v-list-item-action-text>
+						</v-list-item-content>
 					</v-list-item>
-				</v-list-item>
-				<v-list-item class="px-2 white" link @click="$evt.$emit('donation:open')">
-					<v-list-item>
-						<v-icon class="mr-2" color="pink lighten-3">mdi-hand-coin</v-icon>
-						{{ $t('donation') }}
+					<v-list-item class="px-2 white" link @click="$assign('/release-note')">
+						<v-list-item>
+							{{ $t('show-release-note') }}
+						</v-list-item>
 					</v-list-item>
-				</v-list-item>
-			</v-card>
-		</v-menu>
+					<v-list-item class="px-2 white" link @click="$evt.$emit('donation:open')">
+						<v-list-item>
+							<v-icon class="mr-2" color="pink lighten-3">mdi-hand-coin</v-icon>
+							{{ $t('donation') }}
+						</v-list-item>
+					</v-list-item>
+				</v-card>
+			</v-menu>
+		</template>
 
 		<v-spacer></v-spacer>
 
@@ -79,7 +81,7 @@
 	</v-app-bar>
 </template>
 <script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator';
+import { Component, Mixins, Prop } from 'vue-property-decorator';
 import GlobalMixins from '@/plugins/mixins';
 import pkg from '../../../package.json';
 import SearchBox from '../Search/SearchBox.vue';
@@ -94,6 +96,8 @@ const os = window.require('os');
 export default class TitleBar extends Mixins(GlobalMixins) {
 	public avatarMenu: boolean = false;
 	public countEGG: number = 0;
+
+	@Prop(Boolean) public isLogin!: boolean;
 
 	public get version() {
 		console.log(this.$route);

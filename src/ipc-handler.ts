@@ -48,8 +48,8 @@ ipcMain.on('cfg-lite', (evt: IpcMainEvent, prop: string, file: string, ...args: 
 			}
 		}
 		evt.returnValue = rtn;
-	} catch {
-		console.log('cfg-lite: Cannot open cfg file.', file);
+	} catch(err: any) {
+		console.log('cfg-lite: Cannot open cfg file.', file, err.message);
 		evt.returnValue = false;
 	}
 });
