@@ -6,7 +6,7 @@
 	background-color: #ebebeb;
 	text-align: left;
 	padding: 1rem;
-	max-height: 280px;
+	max-height: 480px;
 	overflow: auto;
 }
 #release-note h1 {
@@ -41,6 +41,9 @@
 	padding: 0 1em;
 	color: #768390;
 	border-left: 0.25em solid #444c56;
+}
+.update-swal {
+	max-width: 650px;
 }
 </style>
 <script lang="ts">
@@ -78,6 +81,10 @@ export default class UpdateDialog extends Mixins(GlobalMixins) {
 			confirmButtonText: this.$t('show-release-note'),
 			showCancelButton: true,
 			cancelButtonText: this.$t('close'),
+			customClass: {
+				popup: 'swal2-popup update-swal'
+			},
+			width: '80%',
 		});
 
 		if ( select.isConfirmed ) {
