@@ -14,6 +14,14 @@ module.exports = {
 				],
 				productName: 'SOPIAv3',
 			},
+			mac: {
+				target: "dmg",
+				arch: [
+					"x64",
+					"arm64",
+					"universal",
+				],
+			},
 		},
 	},
 	configureWebpack: {
