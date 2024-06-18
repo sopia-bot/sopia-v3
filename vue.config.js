@@ -4,6 +4,9 @@ const MonacoEditorPlugin = require('monaco-editor-webpack-plugin');
 module.exports = {
 	pluginOptions: {
 		electronBuilder: {
+			mainProcessWatch: [
+				'src/app/*',
+			],
 			builderOptions: {
 				publish: [
 					{

@@ -5,7 +5,12 @@
  * Copyright (c) Raravel. Licensed under the MIT License.
 -->
 <template>
-	<component :is="page"></component>
+	<div>
+		<div v-if="version === 2" style="padding-left: 80px; height: calc(100vh - 48px);">
+			<webview ref="webview" :src="pageSrc" style="width: 100%; height: 100%;"></webview>
+		</div>
+		<component v-else :is="page"></component>
+	</div>
 </template>
 <script lang="ts">
 import { Component, Mixins } from 'vue-property-decorator';
@@ -30,6 +35,8 @@ export default class BundleRenderer extends Mixins(GlobalMixins) {
 	public bundlePath: string = path.join(this.basePath, this.bundle);
 	public package!: BundlePackage;
 	public page: any = null;
+	public version = 1;
+	public pageSrc: string = '';
 
 	get bundle() {
 		const m = this.$route.path.match(/\/bundle\/(.*)?\//);
@@ -56,6 +63,7 @@ export default class BundleRenderer extends Mixins(GlobalMixins) {
 		const packageFile = path.join(this.bundlePath, 'package.json');
 		if ( !fs.existsSync(packageFile) ) {
 			this.$logger.err('bundle', 'Could not find file.', packageFile);
+			return;
 		}
 		this.package = JSON.parse(
 			fs.readFileSync(
@@ -63,6 +71,21 @@ export default class BundleRenderer extends Mixins(GlobalMixins) {
 				'utf8',
 			),
 		);
+
+		if ( this.package['page-version'] ) {
+			this.pageSrc = `yulx://${this.package.name}/${this.package.page}`;
+			this.version = this.package['page-version'];
+			if ( this.package.debug ) {
+				this.$nextTick(() => {
+					const webview = this.$refs['webview'] as any;
+					webview.addEventListener('did-finish-load', () => {
+						webview.openDevTools();
+					});
+				});
+
+			}
+			return;
+		}
 
 		const pageFile = path.join(this.bundlePath, this.package.page as string);
 		if ( !fs.existsSync(pageFile) ) {

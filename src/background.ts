@@ -26,8 +26,9 @@ if ( !fs.existsSync(path.join(adp, 'restore-flag'))) {
 	console.log('restore');
 }
 
-import './init';
-import { USER_AGENT } from './ipc-handler';
+import './app/init';
+import { USER_AGENT } from './app/ipc-handler';
+import { registerBundleProtocol } from './app/bundle-protocol';
 
 autoUpdater.logger = log;
 
@@ -75,6 +76,7 @@ const createWindow = () => {
 			contextIsolation: false,
 			webSecurity: false, // cors 이슈
 			backgroundThrottling: false,
+			webviewTag: true,
 		},
 		frame: false,
 		titleBarStyle: 'hidden',
@@ -190,6 +192,8 @@ app.on('ready', async () => {
 	}
 	createWindow();
 });
+
+registerBundleProtocol(app);
 
 
 // Exit cleanly on request from parent process in development mode.
