@@ -40,7 +40,7 @@
 					width="100%"
 					style="background: rgba(0, 0, 0, 0.5); border: thin solid rgb(255 255 255 / 30%)">
 					<v-list-item-content v-if="evt.event === LiveEvent.LIVE_MESSAGE" class="mx-4">
-						<pre style="white-space: pre-wrap;" class="chat-message" v-html="message"></pre>
+						<pre style="white-space: pre-wrap;" class="chat-message" v-text="message"></pre>
 					</v-list-item-content>
 					<v-list-item v-else-if="evt.event === LiveEvent.LIVE_PRESENT" class="mx-4">
 						<v-list-item-avatar>
