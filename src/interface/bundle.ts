@@ -4,6 +4,7 @@ export interface BundlePackage {
 	description: string;
 	page: string;
 	pageRoot: string;
+	pageType: string;
 	'page-version': number;
 	icon: string;
 	idx: number;

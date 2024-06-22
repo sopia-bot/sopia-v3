@@ -14,6 +14,7 @@ import pkg from '../../package.json';
 
 const fs = window.require('fs');
 const path = window.require('path');
+const { ipcRenderer } = window.require('electron');
 
 const $path = (type: any, ...args: any) => {
 	return path.resolve(getAppPath(type), ...args);
@@ -40,6 +41,12 @@ window.reloadScript = () => {
 window.addEventListener('DOMContentLoaded', () => {
 	window.reloadScript();
 });
+
+ipcRenderer.on('reloadScript', (evt, script) => {
+	logger.debug('processor', 'receive reload Script', script);
+	Script.reload(script);
+});
+console.log('add listener');
 
 const CMD_PATH = $path('userData', 'cmd.cfg');
 

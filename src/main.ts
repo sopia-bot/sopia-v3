@@ -60,6 +60,7 @@ Vue.use(VueScroll, {
 	},
 });
 
+window.isElectron = true;
 window.isDevelopment = ipcRenderer.sendSync('isdev');
 const appCfgPath = path.join(getAppPath('userData'), 'app.cfg');
 Vue.prototype.$cfg = window.appCfg = new CfgLite(appCfgPath);
@@ -88,6 +89,7 @@ declare global {
 	interface Window {
 		logger: any;
 		appCfg: CfgLite;
+		isElectron: boolean;
 		isDevelopment: boolean;
 		axios: AxiosInstance;
 		logout: () => void;

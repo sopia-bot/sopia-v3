@@ -72,13 +72,20 @@ export default class BundleRenderer extends Mixins(GlobalMixins) {
 			),
 		);
 
-		if ( this.package['page-version'] ) {
-			this.pageSrc = `yulx://${this.package.name}/${this.package.page}`;
+		if ( this.package['page-version'] > 1 ) {
+			if ( this.package.pageType === 'http' ) {
+				this.pageSrc = this.package.page;
+			} else {
+				this.pageSrc = `yulx://${this.package.name}/${this.package.page}`;
+			}
 			this.version = this.package['page-version'];
 			if ( this.package.debug ) {
 				this.$nextTick(() => {
 					const webview = this.$refs['webview'] as any;
 					webview.addEventListener('did-finish-load', () => {
+						if ( webview.isDevToolsOpened() ) {
+							return;
+						}
 						webview.openDevTools();
 					});
 				});
