@@ -92,6 +92,24 @@
 						<!-- E:Live Item -->
 					</v-col>
 				</v-row>
+				<v-row v-if="liveMembership.length" class="ma-0" align="center">
+					<v-col
+						cols="12"
+						class="mt-6">
+						<h2 class="ml-3">{{ $t('home.membership') }}</h2>
+					</v-col>
+					<v-col
+						v-for="(live, idx) in liveMembership" :key="'sub' + idx + live.id"
+						cols="12"
+						sm="6"
+						md="4"
+						lg="3"
+						xl="2">
+						<!-- S:Live Item -->
+						<live-item :live="live" isMembership />
+						<!-- E:Live Item -->
+					</v-col>
+				</v-row>
 				<v-row v-if="liveList" class="ma-0" align="center">
 					<v-col
 						cols="12"
@@ -137,6 +155,7 @@ export default class Home extends Mixins(GlobalMixins) {
 	public liveManager!: any;
 	public liveList: Live[] = [];
 	public liveSubscribed: Live[] = [];
+	public liveMembership: Live[] = [];
 	public livePartner: Live[] = [];
 	public asyncMutex: boolean = false;
 	public loadComplete: boolean = false;
@@ -192,35 +211,37 @@ export default class Home extends Mixins(GlobalMixins) {
 	public async mounted() {
 		this.$evt.$on('user', async (user: User) => {
 			this.liveSubscribed = [];
-			if ( user.current_live_id ) {
-				const myLiveId = user.current_live_id;
-				const myLiveReq = await this.$sopia.api.lives.info(myLiveId);
-				const myLive = myLiveReq.res.results[0];
-				this.liveSubscribed.push(myLive);
-			}
 
 			const req = await this.$sopia.api.lives.subscribed();
 			const lives = req.res.results;
 			for ( const live of lives ) {
 				this.liveSubscribed.push(live);
+			}
+
+			const membershipReq = await this.$sopia.api.lives.membership();
+			const membershipLives = membershipReq.res.results;
+			for ( const live of membershipLives ) {
+				this.liveMembership.push(live);
 			}
 		});
 		this.getNextLiveList();
-		if ( window.user ) {
-			this.liveSubscribed = [];
-			if ( window.user.current_live_id ) {
-				const myLiveId = window.user.current_live_id;
-				const myLiveReq = await this.$sopia.api.lives.info(myLiveId);
-				const myLive = myLiveReq.res.results[0];
-				this.liveSubscribed.push(myLive);
-			}
+		setTimeout(async () => {
+			if ( window.$sopia.logonUser ) {
+				this.liveSubscribed = [];
 
-			const req = await this.$sopia.api.lives.subscribed();
-			const lives = req.res.results;
-			for ( const live of lives ) {
-				this.liveSubscribed.push(live);
+				const req = await this.$sopia.api.lives.subscribed();
+				const lives = req.res.results;
+				for ( const live of lives ) {
+					this.liveSubscribed.push(live);
+				}
+
+				const membershipReq = await this.$sopia.api.lives.membership();
+				const membershipLives = membershipReq.res.results;
+				for ( const live of membershipLives ) {
+					this.liveMembership.push(live);
+				}
 			}
-		}
+		}, 1000);
 	}
 
 	public scrollEvent(vertical: any) {

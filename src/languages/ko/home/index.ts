@@ -11,4 +11,5 @@ export default {
 	'following-dj': '팔로잉 DJ',
 	'partner-dj': '소피아 파트너 DJ가 방송중이에요!',
 	'join-live': '방송에 참여하기',
+	'membership': '구독자 방송',
 };

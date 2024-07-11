@@ -37,7 +37,7 @@ html, body {
 <script lang="ts">
 import { Component, Mixins } from 'vue-property-decorator';
 import GlobalMixins from '@/plugins/mixins';
-import { User, Live, SpoonClient } from '@sopia-bot/core';
+import { User, Live, SpoonClient, ApiLivesInfo } from '@sopia-bot/core';
 import CfgLite from '@/plugins/cfg-lite-ipc';
 import path from 'path';
 import { BundlePackage } from '@/interface/bundle';
@@ -139,8 +139,24 @@ export default class App extends Mixins(GlobalMixins) {
 		}
 
 		this.$evt.$off('live-join');
-		this.$evt.$on('live-join', async (live: number) => {
-			const req = await this.$sopia.api.lives.info(live);
+		this.$evt.$on('live-join', async (live: number, isMembership: boolean) => {
+			let config!: ApiLivesInfo.Request;
+			if ( isMembership ) {
+				const req = await this.$sopia.api.lives.token(live, {
+					'data': {
+						'device_unique_id': this.$sopia.deviceUUID,
+					},
+				});
+				if ( req.res.status_code !== 200 ) {
+					throw req;
+				}
+				config = {
+					headers: {
+						'x-live-authorization': 'Bearer ' + req.res.results[0]?.jwt,
+					}
+				};
+			}
+			const req = await this.$sopia.api.lives.info(live, config);
 			this.$nextTick(async () => {
 				this.currentLive = req.res.results[0];
 				await this.$api.activityLog('live-join', req.res.results[0].id.toString());

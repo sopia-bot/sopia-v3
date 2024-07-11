@@ -11,7 +11,7 @@
 				max-width="320"
 				height="400"
 				outlined
-				@click.stop="$evt.$emit('live-join', live)"
+				@click.stop="$evt.$emit('live-join', live, isMembership)"
 				color="grey lighten-4"
 				class="mx-auto"
 				style="cursor: pointer"
@@ -63,5 +63,6 @@ import { Live } from '@sopia-bot/core';
 @Component
 export default class LiveItem extends Mixins(GlobalMixins) {
 	@Prop(Object) public live!: Live;
+	@Prop(Boolean) public isMembership!: boolean;
 }
 </script>
