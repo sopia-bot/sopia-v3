@@ -40,7 +40,7 @@
 					width="100%"
 					style="background: rgba(0, 0, 0, 0.5); border: thin solid rgb(255 255 255 / 30%)">
 					<v-list-item-content v-if="evt.event === LiveEvent.LIVE_MESSAGE" class="mx-4">
-						<pre style="white-space: pre-wrap;" class="chat-message" v-text="message"></pre>
+						<pre style="white-space: pre-wrap;" class="chat-message" v-html="message"></pre>
 					</v-list-item-content>
 					<v-list-item v-else-if="evt.event === LiveEvent.LIVE_PRESENT" class="mx-4">
 						<v-list-item-avatar>
@@ -108,20 +108,30 @@ export default class ChatMessage extends Mixins(GlobalMixins) {
 		this.$evt.$emit('live-block', id);
 	}
 
+	public escapeHtml(unsafe) {
+		return unsafe
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;")
+			.replace(/'/g, "&#039;");
+	}
+
 	get stickerImg() {
 		return this.$sopia.sticker.findSticker(this.evt.data.sticker)?.image_thumbnail;
 	}
 
-  get message(): string {
-    let msg = this.evt.update_component.message.value as string;
-    const m = msg.match(URL_REGIX);
-    if ( m ) {
-      for ( const url of m ) {
-        msg = msg.replace(url, `<a href="${url}" target="_blank" class="indigo--text text--lighten-2">${url}</a>`);
-      }
-    }
-    return msg;
-  }
+	get message(): string {
+		let msg = this.escapeHtml(this.evt.update_component.message.value as string);
+
+		const m = msg.match(URL_REGIX);
+		if ( m ) {
+		for ( const url of m ) {
+			msg = msg.replace(url, `<a href="${url}" target="_blank" class="indigo--text text--lighten-2">${url}</a>`);
+		}
+		}
+		return msg;
+	}
 }
 </script>
 <style>
