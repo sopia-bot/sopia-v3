@@ -11,6 +11,7 @@ export interface BundleInfo {
 	pkg: BundlePackage;
 	name: string;
 	page?: string;
+	main?: string;
 }
 const basePath = path.resolve(getAppPath('userData'), 'bundles');
 

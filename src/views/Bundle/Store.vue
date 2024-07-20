@@ -48,11 +48,17 @@
 			<v-col cols="9">
 				<h3>{{ $t('bundle.store.local-bundle') }}</h3>
 			</v-col>
+			<v-col cols="3">
+				<v-btn color="green" dark @click="addLocalBundle">
+					로컬 번들 추가
+				</v-btn>
+			</v-col>
 		</v-row>
 		<bundle-item
 			v-for="bundle in localBundleList"
 			:key="bundle.name"
-			:pkg="bundle">
+			:pkg="bundle"
+			isLocal>
 		</bundle-item>
 	</v-main>
 </template>
@@ -63,7 +69,9 @@ import BundleUploadButton from './BundleUploadBtn.vue';
 import BundleItem from './BundleItem/Index.vue';
 import { BundlePackage } from '@/interface/bundle';
 import path from 'path';
+import { getAppPath } from '@/plugins/ipc-renderer';
 const fs = window.require('fs');
+const { ipcRenderer } = window.require('electron');
 
 @Component({
 	components: {
@@ -79,12 +87,37 @@ export default class BundleStore extends Mixins(BundleMixins) {
 	public originalLocalBundleList: BundlePackage[] = [];
 	public searchText = '';
 	public increment = 0;
+	public localBundles: string[] = [];
 
 	public async created() {
 		await this.refreshBundleList();
 		this.refreshLocalBundleList();
 		this.$evt.$off('store:reload');
 		this.$evt.$on('store:reload', this.refreshBundleList.bind(this));
+	}
+
+	public async addLocalBundle() {
+		const res = await ipcRenderer.invoke('open-dialog', {
+			title: '로컬 번들 경로',
+			defaultPath: getAppPath('documents'),
+			properties: [
+				'openDirectory',
+			],
+		});
+
+		if ( res.canceled ) {
+			return;
+		}
+
+		const [ folder ] = res.filePaths;
+		const packageSrc = path.join(folder, 'package.json');
+		if ( fs.existsSync(packageSrc) ) {
+			const pkg = JSON.parse(fs.readFileSync(packageSrc, 'utf-8'));
+			this.localBundleList.push(pkg as BundlePackage);
+			fs.symlinkSync(folder,this.getBundlePath(pkg), 'junction');
+		} else {
+
+		}
 	}
 
 	public async refreshBundleList() {

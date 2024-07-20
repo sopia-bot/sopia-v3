@@ -6,6 +6,7 @@
  */
 const fs = window.require('fs');
 const path = window.require('path');
+import { BundleInfo } from '@/router/bundle';
 import './context';
 
 import logger from '@/plugins/logger';
@@ -23,7 +24,21 @@ export class Script {
 	}
 
 	public async add(folder: string) {
-		const index = path.join(folder, 'index.js');
+		
+
+		let index = path.join(folder, 'index.js');
+
+		try {
+			const packageTarget = path.join(folder, 'package.json');
+			const pkg = JSON.parse(fs.readFileSync(packageTarget, 'utf-8')) as BundleInfo;
+			if ( typeof pkg.main === 'string' ) {
+				index = path.join(folder, pkg.main);
+			}
+		} catch (e) {
+
+		}
+
+
 		if ( fs.existsSync(index) ) {
 			const name = path.basename(folder);
 			const context = (window as any)['bctx'].new(name);
