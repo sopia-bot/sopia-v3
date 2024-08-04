@@ -13,6 +13,7 @@
 				:src="pageSrc"
 				style="width: 100%; height: 100%;"
 				webpreferences="contextIsolation=false"
+				allowpopups
 			></webview>
 		</div>
 		<component v-else :is="page"></component>

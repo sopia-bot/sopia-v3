@@ -403,6 +403,28 @@ ipcMain.handle('ext-login-open', async (evt, url: string) => {
 	}
 });
 
+ipcMain.on('open-chrome', (event, url: string) => {
+	// install extension
+	let executablePath = '';
+	switch ( process.platform ) {
+		case 'darwin':
+			executablePath = pickProgram([
+				'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+			]);
+			break;
+		case 'win32':
+			executablePath = pickProgram([
+				getChromePathWindows(),
+				`C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe`,
+				`C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe`,
+			]);
+			break;
+	}
+	const proc = spawn(executablePath, [
+		`${url}`
+	]);
+})
+
 ipcMain.handle('open-dialog', async (event, options: any) => {
 	return await dialog.showOpenDialog(options);
 });
