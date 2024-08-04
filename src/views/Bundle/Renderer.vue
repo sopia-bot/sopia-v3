@@ -7,7 +7,13 @@
 <template>
 	<div>
 		<div v-if="version === 2" style="padding-left: 80px; height: calc(100vh - 48px);">
-			<webview ref="webview" :src="pageSrc" style="width: 100%; height: 100%;"></webview>
+			<webview
+				ref="webview"
+				nodeintegration
+				:src="pageSrc"
+				style="width: 100%; height: 100%;"
+				webpreferences="contextIsolation=false"
+			></webview>
 		</div>
 		<component v-else :is="page"></component>
 	</div>

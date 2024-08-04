@@ -94,6 +94,7 @@ const fs = window.require('fs');
 export default class BundleItem extends Mixins(BundleMixins) {
 
 	@Prop(Object) public pkg!: BundlePackage;
+	@Prop(Boolean) public isLocal: Boolean = false;
 
 	public isPackageUsing = false;
 	public loading = false;
