@@ -33,6 +33,8 @@ export class Script {
 			const pkg = JSON.parse(fs.readFileSync(packageTarget, 'utf-8')) as BundleInfo;
 			if ( typeof pkg.main === 'string' ) {
 				index = path.join(folder, pkg.main);
+				// https://github.com/sopia-bot/sopia-v3/issues/5
+				index = window.require.resolve(index);
 			}
 		} catch (e) {
 
@@ -44,6 +46,7 @@ export class Script {
 			const context = (window as any)['bctx'].new(name);
 			try {
 				const module = window.require(index);
+				logger.debug('processor', `require module ${index}`, module);
 				const box = {
 					name,
 					file: index,
@@ -64,6 +67,10 @@ export class Script {
 		const idx = this.boxs.findIndex((b: any) => b.name === name);
 		const box = this.boxs[idx];
 		if ( box ) {
+			const module = box.module;
+			if ( typeof module.onAbort === 'function' ) {
+				module.onAbort();
+			}
 			(window as any)['bctx'].destroy(name);
 			logger.info('sopia', 'module cache clear', box.file);
 			delete window.require.cache[box.file];

@@ -33,7 +33,9 @@ window.reloadScript = () => {
 	for ( const bundle of bundles ) {
 		const target = path.join(bundlePath, bundle);
 		const stat = fs.statSync(target);
-		if ( stat.isDirectory() ) {
+		const lstat = fs.lstatSync(target);
+		if ( stat.isDirectory() || lstat.isSymbolicLink() ) {
+			logger.debug('processor', `reload bundle ${bundle}`);
 			Script.add(target);
 		}
 	}
