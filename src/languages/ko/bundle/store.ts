@@ -19,4 +19,5 @@ export default {
 	'local-bundle': '로컬 번들 목록',
 	'search': '번들 검색',
 	'show-release-note': '릴리즈 노트 보기',
+	'add-local-bundle': '로컬 번들 추가',
 };

@@ -20,7 +20,7 @@
 					hide-details></v-text-field>
 			</v-col>
 		</v-row>
-		<v-row class="ma-0 my-4" align="center">
+		<v-row class="ma-0 mt-4" align="center">
 			<v-col cols="9">
 				<h3>{{ $t('bundle.store.subtitle') }}</h3>
 				<p class="ma-0">{{ $t('bundle.store.description') }}</p>
@@ -39,6 +39,40 @@
 				<bundle-upload-button />
 			</v-col>
 		</v-row>
+		<v-row class="mt-0">
+			<v-col cols="12">
+				<v-btn
+					v-if="onlyOfficial"
+					depressed
+					class="ma-0 d-flex align-middle pl-0 pr-2"
+					@click="toggleOfficial"
+					style="font-family: 'SUITE'; text-transform: none;">
+					<v-chip
+						color="blue lighten-2"
+						small
+						class="text-caption py-0 mx-2 white--text">
+						Official
+					</v-chip>
+					<span>번들외에도 <span class="font-weight-black">다</span> 보여주세요.</span>
+				</v-btn>
+				<v-btn
+					v-else
+					depressed
+					class="ma-0 d-flex align-middle"
+					@click="toggleOfficial"
+					style="font-family: 'SUITE'; text-transform: none;">
+					<span>오직</span>
+					<v-chip
+						color="blue lighten-2"
+						small
+						outlined
+						class="text-caption py-0 mx-2">
+						Official
+					</v-chip>
+					<span>번들만 보고 싶어요.</span>
+				</v-btn>
+			</v-col>
+		</v-row>
 		<bundle-item
 			v-for="bundle in bundleList"
 			:key="bundle.name"
@@ -50,7 +84,7 @@
 			</v-col>
 			<v-col cols="3">
 				<v-btn color="green" dark @click="addLocalBundle">
-					로컬 번들 추가
+					{{ $t('bundle.store.add-local-bundle') }}
 				</v-btn>
 			</v-col>
 		</v-row>
@@ -88,6 +122,7 @@ export default class BundleStore extends Mixins(BundleMixins) {
 	public searchText = '';
 	public increment = 0;
 	public localBundles: string[] = [];
+	public onlyOfficial = true;
 
 	public async created() {
 		await this.refreshBundleList();
@@ -122,19 +157,18 @@ export default class BundleStore extends Mixins(BundleMixins) {
 
 	public async refreshBundleList() {
 		const res = await this.$api.req('GET', '/bundle/');
-		this.originalBundleList
-			= this.bundleList
-			= res.data.sort((a: BundlePackage, b: BundlePackage) => {
-				const $T = fs.existsSync(this.getBundlePath(a));
-				const _T = fs.existsSync(this.getBundlePath(b));
-				if ( $T === _T ) {
-					if ( $T && _T ) {
-						return (!!b.page && !a.page) ? 1 : -1;
-					}
-					return 0;
+		this.originalBundleList = res.data.sort((a: BundlePackage, b: BundlePackage) => {
+			const $T = fs.existsSync(this.getBundlePath(a));
+			const _T = fs.existsSync(this.getBundlePath(b));
+			if ( $T === _T ) {
+				if ( $T && _T ) {
+					return (!!b.page && !a.page) ? 1 : -1;
 				}
-				return $T > _T ? -1 : 1;
-			});
+				return 0;
+			}
+			return $T > _T ? -1 : 1;
+		});
+		this.search();
 	}
 
 	public async refreshLocalBundleList() {
@@ -157,6 +191,7 @@ export default class BundleStore extends Mixins(BundleMixins) {
 		this.increment -= 1;
 		if ( this.increment <= 0 ) {
 			this.bundleList = this.originalBundleList
+				.filter((b: BundlePackage) => this.onlyOfficial ? b.is_official : true)
 				.filter(this.searchCondition.bind(this)) || [];
 			this.localBundleList = this.originalLocalBundleList
 				.filter(this.searchCondition.bind(this)) || [];
@@ -169,6 +204,11 @@ export default class BundleStore extends Mixins(BundleMixins) {
 			this.increment += 1;
 			setTimeout(() => this.search(), 500);
 		}
+	}
+
+	public toggleOfficial() {
+		this.onlyOfficial = !this.onlyOfficial;
+		this.search();
 	}
 
 }
