@@ -132,6 +132,7 @@ export default class Code extends Mixins(GlobalMixins) {
 	public openFiles: TabFile[] = [];
 	public selectedFile: number = -1;
 	public selectedDir: string = '';
+	public editorContext: any = null;
 
 	public treeRenderer: boolean = true;
 
@@ -171,6 +172,11 @@ export default class Code extends Mixins(GlobalMixins) {
 			icon: 'mdi-refresh',
 			name: this.$t('code.menu.refresh'),
 			func: this.TB_Refresh,
+		},
+		{
+			icon: 'mdi-content-save',
+			name: this.$t('code.menu.save'),
+			func: this.TB_Save,
 		},
 	];
 
@@ -253,6 +259,12 @@ export default class Code extends Mixins(GlobalMixins) {
 		this.treeReload();
 	}
 
+	public TB_Save() {
+		if ( this.editorContext ) {
+			this.save(this.editorContext);
+		}
+	}
+
 	public treeReload(cb?: () => void) {
 		this.treeRenderer = false;
 		this.$nextTick(() => {
@@ -277,6 +289,7 @@ export default class Code extends Mixins(GlobalMixins) {
 	}
 
 	public editorDidMount(editor: any) {
+		this.editorContext = editor;
 		// save
 		editor.addCommand(window.monaco.KeyMod.CtrlCmd | window.monaco.KeyCode.KEY_S, () => {
 			this.save(editor);

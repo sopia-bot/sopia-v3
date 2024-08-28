@@ -12,6 +12,7 @@ export default {
 		'rename': '이름 변경',
 		'unlink': '제거',
 		'refresh': '새로고침',
+		'save': '저장 (Ctrl + S)',
 	},
 	'msg': {
 		'save-success': '저장에 성공했습니다.',
