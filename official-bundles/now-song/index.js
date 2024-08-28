@@ -1,7 +1,6 @@
 const path = window.require('path');
 const { execSync } = window.require('child_process');
-const iconv = window.require('iconv-lite');
-const { getNowSong } = window.require(path.join(__dirname, './song'));
+const iconv = window.require(path.join(__dirname, './node_modules/iconv-lite'));
 
 let lastSong = '';
 
@@ -22,6 +21,7 @@ window.getNowSongInfo = (sock) => {
 	let caption = getMelonCaptionExec();
 
 	if ( !caption ) {
+		const { getNowSong } = window.require(path.join(__dirname, './song.node'));
 		const caption = getNowSong().trim();
 		if ( caption === '' ) {
 			return;

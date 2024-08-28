@@ -1,5 +1,13 @@
 {
 	"name": "now-song",
-	"version": "1.0.1",
-	"description": "Get now playing song information from melon player."
+	"name:ko": "현재곡",
+	"version": "1.0.4",
+	"description": "Get now playing song information from melon player.",
+	"description:ko": "멜론의 현재 재생중인 곡 정보를 가져옵니다. (최신 플레이어 버그 해결)",
+	"release-note": {
+		"1.0.4": "최신 멜론 플레이어에서 \"멜론 플레이어를 한 번 클릭해 주세요.\"라고 나오는 문제를 해결했습니다."
+	},
+	"dependencies": {
+		"iconv-lite": "^0.6.3"
+	}
 }
