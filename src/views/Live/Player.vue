@@ -82,7 +82,7 @@
 <script lang="ts">
 import { Component, Prop, Mixins } from 'vue-property-decorator';
 import GlobalMixins from '@/plugins/mixins';
-import { Live, LiveInfo, LiveEvent, LiveType, User, HttpRequest } from '@sopia-bot/core';
+import { Live, LiveInfo, LiveEvent, LiveType, User, HttpRequest, LiveSocket, LiveSocketStruct, LiveEventStruct } from '@sopia-bot/core';
 import ChatMessage from '@/views/Live/ChatMessage.vue';
 import SopiaProcesser from '@/sopia/processor';
 import PlayerBar from './PlayerBar.vue';
@@ -91,6 +91,10 @@ import { Player } from './player';
 import pkg from '../../../package.json';
 import Lottie from 'lottie-web-vue';
 import axios from 'axios';
+import Sqlite3, { Statement } from 'better-sqlite3';
+import path from 'path';
+const fs = window.require('fs');
+const Sqlite3 = window.require('better-sqlite3');
 
 const IgnoreEvent = [
 	LiveEvent.LIVE_STATE,
@@ -132,6 +136,8 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 		['7423666', '👑'],
 		['5738433', '🪪'],
 	];
+	public liveDB: Sqlite3;
+	public stmt: Statement;
 
 	public player: Player = new Player();
 
@@ -169,6 +175,7 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 			});
 
 			try {
+				await this.createDB(this.live.id);
 				await this.live.join();
 			} catch (err: any) {
 				if ( err.res ) {
@@ -209,6 +216,14 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 				}
 			}, 1000 * 60 * 10 /* 10min */);
 			this.live.socket.on(LiveEvent.LIVE_EVENT_ALL, (evt: any) => {
+				setImmediate(async () => {
+					// 오류가 나더라도 이후 동작은 안전하게 하기 위함.
+					try {
+						await this.logLiveHistory(evt);
+					} catch(err) {
+						console.error(err);
+					}
+				});
 				if ( evt?.data?.live?.manager_ids ) {
 					this.managerIds = evt.data.live.manager_ids;
 				}
@@ -336,6 +351,69 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 		
 		if ( user ) evt.data.user.nickname = user[1] + evt.data.user.nickname;
 		if ( author ) evt.data.author.nickname = author[1] + evt.data.author.nickname;
+	}
+
+	public async createDB(liveId: number) {	
+		const targetDir = this.$path('userData', 'historydb');
+		if ( !fs.existsSync(targetDir) ) {
+			fs.mkdirSync(targetDir, { recursive: true });
+		}
+
+		const targetPath = path.join(targetDir, `${liveId}.db`);
+		const isNew = !fs.existsSync(targetPath);
+		this.liveDB = new Sqlite3(targetPath);
+
+		if ( isNew ) {
+			await this.liveDB.exec(`CREATE TABLE "live_history_tbl" (
+				"idx" INTEGER PRIMARY KEY AUTOINCREMENT,
+				"live_id" INTEGER NULL,
+				"live_event" VARCHAR(256) NULL,
+				"live_title" VARCHAR(256) NULL,
+				"author_id" INTEGER NULL,
+				"author_tag" VARCHAR(256) NULL,
+				"author_nickname" VARCHAR(256) NULL,
+				"data_json" TEXT NULL,
+				"saved_date" DATETIME DEFAULT(STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW'))
+			);`);
+		}
+		this.stmt = this.liveDB.prepare(`INSERT INTO live_history_tbl (
+			live_id, live_event, live_title,
+			author_id, author_tag, author_nickname,
+			data_json
+		) VALUES(
+			${liveId}, @liveEvent, @liveTitle,
+			@authorId, @authorTag, @authorNickname,
+			@data_json
+		)`);
+	}
+
+	public logLiveHistory(evt: LiveEventStruct) {
+		if ( !this.liveDB ) {
+			return;
+		}
+
+		if ( evt.isSerializedStruct ) {
+			const data = evt.toJSON();
+			const liveEvent = evt.event;
+			const liveTitle = data.data?.title ||
+				data.data?.live.title || '';
+			const authorId = data.data?.author?.id ||
+				data.data?.user?.id || 0;
+			const authorTag = data.data?.author?.tag ||
+				data.data?.user?.tag || '';
+			const authorNickname = data.data?.author?.nickname ||
+				data.data?.user?.nickname || '';
+			const data_json = JSON.stringify(data);
+			this.stmt.run({
+				liveEvent,
+				liveTitle,
+				authorId,
+				authorTag,
+				authorNickname,
+				data_json,
+			});
+		}
+
 	}
 }
 </script>
