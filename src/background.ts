@@ -29,6 +29,7 @@ if ( !fs.existsSync(path.join(adp, 'restore-flag'))) {
 import './app/init';
 import { USER_AGENT } from './app/ipc-handler';
 import { registerBundleProtocol } from './app/bundle-protocol';
+import { registerSopiaTextProtocol } from './app/taxi-protocol';
 
 autoUpdater.logger = log;
 
@@ -194,7 +195,7 @@ app.on('ready', async () => {
 });
 
 registerBundleProtocol(app);
-
+registerSopiaTextProtocol(app);
 
 // Exit cleanly on request from parent process in development mode.
 if (isDevelopment) {

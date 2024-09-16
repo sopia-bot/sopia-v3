@@ -1,5 +1,6 @@
 const path = require('path');
 const MonacoEditorPlugin = require('monaco-editor-webpack-plugin');
+const webpack = require('webpack');
 
 module.exports = {
 	pluginOptions: {
@@ -7,6 +8,13 @@ module.exports = {
 			mainProcessWatch: [
 				'src/app/*',
 			],
+			chainWebpackMainProcess: (config) => {
+				// supertest의 formidable 패키지에서 발생하는 문제 수정
+				config.plugin('gently')
+					.use(new webpack.DefinePlugin({ "global.GENTLY": false }))
+					.end();
+				return config;
+			},
 			builderOptions: {
 				publish: [
 					{
