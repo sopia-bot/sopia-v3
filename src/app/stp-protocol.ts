@@ -1,11 +1,13 @@
 import { ProtocolRequest, protocol } from "electron";
-import express, { Application } from 'express';
+import { Application } from 'express';
 import supertest, { Response } from "supertest";
 import { AllMethods } from "supertest/types";
 
 function requestMockHttp(requestInfo: ProtocolRequest, app: Application): Promise<Response> {
     const url = new URL(requestInfo.url);
     const method = requestInfo.method.toLowerCase();
+
+    console.log(`request stp info :: domain: [${url.host}] url: [${url.pathname + url.search}] method: [${method}]`)
     const req = supertest(app)[method as AllMethods](url.pathname + url.search);
 
     Object.entries(requestInfo.headers).forEach(([key, value]) => {
@@ -41,11 +43,15 @@ export function registerSopiaTextProtocol(app: Electron.App) {
             if ( hosts.has(url.host) ) {
                 const expressApp = hosts.get(url.host) as Application;
                 const res = await requestMockHttp(request, expressApp);
-                callback({
+
+                const cbData = {
                     statusCode: res.statusCode,
                     headers: res.headers,
-                    data: res.body,
-                });
+                    data: res.text,
+                };
+
+                console.log('stp response :: ', cbData);
+                callback(cbData);
             } else {
                 callback({
                     statusCode: 404,
