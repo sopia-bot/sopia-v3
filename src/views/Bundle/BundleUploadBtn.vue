@@ -73,6 +73,15 @@ export default class BundleUploadButton extends Mixins(BundleMixins) {
 			return;
 		}
 
+		if ( !pkg['page-version'] || pkg['page-version'] < 2 ) {
+			await this.$swal({
+				icon: 'error',
+				title: this.$t('error'),
+				html: this.$t('bundle.store.error.page-version'),
+			});
+			return;
+		}
+
 		if ( !pkg.description ) {
 			pkg.description = 'No description';
 		}
