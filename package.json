@@ -1,6 +1,6 @@
 {
 	"name": "sopia-v3",
-	"version": "0.7.6",
+	"version": "0.7.7",
 	"description": "A Spooncast manager A.I Program",
 	"private": true,
 	"scripts": {
@@ -13,6 +13,7 @@
 		"electron:serve": "vue-cli-service electron:serve",
 		"electron:icon-build": "electron-icon-builder --input=public/icon.png --output=build --flatten",
 		"electron:window:icon-build": "electron-icon-builder.cmd --input=public/icon.png --output=build --flatten",
+		"electron:mac:build": "export PYTHON_PATH=\"$(which python)\"; vue-cli-service electron:build",
 		"postinstall": "electron-builder install-app-deps",
 		"postuninstall": "electron-builder install-app-deps"
 	},
