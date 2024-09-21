@@ -5,7 +5,7 @@
  * Copyright (c) Tree Some. Licensed under the MIT License.
 -->
 <template>
-	<div class="wrapper" style="width:100%;">
+	<div class="wrapper" style="width:100%;" @click="wrapperClick($event)" @contextmenu.stop="$emit('contextmenu', $event)">
 		<v-dialog
 			v-model="namebox"
 			width="260px"
@@ -24,8 +24,11 @@
 				class="custom"
 				ref="tree"
 				:key="folderKey"
+				:options="treeOptions"
 				style="overflow-y: auto;"
-				:data.sync="folderTree">
+				:data.sync="folderTree"
+				@node:dragging:finish="moveNode"
+			>
 				<span class="tree-text" slot-scope="{ node }">
 					<!-- S:Folder -->
 					<template v-if="node.hasChildren()">
@@ -58,6 +61,7 @@ import GlobalMixins from '@/plugins/mixins';
 const path = window.require('path');
 const fs = window.require('fs');
 const os = window.require('os');
+const rimraf = window.require('rimraf');
 
 @Component
 export default class TreeView extends Mixins(GlobalMixins) {
@@ -91,7 +95,18 @@ export default class TreeView extends Mixins(GlobalMixins) {
 		'ko-3-0.bdic',
 		'.*node_modules.*',
 		'firefox',
+		'historydb',
+		'QuotaManager*',
+		'ext*',
+		'restore-flag',
+		'Service Worker',
+		'login-ext',
+		'databases',
 	];
+	public treeOptions = {
+		dnd: true,
+		multiple: true,
+	};
 	/* E:For Tree */
 
 	public namebox: boolean = false;
@@ -118,9 +133,14 @@ export default class TreeView extends Mixins(GlobalMixins) {
 		return '';
 	}
 
+	get treeRef(): any {
+		return this.$refs.tree as any;
+	}
+
 	public mounted() {
 		this.treeRenderer = false;
 		this.folderTree = this.buildFolderTree(this.$path('userData', this.targetFolder));
+		this.$logger.debug('tree-view', 'mounted tree');
 
 		this.$evt.$off('code:new');
 		this.$evt.$on('code:new', (dir: string, type: 'FILE' | 'DIR') => {
@@ -156,22 +176,23 @@ export default class TreeView extends Mixins(GlobalMixins) {
 
 		this.$evt.$off('code:remove');
 		this.$evt.$on('code:remove', () => {
-			const node = this.selectedNode;
-			if ( node ) {
-				const stat = fs.statSync(node.data.value);
-				if ( stat.isDirectory() ) {
-					fs.rmdirSync(node.data.value, { recursive: true });
+			const selectedNodes = this.treeRef.findAll({
+				state: { selected: true }
+			});
+
+			for ( let i=0;i < selectedNodes.length;i++ ) {
+				const node = selectedNodes[i];
+				if ( node ) {
+					const res = rimraf.sync(node.data.value);
+					this.$evt.$emit('code:tree-rerender');
 				} else {
-					fs.unlinkSync(node.data.value);
+					this.$logger.err('code', 'No selected file.');
+					this.$swal({
+						icon: 'error',
+						title: this.$t('error'),
+						html: this.$t('code.msg.no-selected'),
+					});
 				}
-				this.$evt.$emit('code:tree-rerender', node.data.value, !node.data.isFolder);
-			} else {
-				this.$logger.err('code', 'No selected file.');
-				this.$swal({
-					icon: 'error',
-					title: this.$t('error'),
-					html: this.$t('code.msg.no-selected'),
-				});
 			}
 		});
 
@@ -301,7 +322,24 @@ export default class TreeView extends Mixins(GlobalMixins) {
 		}
 
 		this.nbnew = false;
-		this.$evt.$emit('code:tree-rerender');
+		this.namebox = false;
+		this.newName = '';
+		this.treeReload(() => {
+			const findNode = (this.$refs['tree'] as any).find({
+				data: {
+					value: target,
+				}
+			})[0];
+			if ( findNode ) {
+				let parent = findNode.parent;
+				while ( parent ) {
+					console.log(parent);
+					parent.expand();
+					parent = parent.parent;
+				}
+				findNode.select(true);
+			}
+		});
 	}
 
 	public checkFolder(): Promise<void> {
@@ -332,6 +370,8 @@ export default class TreeView extends Mixins(GlobalMixins) {
 		}
 		return 'mdi mdi-file-document';
 	}
+
+	public 
 
 	public treeReload(cb: (...args: any) => any = () => {/* empty */}) {
 		let treeRef = this.$refs.tree as any;
@@ -467,8 +507,8 @@ export default class TreeView extends Mixins(GlobalMixins) {
 						obj['state'] = oriObj['state'] || {};
 						obj.data['isFolder'] = false;
 						obj.data['icon'] = this.iconFinder(path.extname(f));
+						obj['state']['dropable'] = false;
 					}
-
 					arr.push(obj);
 				});
 			}
@@ -484,6 +524,51 @@ export default class TreeView extends Mixins(GlobalMixins) {
 
 		const sfs = selectedFile ? selectedFile.split('/') : [];
 		return this.readdir(src, '', ori, sfs);
+	}
+
+	public async moveNode(targetNode, distNode) {
+		const targetNodeList = this.treeRef.findAll({
+			state: {
+				selected: true,
+			},
+		});
+		let distDir = distNode.data.isFolder ? distNode.data.value : path.dirname(distNode.data.value);
+		
+		for ( let i=0;i < targetNodeList.length;i++ ) {
+			const targetNode = targetNodeList[i];
+			const distTarget = path.join(distDir, targetNode.text);
+			
+			if ( fs.existsSync(distTarget) ) {
+				const res = await this.$swal({
+					title: this.$t('confirm'),
+					html: this.$t('code.msg.override-sure'),
+					icon: 'question',
+					confirmButtonText: this.$t('yes'),
+					showCancelButton: true,
+					cancelButtonText: this.$t('no'),
+				});
+				if ( !res.isConfirmed ) {
+					this.treeReload();
+					return;
+				}
+				rimraf.sync(distTarget);
+			}
+
+			fs.renameSync(targetNode.data.value, distTarget);
+			this.$evt.$emit('code:tree-rerender', distTarget, !targetNode.data.isFolder);
+		}
+	}
+
+	public wrapperClick(event) {
+		this.$nextTick(() => {
+			const nodes = this.treeRef.findAll({
+				state: {
+					selected: true,
+				},
+			});
+			this.$logger.debug('tree-view', 'wrapper click selected nodes::', nodes);
+			nodes.unselect(true);
+		});
 	}
 
 }
@@ -503,8 +588,22 @@ export default class TreeView extends Mixins(GlobalMixins) {
 	transform-origin: center;
 }
 
+.custom .tree-anchor {
+	margin: 0;
+	padding-left: 0;
+	padding: 0;
+}
 .custom .tree-anchor .tree-text {
 	color: #263238;
+	font-size: 10pt;
+}
+.custom ul.tree-children {
+	padding-left: 12px;
+}
+.custom .tree-node .tree-content {
+	padding-left: 12px !important;
+	padding-top: 0;
+	padding-bottom: 0;
 }
 .custom .tree-node.selected>.tree-content .tree-text {
 }

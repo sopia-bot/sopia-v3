@@ -7,12 +7,17 @@ function requestMockHttp(requestInfo: ProtocolRequest, app: Application): Promis
     const url = new URL(requestInfo.url);
     const method = requestInfo.method.toLowerCase();
 
-    console.log(`request stp info :: domain: [${url.host}] url: [${url.pathname + url.search}] method: [${method}]`)
+    console.log(`request stp info :: domain: [${url.host}] url: [${url.pathname + url.search}] method: [${method}]`, requestInfo)
     const req = supertest(app)[method as AllMethods](url.pathname + url.search);
 
     Object.entries(requestInfo.headers).forEach(([key, value]) => {
         req.set(key, value);
     });
+
+    if ( requestInfo.uploadData?.length ) {
+        const data = JSON.parse(requestInfo.uploadData[0].bytes.toString('utf-8'));
+        req.send(data);
+    }
 
     return req;
 }
@@ -21,6 +26,10 @@ const PROTOCOL_SCHEMA = 'stp';
 const hosts: Map<string, Application> = new Map();
 
 export function registerStpApp(domain: string, expressApp: Application) {
+    console.log(`register stp app :: domain=${domain}, app=`, expressApp);
+    if ( hosts.has(domain) ) {
+        hosts.delete(domain);
+    }
     hosts.set(domain, expressApp);
 }
 

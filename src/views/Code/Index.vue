@@ -7,6 +7,84 @@
 <script src="../../router/index.ts"></script>
 <template>
 	<v-main style="overflow-y: hidden;">
+		<v-dialog
+			v-model="showPreview"
+			fullscreen
+			content-class="custom-dialog"
+			transition="dialog-bottom-transition"
+			@click:outside="dialogClick($event)"
+		>
+			<v-card>
+				<v-toolbar
+					dark
+					color="primary"
+				>
+					
+					<v-toolbar-title>{{ previewTitle }}</v-toolbar-title>
+					<v-spacer></v-spacer>
+					<!-- <v-btn
+						icon
+						dark
+						@click="showPreview = false"
+					>
+						<v-icon>mdi-close</v-icon>
+					</v-btn> -->
+					<v-toolbar-items>
+						<v-btn
+							dark
+							text
+							@click="refreshPreview"
+						>
+							{{ $t('refresh') }}
+							<v-icon
+								right
+								dark
+							>
+								mdi-refresh
+							</v-icon>
+						</v-btn>
+						<v-btn
+							dark
+							text
+							@click="openPreviewDevtools"
+						>
+							{{ $t('code.preview.devtools') }}
+							<v-icon
+								right
+								dark
+							>
+								mdi-monitor
+							</v-icon>
+						</v-btn>
+						<v-btn
+							dark
+							text
+							@click="showPreview = false"
+						>
+							{{ $t('close') }}
+							<v-icon
+								right
+								dark
+							>
+								mdi-close
+							</v-icon>
+						</v-btn>
+					</v-toolbar-items>
+				</v-toolbar>
+
+				<div style="height: calc(100vh - 48px - 64px)">
+					<webview
+						ref="webview"
+						v-if="webviewRenderer"
+						nodeintegration
+						:src="previewSrc"
+						style="width: 100%; height: 100%;"
+						webpreferences="contextIsolation=false"
+						allowpopups
+					></webview>
+				</div>
+			</v-card>
+		</v-dialog>
 		<v-row class="ma-0 h-100v" style=" overflow-y: hidden;">
 			<v-col cols="4" md="3" class="pa-0 d-none d-sm-block h-100v" style="border-right: 1px solid #E8EAF6;">
 				<v-row class="ma-0" style="border-bottom: 1px solid #E8EAF6;">
@@ -22,11 +100,35 @@
 				<v-row class="ma-0" style="height: calc(100vh - 61px); overflow: auto;">
 					<!-- S:Folder Tree -->
 					<tree-view
+						ref="treeView"
 						v-if="treeRenderer"
 						@contextmenu="openContextmenu"
 						@selected="selectedItem"
 						/>
 					<!-- E:Folder Tree -->
+					<v-menu
+						v-model="showMenu"
+						:position-x="menuPosition.x"
+						:position-y="menuPosition.y"
+						absolute
+						offset-y
+					>
+						<v-list dense>
+							<v-list-item
+								link
+								v-for="(item, index) in contextButtons"
+								:key="'ctx-menu' + index"
+								@click="item.func"
+							>
+								<v-list-item-icon>
+									<v-icon>{{  item.icon  }}</v-icon>
+								</v-list-item-icon>
+								<v-list-item-content>
+									<v-list-item-title v-text="item.name"></v-list-item-title>
+								</v-list-item-content>
+							</v-list-item>
+						</v-list>
+					</v-menu>
 				</v-row>
 			</v-col>
 			<v-col cols="12" sm="8" md="9" class="pa-0" v-if="openFiles.length > 0">
@@ -80,6 +182,7 @@ import GlobalMixins from '@/plugins/mixins';
 import MonacoEditor from 'vue-monaco';
 import TreeView from './TreeView.vue';
 import ToolButton, { ToolButtonInterface } from './ToolButton.vue';
+import { BundlePackage } from '@/interface/Bundle';
 const fs = window.require('fs');
 const path = window.require('path');
 
@@ -123,16 +226,28 @@ export default class Code extends Mixins(GlobalMixins) {
 	public editor: any = {
 		options: {
 			automaticLayout: true,
+			renderIndentGuides: false,
+			tabSize: 4,
 		},
 		language: 'javascript',
 		code: '',
 		theme: 'vs',
 		changed: false,
+		tabSize: 4,
 	};
 	public openFiles: TabFile[] = [];
 	public selectedFile: number = -1;
 	public selectedDir: string = '';
 	public editorContext: any = null;
+	public showMenu = false;
+	public menuPosition = {
+		x: 0,
+		y: 0,
+	};
+	public showPreview = false;
+	public previewTitle = '';
+	public previewSrc = '';
+	public webviewRenderer = false;
 
 	public treeRenderer: boolean = true;
 
@@ -147,36 +262,43 @@ export default class Code extends Mixins(GlobalMixins) {
 		},
 	};
 
+	public contextButtons: ToolButtonInterface[] = [];
 	public buttons: ToolButtonInterface[] = [
 		{
 			icon: 'mdi-file-document-multiple',
 			name: this.$t('code.menu.new-file'),
 			func: this.TB_NewFile,
+			isContext: () => true,
 		},
 		{
 			icon: 'mdi-folder-plus',
 			name: this.$t('code.menu.new-folder'),
 			func: this.TB_NewFolder,
+			isContext: () => true,
 		},
 		{
 			icon: 'mdi-form-textbox',
 			name: this.$t('code.menu.rename'),
 			func: this.TB_Rename,
+			isContext: (node) => !!node,
 		},
 		{
 			icon: 'mdi-delete',
 			name: this.$t('code.menu.unlink'),
 			func: this.TB_Unlink,
+			isContext: (node) => !!node,
 		},
 		{
 			icon: 'mdi-refresh',
 			name: this.$t('code.menu.refresh'),
 			func: this.TB_Refresh,
+			isContext: (node) => true,
 		},
 		{
 			icon: 'mdi-content-save',
 			name: this.$t('code.menu.save'),
 			func: this.TB_Save,
+			isContext: (node) => false,
 		},
 	];
 
@@ -200,7 +322,7 @@ export default class Code extends Mixins(GlobalMixins) {
 				if ( stat.isDirectory() ) {
 					dir = file.fullPath;
 				} else {
-					dir = path.basename(file.fullPath);
+					dir = path.dirname(file.fullPath);
 				}
 			}
 		}
@@ -219,7 +341,7 @@ export default class Code extends Mixins(GlobalMixins) {
 				if ( stat.isDirectory() ) {
 					dir = file.fullPath;
 				} else {
-					dir = path.basename(file.fullPath);
+					dir = path.dirname(file.fullPath);
 				}
 			}
 		}
@@ -265,10 +387,110 @@ export default class Code extends Mixins(GlobalMixins) {
 		}
 	}
 
+	public pathsAreEqual(path1, path2) {
+		path1 = path.resolve(path1);
+		path2 = path.resolve(path2);
+		if (process.platform == "win32")
+			return path1.toLowerCase() === path2.toLowerCase();
+		return path1 === path2;
+	}
+
+	public TB_Preview(node: any) {
+		const treeRef = (this.$refs['treeView'] as TreeView).$refs['tree'] as any;
+		const selections = node ? treeRef.find({ id: node.id }) : treeRef.find({
+			state: {
+				selected: true,
+			},
+		});
+		if ( selections.length < 1 ) {
+			this.$swal({
+				icon: 'error',
+				html: this.$t('code.preview.err.not-select'),
+				toast: true,
+				position: 'top-end',
+				timer: 3000,
+			});
+			return;
+		}
+
+		const selNode = selections[0];
+		let dir = selNode.data.value;
+		let pkgPath = path.join(dir, 'package.json');
+
+		while ( !fs.existsSync(pkgPath) ) {
+			dir = path.dirname(dir);
+			pkgPath = path.join(dir, 'package.json');
+
+			if ( this.pathsAreEqual(dir, this.$path('userData', 'bundles')) ) {
+				pkgPath = '';
+				break;
+			}
+		}
+		if ( pkgPath === '' ) {
+			this.$swal({
+				icon: 'error',
+				html: this.$t('code.preview.err.not-bundle'),
+				toast: true,
+				position: 'top-end',
+				timer: 3000,
+			});
+		}
+
+		const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8')) as BundlePackage;
+
+		if ( pkg['page-version'] >= 2 ) {
+			this.showPreview = true;
+			this.previewTitle = pkg['name:ko'] ?? pkg['name'];
+			if ( pkg.pageType === 'http' ) {
+				this.previewSrc = pkg.page;
+			} else {
+				this.previewSrc = `yulx://${pkg.name}/${pkg.page}`;
+			}
+			this.webviewRenderer = false;
+			
+			const webview = this.$refs['webview'] as any;
+			if ( webview ) {
+				if ( webview.isDevToolsOpened() ) {
+					webview.closeDevTools();
+				}
+			}
+			this.$nextTick(() => {
+				this.webviewRenderer = true;
+			});
+		} else {
+			this.$swal({
+				icon: 'error',
+				html: this.$t('code.preview.err.not-preview'),
+				toast: true,
+				position: 'top-end',
+				timer: 3000,
+			});
+		}
+	}
+
+	public refreshPreview() {
+		const webview = this.$refs['webview'] as any;
+		if ( webview.isDevToolsOpened() ) {
+			return;
+		}
+		webview.reload();
+	}
+
+	public openPreviewDevtools() {
+		const webview = this.$refs['webview'] as any;
+		if ( webview.isDevToolsOpened() ) {
+			webview.closeDevTools();
+		}
+		webview.openDevTools();
+	}
+
+	public dialogClick(evt) {
+		console.log("🚀 ~ Code ~ dialogClick ~ evt:", evt)
+	}
+
 	public treeReload(cb?: () => void) {
-		this.treeRenderer = false;
-		this.$nextTick(() => {
-			this.treeRenderer = true;
+		//(this.$refs['treeView'] as TreeView).oriFolderTree = {};
+		(this.$refs['treeView'] as TreeView).treeReload(() => {
 			if ( typeof cb === 'function' ) {
 				cb();
 			}
@@ -299,6 +521,14 @@ export default class Code extends Mixins(GlobalMixins) {
 		editor.addCommand(window.monaco.KeyMod.CtrlCmd | window.monaco.KeyCode.KEY_W, () => {
 			this.closeTab();
 		});
+
+		// openPreview
+		editor.addCommand(window.monaco.KeyMod.CtrlCmd | window.monaco.KeyMod.Shift | window.monaco.KeyCode.KEY_R, () => {
+			const file = this.openFiles[this.selectedFile];
+			if ( file?.node ) {
+				this.TB_Preview(file.node);
+			}
+		});
 	}
 
 	public editorChange(value: string, editor: any) {
@@ -309,6 +539,34 @@ export default class Code extends Mixins(GlobalMixins) {
 	}
 
 	public openContextmenu(event: any, node: any) {
+		this.showMenu = false;
+		if ( node ) {
+			const treeRef = (this.$refs['treeView'] as TreeView).$refs['tree'] as any;
+			const selection = treeRef.findAll({
+				id: node.id,
+			});
+			selection.select(true);
+			console.log("🚀 ~ Code ~ openContextmenu ~ selection:", selection)
+		}
+		this.contextButtons = this.buttons.filter((btn) => {
+			if ( typeof btn.isContext === 'function' ) {
+				return btn.isContext(node);
+			}
+			return !!btn.isContext;
+		});
+		this.contextButtons.push({
+			icon: 'mdi-eye',
+			name: this.$t('code.preview.contextmenu'),
+			func: () => {
+				this.TB_Preview(node);
+			},
+			isContext: (node) => !!node,
+		})
+		this.menuPosition.x = event.clientX;
+		this.menuPosition.y = event.clientY;
+		this.$nextTick(() => {
+			this.showMenu = true;
+		});
 		console.log('openContextmenu', event, node);
 	}
 
@@ -382,7 +640,7 @@ export default class Code extends Mixins(GlobalMixins) {
 			this.$emit('selected', node);
 		} else {
 			const file = node.data.value;
-			const idx = this.openFiles.findIndex((opened) => opened.name === node.data.text);
+			const idx = this.openFiles.findIndex((opened) => opened.fullPath === node.data.value);
 			this.selectedDir = '';
 
 			if ( idx >= 0 ) {
@@ -467,5 +725,12 @@ export default class Code extends Mixins(GlobalMixins) {
 .editor > .monaco-editor > .overflow-guard {
 	margin: 0;
 	width: 100% !important;
+}
+.editor * {
+	font-family: Consolas, "Courier New", monospace;
+}
+.custom-dialog.v-dialog {
+	margin-top: 48px;
+	height: calc(100% - 48px);
 }
 </style>

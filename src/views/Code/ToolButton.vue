@@ -29,6 +29,7 @@ export interface ToolButtonInterface {
 	icon: string;
 	name: string;
 	func: (...args: any) => void;
+	isContext?: (node?: any) => void;
 }
 
 @Component

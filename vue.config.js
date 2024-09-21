@@ -29,6 +29,7 @@ module.exports = {
 					"node_modules/better-sqlite3/**/*",
 					"node_modules/bindings/**/*",
 					"node_modules/file-uri-to-path/**/*",
+					"node_modules/rimraf/**/*",
 				],
 				extraFiles: [
 					{
@@ -42,6 +43,10 @@ module.exports = {
 					{
 						from: "node_modules/file-uri-to-path/",
 						to: "resources/node_modules/file-uri-to-path"
+					},
+					{
+						from: "node_modules/rimraf",
+						to: "resources/node_modules/rimraf"
 					},
 				],
 			},

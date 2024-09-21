@@ -10,6 +10,7 @@ import { BundleInfo } from '@/router/bundle';
 import './context';
 
 import logger from '@/plugins/logger';
+const { ipcRenderer } = window.require('electron');
 
 export class Script {
 
@@ -26,11 +27,11 @@ export class Script {
 	public async add(folder: string) {
 		
 
-		let index = path.join(folder, 'index.js');
-
+		let pkg = {} as BundleInfo;
+		let index = '';
 		try {
 			const packageTarget = path.join(folder, 'package.json');
-			const pkg = JSON.parse(fs.readFileSync(packageTarget, 'utf-8')) as BundleInfo;
+			pkg = JSON.parse(fs.readFileSync(packageTarget, 'utf-8')) as BundleInfo;
 			if ( typeof pkg.main === 'string' ) {
 				index = path.join(folder, pkg.main);
 				// https://github.com/sopia-bot/sopia-v3/issues/5
@@ -46,10 +47,23 @@ export class Script {
 			const context = (window as any)['bctx'].new(name);
 			try {
 				const module = window.require(index);
+				let stpTargetFile = '';
 				logger.debug('processor', `require module ${index}`, module);
+				if ( pkg['stp'] ) {
+					if ( pkg['stp']['domain'] && pkg['stp']['file'] ) {
+						stpTargetFile = pkg['stp']['file'];
+						if ( ! fs.existsSync(stpTargetFile) ) {
+							stpTargetFile = path.join(folder, pkg['stp']['file']);
+						}
+						stpTargetFile = window.require.resolve(stpTargetFile);
+						logger.debug('sopia', `Bundle ${module} is using stp protocl ${stpTargetFile}`);
+						ipcRenderer.invoke('stp:regist', pkg['stp']['domain'], stpTargetFile);
+					}
+				}
 				const box = {
 					name,
 					file: index,
+					stpFile: stpTargetFile,
 					dir: folder,
 					module,
 					context,

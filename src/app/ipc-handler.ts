@@ -12,8 +12,9 @@ import axios from 'axios';
 import CfgLite from 'cfg-lite';
 import { ZipFile, ZipArchive } from '@arkiv/zip';
 import fs from 'fs';
+import vm from 'vm';
 import pkg from '../../package.json';
-
+import { registerStpApp } from './stp-protocol';
 export const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -519,4 +520,36 @@ ipcMain.on('package:uncompress-buffer', (evt: IpcMainEvent, b64str: string, dst:
 
 ipcMain.on('app:quit', (evt: IpcMainEvent) => {
 	app.quit();
+});
+
+ipcMain.handle('stp:regist', (evt, domain: string, targetFile: string) => {
+	if ( fs.existsSync(targetFile) ) {
+		const scriptText = fs.readFileSync(targetFile, 'utf-8');
+		const script = new vm.Script(scriptText);
+		const context = {
+			require: __non_webpack_require__,
+			module: {
+				exports: {},
+			},
+			console,
+		};
+		vm.createContext(context);
+		try {
+			script.runInContext(context, {
+				displayErrors: true,
+			});
+			registerStpApp(domain, context.module.exports as Application);
+			return {
+				success: true,
+			};
+		} catch(err) {
+			console.error(err);
+			return {
+				success: false,
+				detail: err,
+			};
+		}
+	} else {
+		console.log('Can not find ', targetFile);
+	}
 });

@@ -52,4 +52,5 @@ export default {
 	'update': '업데이트',
 	'donation': '후원하기',
 	'click-picture': '클릭하여 사진 크게 보기',
+	'refresh': '새로고침',
 };
