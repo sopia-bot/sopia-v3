@@ -170,6 +170,7 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 		this.setPartners();
 		this.setSponsors();
 		if ( this.live ) {
+			console.log("🚀 ~ LivePlayer ~ created ~ live:", this.live);
 			this.$sopia.liveMap.forEach((live: LiveInfo, liveId: number) => {
 				//socket.destroy(); TODO:
 			});
@@ -202,6 +203,7 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 					this.liveLeave();
 					return;
 				}
+				this.$logger.err('live-join', err);
 			}
 
 			this.player.connect(this.live);

@@ -26,13 +26,23 @@ module.exports = {
 				productName: 'SOPIAv3',
 				files: [
 					"**/*",
-					"node_modules/better-sqlite3/**/*"
+					"node_modules/better-sqlite3/**/*",
+					"node_modules/bindings/**/*",
+					"node_modules/file-uri-to-path/**/*",
 				],
 				extraFiles: [
 					{
 						from: "node_modules/better-sqlite3/",
 						to: "resources/node_modules/better-sqlite3"
-					}
+					},
+					{
+						from: "node_modules/bindings/",
+						to: "resources/node_modules/bindings"
+					},
+					{
+						from: "node_modules/file-uri-to-path/",
+						to: "resources/node_modules/file-uri-to-path"
+					},
 				],
 			},
 			mac: {
