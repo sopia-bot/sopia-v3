@@ -35,7 +35,7 @@ const launcher = function(cmd: string) {
 ipcMain.on('cfg-lite', (evt: IpcMainEvent, prop: string, file: string, ...args: any) => {
 	const key = file;
 	let rtn: any = null;
-	console.log(`cfg-lite: prop=${prop},file=${file},argc=${args.length}`);
+	console.log(`cfg-lite: prop=${prop},file=${file},argc=${args.length}, args=${args.join()}`);
 	try {
 		if ( prop === 'new' ) {
 			const tmp = new CfgLite(file, args[0]);

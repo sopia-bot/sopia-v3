@@ -22,7 +22,9 @@ const $path = (type: any, ...args: any) => {
 
 window.reloadScript = () => {
 	Script.clear();
-	Script.add($path('userData', 'sopia/'));
+	if ( fs.existsSync($path('userData', 'sopia/index.js')) ) {
+		Script.add($path('userData', 'sopia/'));
+	}
 	const bundlePath = $path('userData', 'bundles');
 
 	if ( !fs.existsSync(bundlePath) ) {

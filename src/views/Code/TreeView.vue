@@ -102,6 +102,8 @@ export default class TreeView extends Mixins(GlobalMixins) {
 		'Service Worker',
 		'login-ext',
 		'databases',
+		'IndexedDB',
+		'Storage',
 	];
 	public treeOptions = {
 		dnd: true,
@@ -370,8 +372,6 @@ export default class TreeView extends Mixins(GlobalMixins) {
 		}
 		return 'mdi mdi-file-document';
 	}
-
-	public 
 
 	public treeReload(cb: (...args: any) => any = () => {/* empty */}) {
 		let treeRef = this.$refs.tree as any;

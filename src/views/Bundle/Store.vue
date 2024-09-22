@@ -74,8 +74,8 @@
 			</v-col>
 		</v-row>
 		<bundle-item
-			v-for="bundle in bundleList"
-			:key="bundle.name"
+			v-for="(bundle, idx) in bundleList"
+			:key="bundle.name + idx"
 			:pkg="bundle">
 		</bundle-item>
 		<v-row class="ma-0 my-4" align="center">
@@ -128,7 +128,10 @@ export default class BundleStore extends Mixins(BundleMixins) {
 		await this.refreshBundleList();
 		this.refreshLocalBundleList();
 		this.$evt.$off('store:reload');
-		this.$evt.$on('store:reload', this.refreshBundleList.bind(this));
+		this.$evt.$on('store:reload', async () => {
+			await this.refreshBundleList();
+			this.refreshLocalBundleList();
+		});
 	}
 
 	public async addLocalBundle() {

@@ -31,14 +31,16 @@ export class Script {
 		let index = '';
 		try {
 			const packageTarget = path.join(folder, 'package.json');
-			pkg = JSON.parse(fs.readFileSync(packageTarget, 'utf-8')) as BundleInfo;
-			if ( typeof pkg.main === 'string' ) {
-				index = path.join(folder, pkg.main);
+			if ( fs.existsSync(packageTarget) ) {
+				pkg = JSON.parse(fs.readFileSync(packageTarget, 'utf-8')) as BundleInfo;
+				index = path.join(folder, pkg.main ?? 'index.js');
 				// https://github.com/sopia-bot/sopia-v3/issues/5
 				index = window.require.resolve(index);
+			} else {
+				index = window.require.resolve(path.join(folder, 'index.js'));
 			}
 		} catch (e) {
-
+			logger.err('script', `add catch error ::`, pkg, `index: [${index}]`, e);
 		}
 
 
