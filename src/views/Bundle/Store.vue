@@ -103,7 +103,7 @@ import BundleUploadButton from './BundleUploadBtn.vue';
 import BundleItem from './BundleItem/Index.vue';
 import { BundlePackage } from '@/interface/bundle';
 import path from 'path';
-import { getAppPath } from '@/plugins/ipc-renderer';
+import { getAppPath, npmInstall } from '@/plugins/ipc-renderer';
 const fs = window.require('fs');
 const { ipcRenderer } = window.require('electron');
 
@@ -150,9 +150,18 @@ export default class BundleStore extends Mixins(BundleMixins) {
 		const [ folder ] = res.filePaths;
 		const packageSrc = path.join(folder, 'package.json');
 		if ( fs.existsSync(packageSrc) ) {
-			const pkg = JSON.parse(fs.readFileSync(packageSrc, 'utf-8'));
-			this.localBundleList.push(pkg as BundlePackage);
+			const pkg = JSON.parse(fs.readFileSync(packageSrc, 'utf-8')) as BundlePackage;
+			this.localBundleList.push(pkg);
 			fs.symlinkSync(folder,this.getBundlePath(pkg), 'junction');
+
+			if ( pkg.dependencies ) {
+				await npmInstall(Object.entries(pkg.dependencies).map(([name, version]) => ({
+					name,
+					version,
+				})), {
+					rootDir: folder,
+				});
+			}
 		} else {
 
 		}

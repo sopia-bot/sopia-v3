@@ -30,43 +30,65 @@
 								{{ pkg.owner_name }}
 							</v-col>
 							<v-col cols="5" align="right">
-								<v-btn
-									v-if="pkg.page && isPackageUsing"
-									:loading="loading"
-									:disabled="loading"
-									depressed
-									class="mr-3"
-									@click.stop="$assign(`/bundle/${pkg.name}/`)"
-									color="primary">
-									{{ $t('bundle.store.move-bundle-page') }}
-								</v-btn>
-								<v-btn
-									v-if="canUpdate"
-									:loading="loading"
-									:disabled="loading"
-									depressed outlined
-									color="green"
-									class="mr-3"
-									@click.stop="install">
-									{{ $t('update') }}
-								</v-btn>
-								<v-btn
-									v-if=!isPackageUsing
-									:loading="loading"
-									:disabled="loading"
-									depressed outlined
-									@click.stop="install">
-									{{ $t('bundle.install') }}
-								</v-btn>
-								<v-btn
-									v-else
-									:loading="loading"
-									:disabled="loading"
-									depressed outlined
-									@click.stop="uninstall"
-									color="red">
-									{{ $t('bundle.store.remove-bundle') }}
-								</v-btn>
+								<div v-if="isLocal">
+									<v-btn
+										v-if="pkg.page && isPackageUsing"
+										:loading="loading"
+										:disabled="loading"
+										depressed
+										class="mr-3"
+										@click.stop="$assign(`/bundle/${pkg.name}/`)"
+										color="primary">
+										{{ $t('bundle.store.move-bundle-page') }}
+									</v-btn>
+									<v-btn
+										:loading="loading"
+										:disabled="loading"
+										depressed outlined
+										@click.stop="localUninstall"
+										color="red">
+										{{ $t('bundle.store.remove-bundle') }}
+									</v-btn>
+								</div>
+								<div v-else>
+									<v-btn
+										v-if="pkg.page && isPackageUsing"
+										:loading="loading"
+										:disabled="loading"
+										depressed
+										class="mr-3"
+										@click.stop="$assign(`/bundle/${pkg.name}/`)"
+										color="primary">
+										{{ $t('bundle.store.move-bundle-page') }}
+									</v-btn>
+									<v-btn
+										v-if="canUpdate"
+										:loading="loading"
+										:disabled="loading"
+										depressed outlined
+										color="green"
+										class="mr-3"
+										@click.stop="install">
+										{{ $t('update') }}
+									</v-btn>
+									<v-btn
+										v-if=!isPackageUsing
+										:loading="loading"
+										:disabled="loading"
+										depressed outlined
+										@click.stop="install">
+										{{ $t('bundle.install') }}
+									</v-btn>
+									<v-btn
+										v-else
+										:loading="loading"
+										:disabled="loading"
+										depressed outlined
+										@click.stop="uninstall"
+										color="red">
+										{{ $t('bundle.store.remove-bundle') }}
+									</v-btn>
+								</div>
 							</v-col>
 						</v-row>
 					</v-card-text>
@@ -116,6 +138,30 @@ export default class BundleItem extends Mixins(BundleMixins) {
 		this.loading = false;
 	}
 
+	public async localUninstall() {
+		try {
+			this.$swal({
+				icon: 'question',
+				title: this.$t('bundle.store.remove-bundle'),
+				html: this.$t('bundle.store.remove-bundle-desc', this.pkg.name),
+				showCancelButton: true,
+				confirmButtonText: this.$t('yes'),
+				cancelButtonText: this.$t('no'),
+			}).then((result) => {
+				if ( result.isConfirmed ) {
+					this.loading = true;
+					fs.unlinkSync(this.getBundlePath(this.pkg));
+					this.updatePackageUsing();
+					window.reloadScript();
+					this.$evt.$emit('sidemenu:bundle-reload');
+					this.loading = false;
+				}
+			});
+		} catch(err) {
+
+		}
+	}
+
 	public async uninstall() {
 		this.loading = true;
 		await this.bundleUninstall(this.pkg);
@@ -143,3 +189,4 @@ export default class BundleItem extends Mixins(BundleMixins) {
 
 }
 </script>
+
