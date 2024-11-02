@@ -522,15 +522,15 @@ ipcMain.on('app:quit', (evt: IpcMainEvent) => {
 	app.quit();
 });
 
-ipcMain.handle('stp:regist', (evt, domain: string, targetFile: string) => {
+ipcMain.handle('stp:regist', async (evt, domain: string, targetFile: string) => {
 	if ( fs.existsSync(targetFile) ) {
 		const scriptText = fs.readFileSync(targetFile, 'utf-8');
 		const script = new vm.Script(scriptText);
+		const moduleObj: { exports: any } = { exports: {} };
 		const context = {
 			require: __non_webpack_require__,
-			module: {
-				exports: {},
-			},
+			module: moduleObj,
+			exports: moduleObj.exports,
 			console,
 		};
 		vm.createContext(context);
@@ -538,7 +538,8 @@ ipcMain.handle('stp:regist', (evt, domain: string, targetFile: string) => {
 			script.runInContext(context, {
 				displayErrors: true,
 			});
-			registerStpApp(domain, context.module.exports as Application);
+			let app = context.module.exports?.default ?? context.module.exports;
+			registerStpApp(domain, app as Application);
 			return {
 				success: true,
 			};
