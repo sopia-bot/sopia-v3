@@ -8,6 +8,7 @@ import express, { Application } from 'express';
 import cors from 'cors';
 import { Server as HttpServer } from 'http';
 import axios from 'axios';
+import { createRequire } from 'module';
 
 import CfgLite from 'cfg-lite';
 import { ZipFile, ZipArchive } from '@arkiv/zip';
@@ -527,8 +528,15 @@ ipcMain.handle('stp:regist', async (evt, domain: string, targetFile: string) => 
 		const scriptText = fs.readFileSync(targetFile, 'utf-8');
 		const script = new vm.Script(scriptText);
 		const moduleObj: { exports: any } = { exports: {} };
+		const bundleRequire = createRequire(targetFile);
 		const context = {
-			require: __non_webpack_require__,
+			require: function(name) {
+				try {
+					return bundleRequire(name);
+				} catch {
+					return __non_webpack_require__(name);
+				}
+			},
 			module: moduleObj,
 			exports: moduleObj.exports,
 			console,

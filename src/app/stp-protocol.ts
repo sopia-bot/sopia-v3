@@ -26,7 +26,7 @@ const PROTOCOL_SCHEMA = 'stp';
 const hosts: Map<string, Application> = new Map();
 
 export function registerStpApp(domain: string, expressApp: Application) {
-    console.log(`register stp app :: domain=${domain}, app=`, expressApp);
+    console.log(`register stp app :: domain=${domain}`);
     if ( hosts.has(domain) ) {
         hosts.delete(domain);
     }
