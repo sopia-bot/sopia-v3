@@ -537,6 +537,8 @@ ipcMain.handle('stp:regist', async (evt, domain: string, targetFile: string) => 
 					return __non_webpack_require__(name);
 				}
 			},
+			__dirname: path.dirname(targetFile),
+			__filename: targetFile,
 			module: moduleObj,
 			exports: moduleObj.exports,
 			console,
