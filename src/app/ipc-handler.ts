@@ -9,6 +9,7 @@ import cors from 'cors';
 import { Server as HttpServer } from 'http';
 import axios from 'axios';
 import { createRequire } from 'module';
+import { bun } from './bun';
 
 import CfgLite from 'cfg-lite';
 import { ZipFile, ZipArchive } from '@arkiv/zip';
@@ -433,6 +434,14 @@ ipcMain.handle('open-dialog', async (event, options: any) => {
 
 ipcMain.handle('npm:install', async (event, packages: InstallItem[], options: InstallOptions) => {
 	return await npmInstall(packages, options);
+});
+
+ipcMain.handle('bun:install', async (event, pkgPath: string) => {
+	const bunExec = await bun(['install', '--production'], {
+		cwd: pkgPath,
+	});
+	
+	return true;
 });
 
 const readDirectory = (dir: string, cb: (...args: any) => any, oriDir?: string) => {

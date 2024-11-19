@@ -48,6 +48,10 @@ module.exports = {
 						from: "node_modules/rimraf",
 						to: "resources/node_modules/rimraf"
 					},
+					{
+						from: 'bun-binary',
+						to: '.bun',
+					},
 				],
 			},
 			mac: {

@@ -155,12 +155,13 @@ export default class BundleStore extends Mixins(BundleMixins) {
 			fs.symlinkSync(folder,this.getBundlePath(pkg), 'junction');
 
 			if ( pkg.dependencies ) {
-				await npmInstall(Object.entries(pkg.dependencies).map(([name, version]) => ({
-					name,
-					version,
-				})), {
-					rootDir: folder,
-				});
+				await ipcRenderer.invoke('bun:install', folder);
+				// await npmInstall(Object.entries(pkg.dependencies).map(([name, version]) => ({
+				// 	name,
+				// 	version,
+				// })), {
+				// 	rootDir: folder,
+				// });
 			}
 		} else {
 

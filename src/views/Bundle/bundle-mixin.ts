@@ -60,12 +60,14 @@ export default class BundleMixin extends Mixins(GlobalMixins) {
 		ipcRenderer.sendSync('package:uncompress-buffer', res.data[0], p);
 
 		if ( pkg.dependencies ) {
-			await npmInstall(Object.entries(pkg.dependencies).map(([name, version]) => ({
-				name,
-				version,
-			})), {
-				rootDir: p,
-			});
+			// await npmInstall(Object.entries(pkg.dependencies).map(([name, version]) => ({
+			// 	name,
+			// 	version,
+			// })), {
+			// 	rootDir: p,
+			// });
+
+			await ipcRenderer.invoke('bun:install', p);
 		}
 
 		if ( showNoti ) {
