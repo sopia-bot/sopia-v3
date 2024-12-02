@@ -46,7 +46,7 @@ export default class Tutorials extends Mixins(GlobalMixins) {
 	public current: any;
 	public idx: number = -1;
 	public selectItem: any[] = [];
-	public textEffectTout!: NodeJS.Timer;
+	public textEffectTout!: NodeJS.Timeout;
 	public text: string = '';
 	public triggerTextDone: number = 0;
 	public author: string = '';

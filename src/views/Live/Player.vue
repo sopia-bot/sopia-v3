@@ -126,7 +126,7 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 	public fullScreen: boolean = true;
 	public liveEvents: any = [];
 	public footMenuOpen: boolean = false;
-	public alertTimer!: NodeJS.Timer;
+	public alertTimer!: NodeJS.Timeout;
 	public managerIds: number[] = [];
 	public lottieData: any = false;
 	public playingLottie: boolean = false;

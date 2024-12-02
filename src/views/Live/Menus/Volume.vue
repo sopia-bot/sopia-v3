@@ -63,7 +63,7 @@ export default class PlayerMenuVolume extends Mixins(GlobalMixins) {
 	@Prop(Object) public player!: Player;
 	public volume: number = this.$cfg.get('player.volume') ?? 50;
 	public isMute: boolean = this.$cfg.get('player.isMute') ?? false;
-	public timer!: NodeJS.Timer;
+	public timer!: NodeJS.Timeout;
 
 	public onChange() {
 		if ( this.player ) {

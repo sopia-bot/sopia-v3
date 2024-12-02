@@ -54,7 +54,7 @@ import GlobalMixins from '@/plugins/mixins';
 export default class Donation extends Mixins(GlobalMixins) {
 
 	public open = false;
-	public itv!: NodeJS.Timer;
+	public itv!: NodeJS.Timeout;
 	public loading = false;
 	public message = '혜택 대상 아이디 2개(검색 가능 단어, DJ/소피아 ID):\n입금자 확인:\n기타 문의:\n\n후원해 주셔서 감사합니다.';
 
