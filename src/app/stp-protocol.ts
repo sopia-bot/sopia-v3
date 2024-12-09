@@ -1,9 +1,9 @@
 import { ProtocolRequest, protocol } from "electron";
 import { Application } from 'express';
-import supertest, { Response } from "supertest";
+import supertest from "supertest";
 import { AllMethods } from "supertest/types";
 
-function requestMockHttp(requestInfo: ProtocolRequest, app: Application): Promise<Response> {
+async function requestMockHttp(requestInfo: Request, app: Application): Promise<Response> {
     const url = new URL(requestInfo.url);
     const method = requestInfo.method.toLowerCase();
 
@@ -14,12 +14,28 @@ function requestMockHttp(requestInfo: ProtocolRequest, app: Application): Promis
         req.set(key, value);
     });
 
-    if ( requestInfo.uploadData?.length ) {
-        const data = JSON.parse(requestInfo.uploadData[0].bytes.toString('utf-8'));
-        req.send(data);
+    if ( requestInfo.body ) {
+        req.send(requestInfo.body);
     }
 
-    return req;
+    const serverResponse = await req;
+
+    const headers = new Headers();
+    for (const [key, value] of Object.entries(serverResponse.headers)) {
+        headers.append(key, value);
+        if ( key.toLowerCase() === 'content-type' ) {
+            if ( value.includes('application/json') ) {
+                serverResponse.body = JSON.stringify(serverResponse.body);
+            }
+        }
+    }
+
+    console.log('body', serverResponse.body);
+    return new Response(serverResponse.body, {
+        status: serverResponse.status,
+        statusText: '',
+        headers,
+    });
 }
 
 const PROTOCOL_SCHEMA = 'stp';
@@ -47,23 +63,19 @@ export function registerSopiaTextProtocol(app: Electron.App) {
     ]);
 
     app.on('ready', () => {
-        protocol.registerStringProtocol(PROTOCOL_SCHEMA, async (request: ProtocolRequest, callback) => {
+        protocol.handle(PROTOCOL_SCHEMA, async (request: Request) => {
             const url = new URL(request.url);
             if ( hosts.has(url.host) ) {
                 const expressApp = hosts.get(url.host) as Application;
                 const res = await requestMockHttp(request, expressApp);
 
-                const cbData = {
-                    statusCode: res.statusCode,
-                    headers: res.headers,
-                    data: res.text,
-                };
-
-                console.log('stp response :: ', cbData);
-                callback(cbData);
+                console.log('stp response :: ', res);
+                return res;
             } else {
-                callback({
-                    statusCode: 404,
+                return new Response(JSON.stringify({
+                    status: 404,
+                }), {
+                    headers: { 'content-type': 'application/json' },
                 });
             }
         });

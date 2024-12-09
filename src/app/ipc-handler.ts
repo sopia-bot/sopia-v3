@@ -8,7 +8,7 @@ import express, { Application } from 'express';
 import cors from 'cors';
 import { Server as HttpServer } from 'http';
 import axios from 'axios';
-import { createRequire } from 'module';
+import Module, { createRequire } from 'module';
 import { bun } from './bun';
 
 import CfgLite from 'cfg-lite';
@@ -532,9 +532,10 @@ ipcMain.on('app:quit', (evt: IpcMainEvent) => {
 	app.quit();
 });
 
-ipcMain.handle('stp:regist', async (evt, domain: string, targetFile: string) => {
+ipcMain.handle('stp:regist', async (evt, domain: string, targetFile: string, packageDir: string) => {
 	if ( fs.existsSync(targetFile) ) {
 		const scriptText = fs.readFileSync(targetFile, 'utf-8');
+		console.log('targetFile', targetFile);
 		const script = new vm.Script(scriptText);
 		const moduleObj: { exports: any } = { exports: {} };
 		const bundleRequire = createRequire(targetFile);
@@ -546,8 +547,10 @@ ipcMain.handle('stp:regist', async (evt, domain: string, targetFile: string) => 
 					return __non_webpack_require__(name);
 				}
 			},
+			Buffer,
 			__dirname: path.dirname(targetFile),
 			__filename: targetFile,
+			__pkgdir: packageDir,
 			module: moduleObj,
 			exports: moduleObj.exports,
 			console,
