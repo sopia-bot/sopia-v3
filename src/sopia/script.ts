@@ -59,7 +59,7 @@ export class Script {
 						}
 						stpTargetFile = window.require.resolve(stpTargetFile);
 						logger.debug('sopia', `Bundle ${module} is using stp protocl ${stpTargetFile}`);
-						ipcRenderer.invoke('stp:regist', pkg['stp']['domain'], stpTargetFile);
+						ipcRenderer.invoke('stp:regist', pkg['stp']['domain'], stpTargetFile, folder);
 					}
 				}
 				const box = {
