@@ -2,6 +2,15 @@ import { ProtocolRequest, protocol } from "electron";
 import { Application } from 'express';
 import supertest from "supertest";
 import { AllMethods } from "supertest/types";
+import mimeBodyParser from "./mime-body-parser";
+
+async function streamToBuffer(stream) {
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+}
 
 async function requestMockHttp(requestInfo: Request, app: Application): Promise<Response> {
     const url = new URL(requestInfo.url);
@@ -10,12 +19,12 @@ async function requestMockHttp(requestInfo: Request, app: Application): Promise<
     console.log(`request stp info :: domain: [${url.host}] url: [${url.pathname + url.search}] method: [${method}]`, requestInfo)
     const req = supertest(app)[method as AllMethods](url.pathname + url.search);
 
-    Object.entries(requestInfo.headers).forEach(([key, value]) => {
-        req.set(key, value);
-    });
-
+    
     if ( requestInfo.body ) {
-        req.send(requestInfo.body);
+        const contentType = requestInfo.headers.get('Content-Type') ?? 'application/octet-stream';
+        const body = await mimeBodyParser(contentType, await streamToBuffer(requestInfo.body));
+        console.log('request stp info :: contentType', contentType, ' body', requestInfo.body, body);
+        req.send(body);
     }
 
     const serverResponse = await req;
@@ -44,6 +53,7 @@ const hosts: Map<string, Application> = new Map();
 export function registerStpApp(domain: string, expressApp: Application) {
     console.log(`register stp app :: domain=${domain}`);
     if ( hosts.has(domain) ) {
+        console.log('detlete app ::',domain);
         hosts.delete(domain);
     }
     hosts.set(domain, expressApp);
