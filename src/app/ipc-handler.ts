@@ -552,6 +552,7 @@ ipcMain.handle('stp:regist', async (evt, domain: string, targetFile: string, pac
 			__filename: targetFile,
 			__pkgdir: packageDir,
 			module: moduleObj,
+			process,
 			exports: moduleObj.exports,
 			console,
 		};
