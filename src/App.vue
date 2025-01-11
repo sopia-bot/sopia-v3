@@ -128,9 +128,13 @@ export default class App extends Mixins(GlobalMixins) {
 						}
 					})
 					.catch((err) => {
-						this.$evt.$emit('login:skip-sopia-login', auth.sopia);
+						this.$cfg.delete('auth');
+						this.$cfg.save();
+						// this.$evt.$emit('login:skip-sopia-login', auth.sopia);
 						this.isLogin = false;
-						this.$assign('/login');
+						setTimeout(() => {
+							this.$assign('/login');
+						}, 100)
 					});
 			}
 		} else {
