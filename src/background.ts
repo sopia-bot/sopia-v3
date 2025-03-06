@@ -8,7 +8,7 @@
 
 import { app, session, protocol, BrowserWindow, ipcMain } from 'electron';
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib';
-import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer';
+import installExtension, { VUEJS_DEVTOOLS, REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import path from 'path';
@@ -234,13 +234,11 @@ app.on('ready', async () => {
 	});
 	session.defaultSession.setUserAgent(USER_AGENT);
 
-	if (isDevelopment && !process.env.IS_TEST) {
-		// Install Vue Devtools
-		try {
-			await installExtension(VUEJS_DEVTOOLS);
-		} catch (e) {
-			console.error('Vue Devtools failed to install:', e.toString());
-		}
+	// Install Vue Devtools
+	try {
+		await installExtension([VUEJS_DEVTOOLS, REACT_DEVELOPER_TOOLS]);
+	} catch (e) {
+		console.error('Vue Devtools failed to install:', e.toString());
 	}
 	createWindow();
 });
