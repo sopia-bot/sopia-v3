@@ -84,7 +84,7 @@ export class Script {
 		const box = this.boxs[idx];
 		if ( box ) {
 			const module = box.module;
-			if ( typeof module.onAbort === 'function' ) {
+			if ( module && typeof module.onAbort === 'function' ) {
 				module.onAbort();
 			}
 			(window as any)['bctx'].destroy(name);
