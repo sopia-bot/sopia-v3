@@ -127,6 +127,7 @@ export default class BundleStore extends Mixins(BundleMixins) {
 	public async created() {
 		await this.refreshBundleList();
 		this.refreshLocalBundleList();
+		console.log('orifinalBundleList', this.originalBundleList);
 		this.$evt.$off('store:reload');
 		this.$evt.$on('store:reload', async () => {
 			await this.refreshBundleList();
@@ -156,6 +157,8 @@ export default class BundleStore extends Mixins(BundleMixins) {
 
 			if ( pkg.dependencies ) {
 				await ipcRenderer.invoke('bun:install', folder);
+				window.reloadScript();
+				console.log('reloadScript');
 				// await npmInstall(Object.entries(pkg.dependencies).map(([name, version]) => ({
 				// 	name,
 				// 	version,

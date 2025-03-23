@@ -69,6 +69,7 @@ export default class BundleMixin extends Mixins(GlobalMixins) {
 
 			await ipcRenderer.invoke('bun:install', p);
 		}
+		window.reloadScript();
 
 		if ( showNoti ) {
 			const option: SweetAlertOptions = {
