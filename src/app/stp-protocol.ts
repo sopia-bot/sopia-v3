@@ -39,7 +39,6 @@ async function requestMockHttp(requestInfo: Request, app: Application): Promise<
         }
     }
 
-    console.log('body', serverResponse.body);
     return new Response(serverResponse.body, {
         status: serverResponse.status,
         statusText: '',
@@ -79,7 +78,7 @@ export function registerSopiaTextProtocol(app: Electron.App) {
                 const expressApp = hosts.get(url.host) as Application;
                 const res = await requestMockHttp(request, expressApp);
 
-                console.log('stp response :: ', res);
+                // console.log('stp response :: ', res);
                 return res;
             } else {
                 return new Response(JSON.stringify({
