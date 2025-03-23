@@ -45,18 +45,8 @@ export default class BundleUploadButton extends Mixins(BundleMixins) {
 
 		const target = result.filePaths[0];
 
-		const indexFile = path.join(target, 'index.js');
-		if ( !await this.checkFile(indexFile) ) {
-			return;
-		}
-
 		const packageFile = path.join(target, 'package.json');
 		if ( !await this.checkFile(packageFile) ) {
-			return;
-		}
-
-		const readmeFile = path.join(target, 'README.md');
-		if ( !await this.checkFile(readmeFile) ) {
 			return;
 		}
 
