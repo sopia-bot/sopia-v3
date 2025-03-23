@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모듈 관리자</title>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
+            margin: 0;
+            padding: 0;
+            padding-top: 40px;
+            overflow-y: hidden;
+        }
+        .module-row {
+            transition: background-color 0.2s ease;
+        }
+        .module-row:hover {
+            background-color: #f8fafc;
+        }
+        .title-bar {
+            -webkit-app-region: drag;
+            -webkit-user-select: none;
+            background-color: #e5e7eb;
+            height: 40px;
+            display: flex;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            border-bottom: 1px solid #d1d5db;
+        }
+        .title-bar .no-drag {
+            -webkit-app-region: no-drag;
+        }
+        .close-button {
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            background-color: #ef4444;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .close-button:hover {
+            background-color: #dc2626;
+        }
+        .content {
+            padding: 2rem;
+            height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+        .custom-checkbox {
+            position: relative;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            border: 2px solid #d1d5db;
+            border-radius: 4px;
+            background-color: white;
+            transition: all 0.2s ease;
+        }
+        .custom-checkbox:checked {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+        }
+        .custom-checkbox:checked::after {
+            content: '';
+            position: absolute;
+            left: 5px;
+            top: 2px;
+            width: 4px;
+            height: 8px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        .custom-checkbox:hover {
+            border-color: #3b82f6;
+        }
+        .custom-checkbox:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+        .modal-message {
+            color: #4b5563;
+            margin-bottom: 1.5rem;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+        .modal-button {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .modal-button-cancel {
+            background-color: #f3f4f6;
+            color: #4b5563;
+        }
+        .modal-button-cancel:hover {
+            background-color: #e5e7eb;
+        }
+        .modal-button-confirm {
+            background-color: #ef4444;
+            color: white;
+        }
+        .modal-button-confirm:hover {
+            background-color: #dc2626;
+        }
+        .snackbar {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #1f2937;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp {
+            from {
+                transform: translate(-50%, 100%);
+                opacity: 0;
+            }
+            to {
+                transform: translate(-50%, 0);
+                opacity: 1;
+            }
+        }
+        .button-loading {
+            position: relative;
+            color: transparent !important;
+            pointer-events: none;
+        }
+        .button-loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 50%;
+            margin: -8px 0 0 -8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: button-loading-spinner 0.8s linear infinite;
+        }
+        @keyframes button-loading-spinner {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="title-bar">
+        <div class="text-base font-medium text-gray-700">모듈 관리자</div>
+        <button class="close-button no-drag" onclick="window.close()">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    </div>
+    <div class="content">
+        <div class="max-w-7xl mx-auto">
+            <!-- 경고 문구 -->
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-yellow-700">
+                            모듈 다운로드, 삭제를 할 때 기존 소피아 프로그램은 종료됩니다. 관리자 프로그램 종료시 소피아가 다시 실행됩니다.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 검색 섹션 -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <div class="relative">
+                    <input type="text" id="searchInput" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="모듈 검색 (한글/영문 이름, 설명)">
+                </div>
+            </div>
+
+            <!-- 필터 및 일괄 작업 섹션 -->
+            <div class="bg-white rounded-lg shadow-md p-4 mb-8">
+                <div class="flex justify-between items-center">
+                    <div class="flex space-x-4">
+                        <button class="tab-button active px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors duration-200 border border-blue-200" data-filter="installed">
+                            설치된 번들만 보기
+                        </button>
+                        <button class="tab-button px-4 py-2 text-sm font-medium text-gray-600 bg-white rounded-md hover:bg-gray-50 transition-colors duration-200 border border-gray-200" data-filter="official">
+                            Official 번들만 보기
+                        </button>
+                        <button class="tab-button px-4 py-2 text-sm font-medium text-gray-600 bg-white rounded-md hover:bg-gray-50 transition-colors duration-200 border border-gray-200" data-filter="all">
+                            전체 번들 보기
+                        </button>
+                    </div>
+                    <button onclick="openBundleFolder()" class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white rounded-md hover:bg-gray-50 transition-colors duration-200 border border-gray-200">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                        </svg>
+                        <span>번들 폴더 열기</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 모듈 리스트 -->
+            <div class="bg-white rounded-lg shadow-md">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="w-1/2 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">모듈 정보</th>
+                                <th class="w-24 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                                <th class="w-32 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style="padding-right: 60px;">작업</th>
+                            </tr>
+                        </thead>
+                        <tbody id="moduleList" class="bg-white divide-y divide-gray-200">
+                            <!-- JavaScript로 동적 생성될 내용 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달 추가 -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">번들 삭제 확인</div>
+            <div class="modal-message">
+                정말로 이 번들을 삭제하시겠습니까?<br>
+                기존에 설정한 값들이 전부 삭제됩니다.
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-button modal-button-cancel" onclick="closeConfirmModal()">취소</button>
+                <button class="modal-button modal-button-confirm" onclick="confirmUninstall()">삭제</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 스낵바 추가 -->
+    <div id="snackbar" class="snackbar"></div>
+
+    <script>
+
+        const {ipcRenderer} = require('electron');
+        const path = require('path');
+        const fs = require('fs');
+        const getAppPath = (type) => ipcRenderer.sendSync('app:get-path', type);
+        const bundleRootPath = path.join(getAppPath('userData'), 'bundles');
+        const BASE_URL = 'https://api.sopia.dev';
+        const { exec } = require('child_process');
+        const os = require('os');
+        let currentFilter = 'installed';
+
+        function killProcessByName(name) {
+            return new Promise((resolve, reject) => {
+                if (os.platform() === 'win32') {
+                    // Windows용
+                    exec('tasklist', (error, stdout) => {
+                        if (error) {
+                            reject(error);
+                            return;
+                        }
+                        const lines = stdout.split('\n');
+                        const killPromises = lines
+                            .filter(line => line.toLowerCase().includes(name.toLowerCase()))
+                            .map(line => {
+                                const pid = line.trim().split(/\s+/)[1]; // 두 번째 컬럼 = PID
+                                return new Promise((resolveKill, rejectKill) => {
+                                    exec(`taskkill /PID ${pid} /F`, (error) => {
+                                        if (error) {
+                                            console.error(`Error killing process ${name} (PID: ${pid}):`, error);
+                                            rejectKill(error);
+                                        } else {
+                                            console.log(`Killed process ${name} (PID: ${pid})`);
+                                            resolveKill();
+                                        }
+                                    });
+                                });
+                            });
+                        
+                        Promise.all(killPromises)
+                            .then(() => resolve())
+                            .catch(reject);
+                    });
+                } else {
+                    // macOS, Linux용
+                    exec('ps -A', (error, stdout) => {
+                        if (error) {
+                            reject(error);
+                            return;
+                        }
+                        const lines = stdout.split('\n');
+                        const killPromises = lines
+                            .filter(line => line.toLowerCase().includes(name.toLowerCase()))
+                            .map(line => {
+                                const pid = line.trim().split(/\s+/)[0]; // 첫 번째 컬럼 = PID
+                                return new Promise((resolveKill, rejectKill) => {
+                                    exec(`kill -9 ${pid}`, (error) => {
+                                        if (error) {
+                                            console.error(`Error killing process ${name} (PID: ${pid}):`, error);
+                                            rejectKill(error);
+                                        } else {
+                                            console.log(`Killed process ${name} (PID: ${pid})`);
+                                            resolveKill();
+                                        }
+                                    });
+                                });
+                            });
+                        
+                        Promise.all(killPromises)
+                            .then(() => resolve())
+                            .catch(reject);
+                    });
+                }
+            });
+        }
+
+        async function killSopia() {
+            try {
+                await killProcessByName('SOPIAv3.exe');
+                await killProcessByName('SOPIAv3');
+            } catch (error) {
+                console.error('Error killing SOPIA:', error);
+            }
+        }
+
+        class CfgLite {
+            constructor(cfgFile, privKey = '') {
+                this.evtName = 'cfg-lite';
+                this.cfgFile = cfgFile;
+                this.privKey = privKey;
+                
+                const ret = ipcRenderer.sendSync(this.evtName, 'new', this.cfgFile, this.privKey);
+                if (!ret) {
+                    throw new Error(`Cannot open config file ${this.cfgFile},${this.privKey}`);
+                }
+            }
+
+            save(file, removeBefore = false) {
+                return ipcRenderer.sendSync(this.evtName, 'save', this.cfgFile, file, removeBefore);
+            }
+
+            get(key) {
+                return ipcRenderer.sendSync(this.evtName, 'get', this.cfgFile, key);
+            }
+
+            set(key, value) {
+                if (!key) {
+                    throw Error('key is not valid');
+                }
+                return ipcRenderer.sendSync(this.evtName, 'set', this.cfgFile, key, value);
+            }
+
+            merge(key, value) {
+                if (!key) {
+                    throw Error('key is not valid');
+                }
+                return ipcRenderer.sendSync(this.evtName, 'merge', this.cfgFile, key, value);
+            }
+
+            delete(key) {
+                if (!key) {
+                    throw Error('key is not valid');
+                }
+                return ipcRenderer.sendSync(this.evtName, 'delete', this.cfgFile, key);
+            }
+
+            deleteAll() {
+                return ipcRenderer.sendSync(this.evtName, 'deleteAll', this.cfgFile);
+            }
+        }
+        const appCfgPath = path.join(getAppPath('userData'), 'app.cfg');
+        window.appCfg = new CfgLite(appCfgPath);
+    
+        // 샘플 데이터
+        let modules = [
+            {
+                name: "sample-module",
+                "name:ko": "샘플 모듈",
+                description: "This is a sample module",
+                "description:ko": "이것은 샘플 모듈입니다",
+                is_official: true,
+                isUsed: true
+            },
+            {
+                name: "test-module",
+                "name:ko": "테스트 모듈",
+                description: "This is a test module",
+                "description:ko": "이것은 테스트 모듈입니다",
+                is_official: false,
+                isUsed: false
+            }
+        ];
+
+        let pendingUninstall = null;
+
+        function showConfirmModal() {
+            document.getElementById('confirmModal').style.display = 'flex';
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').style.display = 'none';
+            pendingUninstall = null;
+        }
+
+        function confirmUninstall() {
+            if (pendingUninstall) {
+                const { name, event, killFlag, reloadFlag } = pendingUninstall;
+                closeConfirmModal();
+                deleteBundle(name, event, killFlag, reloadFlag, false);
+            }
+        }
+
+        function showSnackbar(message) {
+            const snackbar = document.getElementById('snackbar');
+            snackbar.textContent = message;
+            snackbar.style.display = 'block';
+            
+            setTimeout(() => {
+                snackbar.style.display = 'none';
+            }, 3000);
+        }
+
+        async function deleteBundle(name, event, killFlag = false, reloadFlag = true, showFlag = true) {
+            event.stopPropagation();
+            const button = event.target;
+            
+            if (showFlag) {
+                pendingUninstall = { name, event, killFlag, reloadFlag };
+                showConfirmModal();
+                return;
+            }
+
+            button.classList.add('button-loading');
+            if (killFlag) {
+                await (async () => killSopia())();
+            }
+
+            fs.rm(path.join(bundleRootPath, name), { recursive: true, force: true }, () => {
+                if (reloadFlag) {
+                    showSnackbar('모듈이 삭제되었습니다.');
+                    setTimeout(() => {
+                        reloadModules();
+                    }, 500);
+                }
+                button.classList.remove('button-loading');
+            });
+        }
+
+        // 모달 외부 클릭 시 닫기
+        document.getElementById('confirmModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('confirmModal')) {
+                closeConfirmModal();
+            }
+        });
+
+        // ESC 키로 모달 닫기
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeConfirmModal();
+            }
+        });
+
+        function downloadBundle(name, event, killFlag = false) {
+            event.stopPropagation();
+            const button = event.target;
+            button.classList.add('button-loading');
+            
+            console.log('downloadBundle', name);
+            const pkg = modules.find(module => module.name === name);
+            
+            if (killFlag) {
+                killSopia();
+            }
+            fetch(BASE_URL + '/bundle/download/' + name + '/' + pkg.version, {
+                headers: {
+                    'Authorization': 'Bearer ' + window.appCfg.get('auth.sopia.token') || '',
+                },
+            }).then(res => res.json())
+            .then(async (data) => {
+                if (data.msg === 'success') {
+                    const b64str = data.data[0];
+                    const bundlePath = path.join(bundleRootPath, name);
+                    await ipcRenderer.invoke('package:uncompress-buffer', b64str, bundlePath);
+
+                    if (pkg.dependencies) {
+                        await ipcRenderer.invoke('bun:install', bundlePath);
+                    }
+                    showSnackbar('모듈이 설치되었습니다.');
+                    setTimeout(() => {
+                        reloadModules();
+                    }, 500);
+                } else {
+                    showSnackbar('모듈 설치에 실패했습니다.');
+                }
+            })
+            .catch(error => {
+                showSnackbar('모듈 설치 중 오류가 발생했습니다.');
+            })
+            .finally(() => {
+                button.classList.remove('button-loading');
+            });
+        }
+
+        // 모듈 리스트 렌더링 함수
+        function renderModules(modules) {
+            const moduleList = document.getElementById('moduleList');
+            moduleList.innerHTML = modules.map(module => `
+                <tr class="module-row cursor-pointer">
+                    <td class="w-1/2 px-6 py-4">
+                        <div class="flex items-center">
+                            <div class="truncate">
+                                <div class="text-sm font-medium text-gray-900 truncate">${module["name:ko"] || module['name'] || ''}</div>
+                                <div class="text-sm text-gray-500 truncate">${module["description:ko"] || module['description'] || ''}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="w-24 px-6 py-4">
+                        ${module.is_official ? 
+                            '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Official</span>' : 
+                            ''}
+                    </td>
+                    <td class="w-32 px-6 py-4 text-sm text-right">
+                        ${module.isUsed ? 
+                            (module.version === module.installedVersion ? 
+                                '<button onclick="deleteBundle(\'' + module.name + '\', event, true, true, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-red-400 rounded-md hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-colors duration-200">삭제</button>' :
+                                '<div class="flex justify-end space-x-2"><button onclick="downloadBundle(\'' + module.name + '\', event, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-red-400 rounded-md hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-colors duration-200">삭제</button><button onclick="downloadBundle(\'' + module.name + '\', event, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-green-400 rounded-md hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 transition-colors duration-200">업데이트</button></div>'
+                            ) : 
+                            '<button onclick="downloadBundle(\'' + module.name + '\', event, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-blue-400 rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 transition-colors duration-200">설치</button>'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 번들 폴더 열기 함수 추가
+        function openBundleFolder() {
+            ipcRenderer.sendSync('shell:open-path', bundleRootPath);
+        }
+
+        // 탭 필터링 기능
+        function filterByTab(filter) {
+            currentFilter = filter;
+            let filteredModules = [...modules];
+            
+            switch(filter) {
+                case 'installed':
+                    filteredModules = modules.filter(module => module.isUsed);
+                    break;
+                case 'official':
+                    filteredModules = modules.filter(module => module.is_official);
+                    break;
+                case 'all':
+                    filteredModules = modules;
+                    break;
+            }
+
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            filteredModules = filteredModules.filter(module => 
+                (module['name:ko'] && module["name:ko"].toLowerCase().includes(searchTerm)) ||
+                module.name?.toLowerCase().includes(searchTerm) ||
+                (module['description:ko'] && module["description:ko"]?.toLowerCase().includes(searchTerm)) ||
+                (module['description'] && module.description?.toLowerCase().includes(searchTerm))
+            );
+
+            // isUsed 상태에 따라 정렬 (true인 항목이 먼저 오도록)
+            filteredModules.sort((a, b) => {
+                if (a.isUsed === b.isUsed) return 0;
+                return a.isUsed ? -1 : 1;
+            });
+
+            renderModules(filteredModules);
+        }
+
+        // 탭 버튼 이벤트 리스너
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                // 활성 탭 스타일 변경
+                document.querySelectorAll('.tab-button').forEach(btn => {
+                    btn.classList.remove('active', 'text-blue-600', 'bg-blue-50', 'border-blue-200');
+                    btn.classList.add('text-gray-600', 'bg-white', 'border-gray-200');
+                });
+                button.classList.remove('text-gray-600', 'bg-white', 'border-gray-200');
+                button.classList.add('active', 'text-blue-600', 'bg-blue-50', 'border-blue-200');
+
+                // 필터링 실행
+                filterByTab(button.dataset.filter);
+            });
+        });
+
+        // 검색 입력 이벤트 리스너
+        document.getElementById('searchInput').addEventListener('input', () => {
+            const activeTab = document.querySelector('.tab-button.active');
+            filterByTab(activeTab.dataset.filter);
+        });
+
+        function reloadModules() {
+            fetch(BASE_URL + '/bundle/', {
+                headers: {
+                    'Authorization': 'Bearer ' + window.appCfg.get('auth.sopia.token') || '',
+                },
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if ( data.msg === 'success' ) {
+                        const serverBundles = data.data;
+                        const items = fs.readdirSync(bundleRootPath);
+                        items.forEach(item => {
+                            try {
+                                const pkg = JSON.parse(fs.readFileSync(path.join(bundleRootPath, item, 'package.json'), 'utf8'));
+                                const localBundle = serverBundles.find((b) => b.name === pkg.name);
+                                if ( localBundle ) {
+                                    localBundle.isUsed = true;
+                                    localBundle.installedVersion = pkg.version;
+                                } else {
+                                    serverBundles.push({
+                                        ...pkg,
+                                        isUsed: true,
+                                        installedVersion: pkg.version
+                                    });
+                                }
+                            } catch(err) {
+                                console.error(err);
+                                serverBundles.push({
+                                    name: item,
+                                    description: '번들 파일이 손상되었습니다.',
+                                    version: '1.0.0',
+                                    isUsed: true,
+                                    installedVersion: '1.0.0'
+                                });
+                            }
+                        });
+                        modules = serverBundles;
+                        filterByTab(currentFilter);
+                    }
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // URL 쿼리 스트링에서 searchText 파라미터 확인
+            const urlParams = new URLSearchParams(window.location.search);
+            const searchText = urlParams.get('searchText');
+            
+            if (searchText) {
+                // 검색어가 있으면 전체 보기로 필터 변경
+                currentFilter = 'all';
+                document.querySelectorAll('.tab-button').forEach(btn => {
+                    if (btn.dataset.filter === 'all') {
+                        btn.classList.remove('text-gray-600', 'bg-white', 'border-gray-200');
+                        btn.classList.add('active', 'text-blue-600', 'bg-blue-50', 'border-blue-200');
+                    } else {
+                        btn.classList.remove('active', 'text-blue-600', 'bg-blue-50', 'border-blue-200');
+                        btn.classList.add('text-gray-600', 'bg-white', 'border-gray-200');
+                    }
+                });
+                
+                // 검색어 입력
+                document.getElementById('searchInput').value = searchText;
+            }
+            
+            reloadModules();
+        });
+
+    </script>
+</body>
+</html>

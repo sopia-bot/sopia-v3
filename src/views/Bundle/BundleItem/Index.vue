@@ -107,6 +107,7 @@ import { BundlePackage } from '@/interface/bundle';
 import Detail from './Detail.vue';
 import path from 'path';
 const fs = window.require('fs');
+const { ipcRenderer } = window.require('electron');
 
 @Component({
 	components: {
@@ -129,46 +130,33 @@ export default class BundleItem extends Mixins(BundleMixins) {
 	}
 
 	public async install() {
-		this.loading = true;
-		await this.bundleInstall(this.pkg);
-		this.updatePackageUsing();
-		this.updateCanUpdate();
-		window.reloadScript();
-		this.$evt.$emit('sidemenu:bundle-reload');
-		this.loading = false;
+		await this.$swal({
+			icon: 'info',
+			html: '<h3>번들 관리는 번들 매니저에서 진행해주세요.</h3>',
+			confirmButtonText: '확인',
+		});
+
+		await ipcRenderer.invoke('open-bundle-manager');
 	}
 
 	public async localUninstall() {
-		try {
-			this.$swal({
-				icon: 'question',
-				title: this.$t('bundle.store.remove-bundle'),
-				html: this.$t('bundle.store.remove-bundle-desc', this.pkg.name),
-				showCancelButton: true,
-				confirmButtonText: this.$t('yes'),
-				cancelButtonText: this.$t('no'),
-			}).then((result) => {
-				if ( result.isConfirmed ) {
-					this.loading = true;
-					fs.unlinkSync(this.getBundlePath(this.pkg));
-					this.updatePackageUsing();
-					window.reloadScript();
-					this.$evt.$emit('sidemenu:bundle-reload');
-					this.loading = false;
-				}
-			});
-		} catch(err) {
-
-		}
+		await this.$swal({
+			icon: 'info',
+			html: '<h3>번들 관리는 번들 매니저에서 진행해주세요.</h3>',
+			confirmButtonText: '확인',
+		});
+		
+		await ipcRenderer.invoke('open-bundle-manager');
 	}
 
 	public async uninstall() {
-		this.loading = true;
-		await this.bundleUninstall(this.pkg);
-		this.updatePackageUsing();
-		window.reloadScript();
-		this.$evt.$emit('sidemenu:bundle-reload');
-		this.loading = false;
+		await this.$swal({
+			icon: 'info',
+			html: '<h3>번들 관리는 번들 매니저에서 진행해주세요.</h3>',
+			confirmButtonText: '확인',
+		});
+
+		await ipcRenderer.invoke('open-bundle-manager');
 	}
 
 	private updatePackageUsing() {

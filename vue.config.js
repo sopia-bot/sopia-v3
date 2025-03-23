@@ -1,12 +1,13 @@
 const path = require('path');
 const MonacoEditorPlugin = require('monaco-editor-webpack-plugin');
 const webpack = require('webpack');
+const fs = require('fs');
 
 module.exports = {
 	pluginOptions: {
 		electronBuilder: {
 			mainProcessWatch: [
-				'src/app/*',
+				'src/app/**/*',
 			],
 			chainWebpackMainProcess: (config) => {
 				// supertest의 formidable 패키지에서 발생하는 문제 수정
@@ -16,6 +17,15 @@ module.exports = {
 				return config;
 			},
 			builderOptions: {
+				afterPack: (context) => {
+					const target = context.targets[0];
+					const filename = target.packager.appInfo.productFilename;
+					let ext = '';
+					if (process.platform === 'win32') {
+						ext = '.exe';
+					}
+					fs.cpSync(path.join(context.appOutDir, `${filename}${ext}`), path.join(context.appOutDir, `SopiaBundleManager${ext}`), { recursive: true });
+				},
 				publish: [
 					{
 						"provider": "s3",
@@ -26,12 +36,23 @@ module.exports = {
 				productName: 'SOPIAv3',
 				files: [
 					"**/*",
+					"node_modules/axios/**/*",
+					"node_modules/follow-redirects/**/*",
 					"node_modules/better-sqlite3/**/*",
 					"node_modules/bindings/**/*",
 					"node_modules/file-uri-to-path/**/*",
 					"node_modules/rimraf/**/*",
+					"node_modules/@prisma/client/**/*",
 				],
 				extraFiles: [
+					{
+						from: "node_modules/follow-redirects/",
+						to: "resources/node_modules/follow-redirects",
+					},
+					{
+						from: "node_modules/axios/",
+						to: "resources/node_modules/axios"
+					},
 					{
 						from: "node_modules/better-sqlite3/",
 						to: "resources/node_modules/better-sqlite3"
@@ -47,6 +68,10 @@ module.exports = {
 					{
 						from: "node_modules/rimraf",
 						to: "resources/node_modules/rimraf"
+					},
+					{
+						from: "node_modules/@prisma/client/",
+						to: "resources/node_modules/@prisma/client"
 					},
 					{
 						from: 'bun-binary',

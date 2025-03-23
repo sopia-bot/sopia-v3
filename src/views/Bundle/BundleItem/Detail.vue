@@ -129,6 +129,7 @@ import { BundlePackage } from '@/interface/bundle';
 import hljs from 'highlight.js';
 import * as marked from 'marked/lib/marked.umd.js';
 import path from 'path';
+const { ipcRenderer } = window.require('electron');
 
 const fs = window.require('fs');
 
@@ -261,21 +262,23 @@ export default class BundleItemDetail extends Mixins(BundleMixin) {
 	}
 
 	public async install() {
-		this.loading = true;
-		await this.bundleInstall(this.pkg);
-		this.updatePackageUsing();
-		window.reloadScript();
-		this.$evt.$emit('sidemenu:bundle-reload');
-		this.loading = false;
+		await this.$swal({
+			icon: 'info',
+			html: '<h3>번들 관리는 번들 매니저에서 진행해주세요.</h3>',
+			confirmButtonText: '확인',
+		});
+
+		await ipcRenderer.invoke('open-bundle-manager');
 	}
 
 	public async uninstall() {
-		this.loading = true;
-		await this.bundleUninstall(this.pkg);
-		this.updatePackageUsing();
-		window.reloadScript();
-		this.$evt.$emit('sidemenu:bundle-reload');
-		this.loading = false;
+		await this.$swal({
+			icon: 'info',
+			html: '<h3>번들 관리는 번들 매니저에서 진행해주세요.</h3>',
+			confirmButtonText: '확인',
+		});
+
+		await ipcRenderer.invoke('open-bundle-manager');
 	}
 
 	private updatePackageUsing() {

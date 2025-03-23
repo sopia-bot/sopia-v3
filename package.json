@@ -1,6 +1,6 @@
 {
 	"name": "sopia-v3",
-	"version": "0.9.0",
+	"version": "0.9.3",
 	"description": "A Spooncast manager A.I Program",
 	"author": {
 		"name": "raravel",
@@ -15,6 +15,7 @@
 		"lint": "vue-cli-service lint",
 		"electron:build": "vue-cli-service electron:build",
 		"electron:window:build": "vue-cli-service.cmd electron:build -p always",
+		"electron:bm:serve": "vue-cli-service electron:serve --mode=bundle-manager",
 		"electron:serve": "vue-cli-service electron:serve",
 		"electron:icon-build": "electron-icon-builder --input=public/icon.png --output=build --flatten",
 		"electron:window:icon-build": "electron-icon-builder.cmd --input=public/icon.png --output=build --flatten",
@@ -26,6 +27,7 @@
 	"main": "background.js",
 	"dependencies": {
 		"@arkiv/zip": "^1.2.0",
+		"@prisma/client": "^6.5.0",
 		"@sopia-bot/api-dto": "^1.0.1",
 		"@sopia-bot/core": "^2.4.0",
 		"@types/hls.js": "^1.0.0",
@@ -43,7 +45,7 @@
 		"marked": "^4.0.12",
 		"mime-types": "^2.1.35",
 		"npkgi": "^1.0.7",
-		"puppeteer-core": "^13.4.0",
+		"prisma": "^5.22.0",
 		"rimraf": "^3.0.2",
 		"supertest": "^5.0.0",
 		"tslib": "^2.3.0",

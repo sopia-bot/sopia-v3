@@ -38,7 +38,7 @@
 					{{ $t('close') }}
 				</v-btn>
 				<v-spacer></v-spacer>
-				<v-btn
+				<!-- <v-btn
 					depressed rounded
 					:dark="!installing"
 					:disabled="installing"
@@ -46,7 +46,7 @@
 					color="green darken-1"
 					@click="installSelect">
 					{{ $t('bundle.update.select') }}
-				</v-btn>
+				</v-btn> -->
 				<v-btn
 					depressed rounded
 					:dark="!installing"
@@ -54,7 +54,7 @@
 					:loading="installing"
 					color="indigo darken-1"
 					@click="installAll">
-					{{ $t('bundle.update.all') }}
+					번들 매니저 열기
 				</v-btn>
 			</v-card-actions>
 		</v-card>
@@ -66,6 +66,7 @@ import { Component, Mixins, Prop } from 'vue-property-decorator';
 import BundleMixin from './bundle-mixin';
 import { BundlePackage } from '@/interface/bundle';
 import UpdateListItem from './UpdateListItem.vue';
+const { ipcRenderer } = window.require('electron');
 
 @Component({
 	components: {
@@ -82,12 +83,7 @@ export default class BundleUpdateDialog extends Mixins(BundleMixin) {
 	public resolve: (value: unknown) => void = () => { /* empty */ };
 
 	public async installAll() {
-		this.installing = true;
-		for (const item of this.items) {
-			await this.install(item, true);
-		}
-		this.installDone = true;
-		this.installing = false;
+		await ipcRenderer.invoke('open-bundle-manager');
 	}
 
 	public async installSelect() {
