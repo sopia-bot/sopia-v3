@@ -58,6 +58,7 @@
 <script lang="ts">
 import { Component, Mixins, Prop } from 'vue-property-decorator';
 import GlobalMixins from '@/plugins/mixins';
+import logger from '@/plugins/logger';
 const path = window.require('path');
 const fs = window.require('fs');
 const os = window.require('os');
@@ -104,6 +105,14 @@ export default class TreeView extends Mixins(GlobalMixins) {
 		'databases',
 		'IndexedDB',
 		'Storage',
+		'WebStorage',
+		'Shared Dictionary',
+		'File System',
+		'DawnWebGPUCache',
+		'historydb',
+		'DawnGraphiteCache',
+		'DawnCache',
+		'SharedStorage*',
 	];
 	public treeOptions = {
 		dnd: true,
@@ -451,72 +460,77 @@ export default class TreeView extends Mixins(GlobalMixins) {
 	}
 
 	public readdir(PATH: string, DIR: string = '', ORI: any, sf?: any[]) {
-		DIR = DIR || '';
-		const target = path.join(DIR, PATH);
+		try {
+			DIR = DIR || '';
+			const target = path.join(DIR, PATH);
 
-		if ( fs.existsSync(target) ) {
-			const fll = fs.readdirSync(target);
-			const arr: any = [];
+			if ( fs.existsSync(target) ) {
+				const fll = fs.readdirSync(target);
+				const arr: any = [];
 
-			if ( Array.isArray(fll) ) {
-				const fl = fll.sort((a, b) => {
-					const statsA = fs.statSync(path.join(target, a));
-					const statsB = fs.statSync(path.join(target, b));
-					if ( statsA.isDirectory() ) {
-						return -1;
-					} else if ( statsB.isDirectory() ) {
-						return 1;
-					}
-					return a > b ? 1 : -1;
-				});
-
-				fl.forEach((f) => {
-					const fullPath = path.join(target, f);
-
-					if ( this.isIgnorePath(fullPath) ) {
-						return;
-					}
-
-					const stats = fs.statSync(fullPath);
-					const obj: any = { data: {} };
-					const oriObjIdx = Array.isArray(ORI) ? ORI.findIndex((oo) => {
-						if ( oo.data['value'] === fullPath ) { return true; }
-						//if ( oo.data['value'] === this.cm.rename.value ) { return true; }
-					}) : -1;
-					const oriObj = oriObjIdx >= 0 ? ORI[oriObjIdx] : {};
-
-					obj['text'] = f;
-					obj.data['value'] = fullPath;
-					obj.data['idChange'] = false;
-
-					if ( stats.isDirectory() ) {
-						let expanded = false;
-						if ( sf && sf.length > 0 ) {
-							const p = sf.shift();
-							expanded = (p === f);
-						} else {
-							expanded = (oriObj['states'] && oriObj['states'].expanded);
+				if ( Array.isArray(fll) ) {
+					const fl = fll.sort((a, b) => {
+						const statsA = fs.statSync(path.join(target, a));
+						const statsB = fs.statSync(path.join(target, b));
+						if ( statsA.isDirectory() ) {
+							return -1;
+						} else if ( statsB.isDirectory() ) {
+							return 1;
 						}
-						obj['state'] = {
-							expanded,
-						};
-						obj.data['isFolder'] = true;
-						obj['children'] = this.readdir(fullPath, '', oriObj && oriObj.children );
+						return a > b ? 1 : -1;
+					});
 
-					} else {
-						obj['state'] = oriObj['state'] || {};
-						obj.data['isFolder'] = false;
-						obj.data['icon'] = this.iconFinder(path.extname(f));
-						obj['state']['dropable'] = false;
-					}
-					arr.push(obj);
-				});
+					fl.forEach((f) => {
+						const fullPath = path.join(target, f);
+
+						if ( this.isIgnorePath(fullPath) ) {
+							return;
+						}
+
+						const stats = fs.statSync(fullPath);
+						const obj: any = { data: {} };
+						const oriObjIdx = Array.isArray(ORI) ? ORI.findIndex((oo) => {
+							if ( oo.data['value'] === fullPath ) { return true; }
+							//if ( oo.data['value'] === this.cm.rename.value ) { return true; }
+						}) : -1;
+						const oriObj = oriObjIdx >= 0 ? ORI[oriObjIdx] : {};
+
+						obj['text'] = f;
+						obj.data['value'] = fullPath;
+						obj.data['idChange'] = false;
+
+						if ( stats.isDirectory() ) {
+							let expanded = false;
+							if ( sf && sf.length > 0 ) {
+								const p = sf.shift();
+								expanded = (p === f);
+							} else {
+								expanded = (oriObj['states'] && oriObj['states'].expanded);
+							}
+							obj['state'] = {
+								expanded,
+							};
+							obj.data['isFolder'] = true;
+							obj['children'] = this.readdir(fullPath, '', oriObj && oriObj.children );
+
+						} else {
+							obj['state'] = oriObj['state'] || {};
+							obj.data['isFolder'] = false;
+							obj.data['icon'] = this.iconFinder(path.extname(f));
+							obj['state']['dropable'] = false;
+						}
+						arr.push(obj);
+					});
+				}
+				return arr;
+			} else {
+				this.checkFolder();
+				return [];
 			}
-			return arr;
-		} else {
-			this.checkFolder();
-			return [];
+		} catch(err) {
+			logger.err('code', `readdir error`, err);
 		}
+		return [];
 	}
 
 	public buildFolderTree(src: string, selectedFile: string = '') {
