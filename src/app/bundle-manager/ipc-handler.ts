@@ -5,7 +5,7 @@ import path from "path";
 import { createRequire } from "module";
 import fs from "fs";
 import vm from "vm";
-import { ZipArchive } from "@arkiv/zip";
+import AdmZip from 'adm-zip';
 
 const CfgList: Record<string, any> = {};
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -57,30 +57,36 @@ export function registerBundleIpc() {
 			fs.mkdirSync(dst);
 		}
 
-		const archive = new ZipArchive(dst, Buffer.from(b64str, 'base64'));
-		const pkgEntry = archive.GetEntry('package.json');
-		if ( !pkgEntry ) {
+		try {
+			const zip = new AdmZip(Buffer.from(b64str, 'base64'));
+			const pkgEntry = zip.getEntry('package.json');
+			if ( !pkgEntry ) {
+				return false;
+			}
+
+			const pkg = JSON.parse(pkgEntry.getData().toString('utf8'));
+			const ignore = (pkg?.sopia?.['ignore:fetch'] || []).map((i: string) => path.join(dst, i));
+			console.log(`package:uncompress-buffer: ignoring list ${ignore.join(',')}`);
+
+			zip.getEntries().forEach((entry) => {
+				const target = path.join(dst, entry.entryName);
+				if ( fs.existsSync(target) ) {
+					if ( ignore.includes(target) ) {
+						return;
+					}
+				}
+				const dirname = path.dirname(target);
+				if ( !fs.existsSync(dirname) ) {
+					fs.mkdirSync(dirname, { recursive: true });
+				}
+				zip.extractEntryTo(entry, dirname, false, true);
+			});
+
+			return true;
+		} catch (err) {
+			console.error(err);
 			return false;
 		}
-
-		const pkg = JSON.parse(pkgEntry.Read().toString('utf8'));
-
-		const ignore = (pkg?.sopia?.['ignore:fetch'] || []).map((i: string) => path.join(dst, i));
-		console.log(`package:uncompress-buffer: ignoring list ${ignore.join(',')}`);
-
-		archive.Entries.forEach((entry) => {
-			const target = path.join(dst, entry.FullName);
-			if ( fs.existsSync(target) ) {
-				if ( ignore.includes(target) ) {
-					return;
-				}
-			}
-			const dirname = path.dirname(target);
-			if ( !fs.existsSync(dirname) ) {
-				fs.mkdirSync(dirname, { recursive: true });
-			}
-			entry.ExtractEntry(dirname);
-		});
 	});
 
 	ipcMain.handle('bun:install', async (event, pkgPath: string) => {

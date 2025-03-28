@@ -8,9 +8,9 @@ import { Server as HttpServer } from 'http';
 import axios from 'axios';
 import Module, { createRequire } from 'module';
 import { bun, bunx } from './bun';
+import AdmZip from 'adm-zip';
 
 import CfgLite from 'cfg-lite';
-import { ZipFile, ZipArchive } from '@arkiv/zip';
 import fs from 'fs';
 import vm from 'vm';
 import pkg from '../../package.json';
@@ -52,7 +52,9 @@ export function registerIpcHandler() {
 	ipcMain.on('zip:create', (evt: IpcMainEvent, src: string, dst: string) => {
 		console.log('zip:create', src, dst);
 		try {
-			ZipFile.CreateFromDirectory(src, dst);
+			const zip = new AdmZip();
+			zip.addLocalFolder(src);
+			zip.writeZip(dst);
 			evt.returnValue = true;
 		} catch (err) {
 			console.error(err);
@@ -62,9 +64,14 @@ export function registerIpcHandler() {
 
 	ipcMain.on('zip:uncompress-buffer', (evt: IpcMainEvent, b64str: string, dst: string) => {
 		console.log('zip:uncompress-buffer', dst);
-		const archive = new ZipArchive('', Buffer.from(b64str, 'base64'));
-		archive.ExtractAll(dst);
-		evt.returnValue = true;
+		try {
+			const zip = new AdmZip(Buffer.from(b64str, 'base64'));
+			zip.extractAllTo(dst, true);
+			evt.returnValue = true;
+		} catch (err) {
+			console.error(err);
+			evt.returnValue = false;
+		}
 	});
 
 	ipcMain.on('isdev', (evt: IpcMainEvent) => {
@@ -200,8 +207,8 @@ export function registerIpcHandler() {
 					responseType: 'arraybuffer',
 				});
 				const buf = res.data;
-				const archive = new ZipArchive('temp_filename', buf);
-				archive.ExtractAll(extensionPath);
+				const archive = new AdmZip(buf);
+				archive.extractAllTo(extensionPath);
 			}
 
 			if ( isChromeRunning() ) {
@@ -371,20 +378,18 @@ export function registerIpcHandler() {
 				ignore = (pkg?.sopia?.['ignore:upload'] || []).map((i: string) => path.join(src, i));
 			}
 
-			const archive = new ZipArchive(dst);
+			const zip = new AdmZip();
 			readDirectory(src, (p: string, isDir: boolean) => {
 				if ( !isDir ) {
 					const fullPath = path.join(src, p);
 					if ( ignore.includes(fullPath) ) {
 						return;
 					}
-					const entry = archive.CreateEntry(p);
-					const data = fs.readFileSync(fullPath);
-					entry.Write(data);
+					zip.addLocalFile(fullPath, path.dirname(p));
 				}
 			});
 
-			fs.writeFileSync(dst, archive.Stream);
+			zip.writeZip(dst);
 			evt.returnValue = true;
 		} catch (err) {
 			console.error(err);
@@ -399,32 +404,36 @@ export function registerIpcHandler() {
 			fs.mkdirSync(dst);
 		}
 
-		const archive = new ZipArchive(dst, Buffer.from(b64str, 'base64'));
-		const pkgEntry = archive.GetEntry('package.json');
-		if ( !pkgEntry ) {
-			return false;
-		}
+		try {
+			const zip = new AdmZip(Buffer.from(b64str, 'base64'));
+			const pkgEntry = zip.getEntry('package.json');
+			if ( !pkgEntry ) {
+				return false;
+			}
 
-		const pkg = JSON.parse(pkgEntry.Read().toString('utf8'));
+			const pkg = JSON.parse(pkgEntry.getData().toString('utf8'));
+			const ignore = (pkg?.sopia?.['ignore:fetch'] || []).map((i: string) => path.join(dst, i));
+			console.log(`package:uncompress-buffer: ignoring list ${ignore.join(',')}`);
 
-		const ignore = (pkg?.sopia?.['ignore:fetch'] || []).map((i: string) => path.join(dst, i));
-		console.log(`package:uncompress-buffer: ignoring list ${ignore.join(',')}`);
-
-		archive.Entries.forEach((entry) => {
-			const target = path.join(dst, entry.FullName);
-			if ( fs.existsSync(target) ) {
-				if ( ignore.includes(target) ) {
-					return;
+			zip.getEntries().forEach((entry) => {
+				const target = path.join(dst, entry.entryName);
+				if ( fs.existsSync(target) ) {
+					if ( ignore.includes(target) ) {
+						return;
+					}
 				}
-			}
-			const dirname = path.dirname(target);
-			if ( !fs.existsSync(dirname) ) {
-				fs.mkdirSync(dirname, { recursive: true });
-			}
-			entry.ExtractEntry(dirname);
-		});
+				const dirname = path.dirname(target);
+				if ( !fs.existsSync(dirname) ) {
+					fs.mkdirSync(dirname, { recursive: true });
+				}
+				zip.extractEntryTo(entry, dirname, false, true);
+			});
 
-		evt.returnValue = true;
+			evt.returnValue = true;
+		} catch (err) {
+			console.error(err);
+			evt.returnValue = false;
+		}
 	});
 
 	ipcMain.on('app:quit', (evt: IpcMainEvent) => {

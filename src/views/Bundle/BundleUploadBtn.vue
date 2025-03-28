@@ -2,7 +2,9 @@
 	<div>
 		<v-btn
 			color="grey darken-3"
-			dark
+			:dark="!uploadFlag"
+			:disabled="uploadFlag"
+			:loading="uploadFlag"
 			@click="uploadBundle">
 			{{ $t('bundle.store.upload') }}
 		</v-btn>	
@@ -19,6 +21,8 @@ const fs = window.require('fs');
 @Component
 export default class BundleUploadButton extends Mixins(BundleMixins) {
 
+	public uploadFlag = false;
+
 	public async checkFile(src: string) {
 		if ( !fs.existsSync(src) ) {
 			this.$logger.err('bundle', 'Could not find index.js from bundle', src);
@@ -33,6 +37,10 @@ export default class BundleUploadButton extends Mixins(BundleMixins) {
 	}
 
 	public async uploadBundle() {
+		if ( this.uploadFlag ) {
+			return;
+		}
+		this.uploadFlag = true;
 		const result = await ipcRenderer.invoke('open-dialog', {
 			properties: ['openDirectory'],
 			title: 'Upload Bundle',
@@ -40,6 +48,7 @@ export default class BundleUploadButton extends Mixins(BundleMixins) {
 		});
 		if ( result.canceled ) {
 			this.$logger.err('bundle', 'Canceled folder select for bundle upload.');
+			this.uploadFlag = false;
 			return;
 		}
 
@@ -47,6 +56,7 @@ export default class BundleUploadButton extends Mixins(BundleMixins) {
 
 		const packageFile = path.join(target, 'package.json');
 		if ( !await this.checkFile(packageFile) ) {
+			this.uploadFlag = false;
 			return;
 		}
 
@@ -56,14 +66,17 @@ export default class BundleUploadButton extends Mixins(BundleMixins) {
 		this.$logger.debug('bundle', 'Package content', packageFile, pkg);
 
 		if ( !await this.checkPackageProperty(pkg, 'name') ) {
+			this.uploadFlag = false;
 			return;
 		}
 
 		if ( !await this.checkPackageProperty(pkg, 'version') ) {
+			this.uploadFlag = false;
 			return;
 		}
 
 		if ( !pkg['page-version'] || pkg['page-version'] < 2 ) {
+			this.uploadFlag = false;
 			await this.$swal({
 				icon: 'error',
 				title: this.$t('error'),
@@ -91,16 +104,23 @@ export default class BundleUploadButton extends Mixins(BundleMixins) {
 				title: this.$t('error'),
 				html: this.$t('bundle.store.error.create-error'),
 			});
+			this.uploadFlag = false;
 			return;
 		}
 
 		this.$logger.success('bundle', 'Create zip file success.', zipFile);
 
 		try {
+			const formData = new FormData();
+			formData.append('name', pkg.name);
+			formData.append('version', pkg.version);
+			formData.append('file', new Blob([fs.readFileSync(zipFile)], { type: 'application/zip' }), 'bundle.zip');
+
 			const res = await this.$api.req('PUT', '/bundle/', {
-				name: pkg.name,
-				version: pkg.version,
-				data: fs.readFileSync(zipFile, 'base64'),
+					data: formData,
+					headers: {
+					'Content-Type': 'multipart/form-data'
+				}
 			});
 			fs.unlinkSync(zipFile);
 		} catch (err: any) {
@@ -113,6 +133,7 @@ export default class BundleUploadButton extends Mixins(BundleMixins) {
 				});
 			}
 			fs.unlinkSync(zipFile);
+			this.uploadFlag = false;
 			return;
 		}
 
@@ -124,6 +145,7 @@ export default class BundleUploadButton extends Mixins(BundleMixins) {
 			title: this.$t('success'),
 			html: this.$t('bundle.store.upload-success'),
 		});
+		this.uploadFlag = false;
 	}
 }
 </script>
