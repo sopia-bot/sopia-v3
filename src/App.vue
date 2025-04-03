@@ -18,6 +18,7 @@
 				</transition>
 			</v-sheet>
 			<live-player v-if="isLogin && currentLive.id" :live="currentLive" />
+			<agree-live-info-dialog v-if="isLogin && !currentLive.id" :open="agreeLiveInfoDialogOpen" />
 		</div>
 		<!--<tutorials/>-->
 	</v-app>
@@ -50,6 +51,7 @@ import TitleBar from '@/views/Components/TitleBar.vue';
 import SideMenu from '@/views/Components/SideMenu.vue';
 import Tutorials from '@/views/Tutorials/Index.vue';
 import Donation from '@/views/Components/Donation.vue';
+import AgreeLiveInfoDialog from '@/views/Components/AgreeLiveInfoDialog.vue';
 
 const fs = window.require('fs');
 
@@ -74,6 +76,7 @@ declare global {
 		TitleBar,
 		Tutorials,
 		Donation,
+		AgreeLiveInfoDialog,
 	},
 })
 export default class App extends Mixins(GlobalMixins) {
@@ -81,6 +84,7 @@ export default class App extends Mixins(GlobalMixins) {
 	public bundleUpdateDialogShow: boolean = false;
 	public bundleUpdateList: BundlePackage[] = [];
 	public isLogin: boolean = false;
+	public agreeLiveInfoDialogOpen: boolean = false;
 
 	public enter(...args: any[]) {
 		console.log('enter transition', args);
@@ -123,6 +127,10 @@ export default class App extends Mixins(GlobalMixins) {
 							this.isLogin = true;
 
 							await this.$api.activityLog('logon');
+
+							if ( this.$api.user.agree_live_info !== true ) {
+								this.showAgreeLiveInfoDialog();
+							}
 						} else {
 							throw Error('Invalid token');
 						}
@@ -208,6 +216,15 @@ export default class App extends Mixins(GlobalMixins) {
 			this.bundleUpdateList = bundleInfoList;
 			this.bundleUpdateDialogShow = true;
 		}
+	}
+
+	public async showAgreeLiveInfoDialog() {
+		const now = new Date();
+		const expire = localStorage.getItem('agreeLiveInfoDialog');
+		if ( expire && new Date(Number(expire)) > now ) {
+			return;
+		}
+		this.agreeLiveInfoDialogOpen = true;
 	}
 
 }
