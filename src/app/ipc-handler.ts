@@ -495,8 +495,6 @@ export function registerIpcHandler() {
 		spawn(exeFile, ['--mode', 'bundle-manager'], {
 			detached: true,
 			stdio: 'ignore',
-			shell: true,
-			windowsHide: true
 		});
 		return true;
 	});
