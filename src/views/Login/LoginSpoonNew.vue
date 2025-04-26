@@ -20,9 +20,6 @@
 						<Picture :src="require('./assets/로그인가이드1.png')"></Picture>
 						<!-- <v-img contain height="300px" src="./assets/로그인가이드1.png"></v-img> -->
 					</v-carousel-item>
-					<v-carousel-item>
-						<Picture :src="require('./assets/로그인가이드2.png')"></Picture>
-					</v-carousel-item>
 				</v-carousel>
 				
 				<v-btn

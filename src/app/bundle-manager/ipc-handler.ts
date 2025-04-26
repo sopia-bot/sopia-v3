@@ -69,9 +69,12 @@ export function registerBundleIpc() {
 			console.log(`package:uncompress-buffer: ignoring list ${ignore.join(',')}`);
 
 			zip.getEntries().forEach((entry) => {
+				if ( entry.isDirectory ) {
+					return;
+				}
 				const target = path.join(dst, entry.entryName);
 				if ( fs.existsSync(target) ) {
-					if ( ignore.includes(target) ) {
+					if ( ignore.includes(entry.entryName) ) {
 						return;
 					}
 				}
@@ -79,7 +82,7 @@ export function registerBundleIpc() {
 				if ( !fs.existsSync(dirname) ) {
 					fs.mkdirSync(dirname, { recursive: true });
 				}
-				zip.extractEntryTo(entry, dirname, false, true);
+				zip.extractEntryTo(entry.entryName, dirname, false, true);
 			});
 
 			return true;
