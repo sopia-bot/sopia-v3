@@ -18,9 +18,9 @@
 				</transition>
 			</v-sheet>
 			<live-player v-if="isLogin && currentLive.id" :live="currentLive" />
-			<agree-live-info-dialog v-if="isLogin && !currentLive.id" :open="agreeLiveInfoDialogOpen" />
 		</div>
 		<!--<tutorials/>-->
+		<agree-live-info-dialog v-if="isLogin" :open="agreeLiveInfoDialogOpen" @update:open="agreeLiveInfoDialogOpen = $event" />
 	</v-app>
 </template>
 <style>
@@ -113,7 +113,12 @@ export default class App extends Mixins(GlobalMixins) {
 				this.isLogin = false;
 				this.$assign('/login');
 			} else {
-				this.$api.user = auth.sopia;
+				this.$api.user = {
+					...auth.sopia,
+					...res.data[0],
+				};
+				this.$cfg.set('auth.sopia', this.$api.user);
+				this.$cfg.save();
 				this.$sopia.loginToken(auth.spoon.id, auth.spoon.token, auth.spoon.refresh_token)
 					.then(async (user) => {
 						const token = await this.$sopia.refreshToken(user.id, auth.spoon.token, auth.spoon.refresh_token);
@@ -128,7 +133,9 @@ export default class App extends Mixins(GlobalMixins) {
 
 							await this.$api.activityLog('logon');
 
-							if ( this.$api.user.agree_live_info !== true ) {
+							console.log('isLogin', this.isLogin);
+							console.log('this.$api.user.agree_live_info', this.$api.user);
+							if ( !this.$api.user.agree_live_info ) {
 								this.showAgreeLiveInfoDialog();
 							}
 						} else {
@@ -219,12 +226,19 @@ export default class App extends Mixins(GlobalMixins) {
 	}
 
 	public async showAgreeLiveInfoDialog() {
-		const now = new Date();
-		const expire = localStorage.getItem('agreeLiveInfoDialog');
-		if ( expire && new Date(Number(expire)) > now ) {
+		const expire = this.$cfg.get('agreeLiveInfoDialog');
+		console.log('showAgreeLiveInfoDialog - expire:', expire);
+		console.log('showAgreeLiveInfoDialog - current date:', new Date());
+		console.log('showAgreeLiveInfoDialog - expire date:', expire ? new Date(Number(expire)) : null);
+		
+		if (expire && new Date(Number(expire)) > new Date()) {
+			console.log('Dialog is expired, not showing');
 			return;
 		}
+		
+		console.log('showAgreeLiveInfoDialog before:', this.agreeLiveInfoDialogOpen);
 		this.agreeLiveInfoDialogOpen = true;
+		console.log('showAgreeLiveInfoDialog after:', this.agreeLiveInfoDialogOpen);
 	}
 
 }
