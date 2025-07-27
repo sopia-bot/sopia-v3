@@ -450,8 +450,10 @@ export function registerIpcHandler() {
 			const context = {
 				require: function(name) {
 					try {
+						console.log('require resolve', bundleRequire.resolve(name));
 						return bundleRequire(name);
-					} catch {
+					} catch(err) {
+						console.error(err);
 						return __non_webpack_require__(name);
 					}
 				},
@@ -463,6 +465,9 @@ export function registerIpcHandler() {
 				process,
 				exports: moduleObj.exports,
 				console,
+				URLSearchParams,
+				URL,
+				fetch,
 				bun,
 				bunx,
 			};
