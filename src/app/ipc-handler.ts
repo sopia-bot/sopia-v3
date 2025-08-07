@@ -211,14 +211,20 @@ export function registerIpcHandler() {
 				archive.extractAllTo(extensionPath);
 			}
 
+			let isKillProcess = false;
 			if ( isChromeRunning() ) {
 				console.log('Chrome is already running');
 				const result = await dialog.showMessageBox({
 					message: 'Chrome이 이미 실행 중입니다. 로그인을 위해서는 실행중인 프로세스를 종료해야 합니다. 종료하시겠습니까?',
 					type: 'question',
-					buttons: ['예', '아니오'],
+					buttons: ['예', '아니오', '끄지 않고 새 탭에서 열기'],
 				});
 				console.log(result);
+				if ( result.response === 0 ) {
+					// 예
+					execSync('taskkill /f /im chrome.exe');
+					isKillProcess = true;
+				}
 				if ( result.response === 1 ) {
 					// 아니오
 					return {
@@ -226,9 +232,6 @@ export function registerIpcHandler() {
 						status: '102',
 					};	
 				}
-				
-				// 예
-				execSync('taskkill /f /im chrome.exe');
 			}
 
 			const callback = new Promise((resolve, reject) => {
@@ -240,6 +243,9 @@ export function registerIpcHandler() {
 				const app = express();
 				app.use(cors())
 				app.use(express.json());
+				app.get('/check', (_, res) => {
+					res.json({ success: true })
+				})
 				app.post('/spoon-login', (req, res) => {
 					console.log('body', req.body);
 					res.json({});
