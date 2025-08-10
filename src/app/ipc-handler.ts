@@ -211,29 +211,6 @@ export function registerIpcHandler() {
 				archive.extractAllTo(extensionPath);
 			}
 
-			let isKillProcess = false;
-			if ( isChromeRunning() ) {
-				console.log('Chrome is already running');
-				const result = await dialog.showMessageBox({
-					message: 'Chrome이 이미 실행 중입니다. 로그인을 위해서는 실행중인 프로세스를 종료해야 합니다. 종료하시겠습니까?',
-					type: 'question',
-					buttons: ['예', '아니오', '끄지 않고 새 탭에서 열기'],
-				});
-				console.log(result);
-				if ( result.response === 0 ) {
-					// 예
-					execSync('taskkill /f /im chrome.exe');
-					isKillProcess = true;
-				}
-				if ( result.response === 1 ) {
-					// 아니오
-					return {
-						success: false,
-						status: '102',
-					};	
-				}
-			}
-
 			const callback = new Promise((resolve, reject) => {
 				if ( expressServer ) {
 					expressServer.close();
@@ -255,10 +232,8 @@ export function registerIpcHandler() {
 				expressServer = app.listen(19595, () => {
 					console.log('express listen', 19595);
 
-					const url = 'https://www.spooncast.net/kr';
+					const url = `https://sopia.dev/extension-loader?redirect=${encodeURIComponent('https://www.spooncast.net/kr')}`;
 					proc = spawn(executablePath, [
-						`--disable-extensions-except=${extensionPath}`,
-						`--load-extension=${extensionPath}`,
 						`${url}`
 					]);
 				});
