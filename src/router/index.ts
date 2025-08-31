@@ -99,6 +99,20 @@ export const routes: RouteConfig[] = [
 			},
 		],
 	},
+	{
+		name: 'SpoonCapture',
+		path: '/spoon-capture/',
+		component: () => import('@/views/SpoonCapture/Index.vue'),
+		icon: 'mdi-camera',
+		isMenu: true,
+	},
+	{
+		name: 'SpoonCapturePlayer',
+		path: '/spoon-capture/player/:liveId/',
+		component: () => import('@/views/SpoonCapture/MasterView.vue'),
+		icon: 'mdi-camera',
+		isMenu: false,
+	},
 	bundle,
 	/*
 	{

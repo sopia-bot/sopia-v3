@@ -13,4 +13,5 @@ export default {
 	store: '스토어',
 	github: '깃허브',
 	guide: '사용법',
+	SpoonCapture: '스푼 캡처',
 };

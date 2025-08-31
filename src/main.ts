@@ -17,6 +17,7 @@ import LiquorTree from 'liquor-tree';
 import VueScroll from 'vuescroll';
 import Carousel3d from 'vue-carousel-3d';
 import VueSweetalert2 from 'vue-sweetalert2';
+import VueKonva from 'vue-konva';
 const electron = window.require('electron');
 
 import 'sweetalert2/dist/sweetalert2.min.css';
@@ -41,6 +42,7 @@ const { ipcRenderer } = electron;
 Vue.use(VueSweetalert2);
 Vue.use(Carousel3d);
 Vue.use(Logger);
+Vue.use(VueKonva);
 Vue.use(LiquorTree);
 Vue.use(VueScroll, {
 	ops: {
@@ -59,6 +61,8 @@ Vue.use(VueScroll, {
 		},
 	},
 });
+
+// 글로벌 컴포넌트 등록은 제거 - 동적 로딩으로 변경
 
 window.isElectron = true;
 window.isDevelopment = ipcRenderer.sendSync('isdev');

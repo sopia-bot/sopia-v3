@@ -15,6 +15,7 @@ import Notification from '@/views/Components/Notification.vue';
 
 import { NotiOption, ModalOption, ConfirmOption } from '@/interface/Components';
 import { getAppPath } from './ipc-renderer';
+import { Sticker } from '@sopia-bot/core';
 
 const path = window.require('path');
 const fs = window.require('fs');
@@ -67,7 +68,7 @@ export default class Mixin extends VueDecorator {
 
 	public $assign(url: string, newTab: boolean = false) {
 		if ( newTab ) {
-			window.open(url, '', 'toolbar=no,location=no,menubar=no,status=no,width=1200,height=800');
+			ipcRenderer.send('open-browser', url);
 			return;
 		}
 
@@ -241,6 +242,57 @@ export default class Mixin extends VueDecorator {
 
 	get language(): string {
 		return this.$vuetify.lang.current;
+	}
+
+	// 스티커 모달 열기 함수
+	public $openStickerModal(): Promise<Sticker | null> {
+		return new Promise(async (resolve) => {
+			try {
+				// StickerModal 컴포넌트를 동적으로 import
+				const StickerModalModule = await import('@/components/StickerModal.vue');
+				const StickerModal = StickerModalModule.default;
+				
+				// 현재 Vue 인스턴스의 컨텍스트를 사용하여 새 인스턴스 생성
+				const StickerModalComponent = Vue.extend({
+					components: {
+						StickerModal
+					},
+					template: '<StickerModal ref="stickerModal" />',
+					mounted() {
+						// 모달 열기
+						(this.$refs.stickerModal as any).open().then((result: any) => {
+							resolve(result);
+							// DOM에서 제거
+							Vue.nextTick(() => {
+								this.$destroy();
+								if (this.$el && this.$el.parentNode) {
+									this.$el.parentNode.removeChild(this.$el);
+								}
+							});
+						}).catch((error: any) => {
+							console.error('StickerModal error:', error);
+							resolve(null);
+							Vue.nextTick(() => {
+								this.$destroy();
+								if (this.$el && this.$el.parentNode) {
+									this.$el.parentNode.removeChild(this.$el);
+								}
+							});
+						});
+					}
+				});
+				
+				// 현재 컴포넌트의 부모 컨텍스트에서 인스턴스 생성
+				const instance = this.mount(StickerModalComponent);
+				
+				// DOM에 마운트
+				instance.$mount();
+				document.body.appendChild(instance.$el);
+			} catch (error) {
+				console.error('Failed to load StickerModal:', error);
+				resolve(null);
+			}
+		});
 	}
 
 }

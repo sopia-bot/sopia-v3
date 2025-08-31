@@ -1,5 +1,5 @@
 import path from 'path';
-import { app, BrowserWindow , ipcMain, IpcMainEvent, dialog } from 'electron';
+import { app, BrowserWindow , ipcMain, IpcMainEvent, dialog, shell } from 'electron';
 import { ChildProcess, execSync, spawn } from 'child_process';
 import { install as npmInstall, InstallItem, InstallOptions } from 'npkgi';
 import express, { Application } from 'express';
@@ -47,6 +47,10 @@ export function registerIpcHandler() {
 			console.log('cfg-lite: Cannot open cfg file.', file, err.message);
 			evt.returnValue = false;
 		}
+	});
+
+	ipcMain.on('open-browser', (evt: IpcMainEvent, url: string) => {
+		shell.openExternal(url);
 	});
 
 	ipcMain.on('zip:create', (evt: IpcMainEvent, src: string, dst: string) => {
