@@ -1,16 +1,18 @@
 <template>
-  <v-container>
+  <v-container class="pa-0">
     <!-- S: Present List Dialog -->
     <v-dialog
         v-model="present"
-        max-width="600"
-        width="80%">
-      <v-card>
-        <v-card-title>
+        max-width="700"
+        width="90%"
+        scrollable>
+      <v-card class="rounded-lg">
+        <v-card-title class="indigo white--text">
+          <v-icon color="white" class="mr-2">mdi-gift</v-icon>
           {{ $t('cmd.sticker.list') }}
         </v-card-title>
-        <v-card-text>
-          <v-row class="ma-0">
+        <v-card-text class="pa-4">
+          <v-row>
             <v-col
                 cols="6" md="4"
                 v-for="(sticker, idx) in validStickers"
@@ -19,21 +21,22 @@
               <v-hover>
                 <template v-slot:default="{ hover }">
                   <v-card
+                      class="rounded-lg transition-swing"
                       style="cursor: pointer;"
-                      :elevation="hover ? 12 : 0">
+                      :elevation="hover ? 8 : 2"
+                      :class="{ 'scale-105': hover }">
                     <v-img
                         :src="sticker.image_thumbnail"
-                        class="white--text align-center"
+                        class="white--text align-center rounded-lg"
                         :gradient="hover ? 'to bottom, rgba(0,0,0,.7), rgba(0,0,0,.7)' : ''"
-                        width="100%">
-                      <v-row v-if="hover" align="center">
-                        <v-col cols="12" class="pb-0" align="center">
-                          <h3>{{ sticker.title }}</h3>
-                        </v-col>
-                        <v-col cols="12" class="pt-0" align="center">
-                          <v-chip color="transparent">
-                            <v-img width="20px" :src="imgs.coin"/>
-                            <span class="ml-2 white--text">{{ sticker.price }}</span>
+                        width="100%"
+                        aspect-ratio="1">
+                      <v-row v-if="hover" align="center" class="fill-height">
+                        <v-col cols="12" class="text-center">
+                          <h4 class="font-weight-medium">{{ sticker.title }}</h4>
+                          <v-chip color="amber" dark small class="mt-2">
+                            <v-img width="16px" :src="imgs.coin" class="mr-1"/>
+                            {{ sticker.price }}
                           </v-chip>
                         </v-col>
                       </v-row>
@@ -44,45 +47,97 @@
             </v-col>
           </v-row>
         </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer></v-spacer>
+          <v-btn color="grey" text @click="present = false">닫기</v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
     <!-- E: Present List Dialog -->
-    <v-row align="center">
-      <v-col cols="12" class="px-0">
-        <v-btn block tile dark color="indigo" @click="present = true;">{{ $t('add') }}</v-btn>
-      </v-col>
-    </v-row>
-    <div class="my-6">
-      <v-row class="ma-0 mt-2" v-for="(present, idx) in livePresent" :key="'present_' + present.sticker" align="center">
-        <v-col class="pa-0" cols="5">
-          <v-btn
-              tile
-              width="120px"
-              color="transparent"
-              depressed>
-              <img
-		              v-if="present.src"
-		              :src="present.src"
-		              width="50px"
-		              :alt="present.title"/>
-              {{ substr(present.title) }}
-          </v-btn>
-        </v-col>
-        <v-col cols="5" class="pa-0">
-          <v-textarea
-              class="pt-0"
-              hide-details
-              v-model="present.message"
-              rows="1"
-              color="indigo darken-3"></v-textarea>
-        </v-col>
-        <v-col cols="2" class="pa-0 text-right">
-          <v-btn icon depressed>
-            <v-icon color="red darken-3" @click="delPresentEvent(idx);">mdi-close-circle</v-icon>
-          </v-btn>
-        </v-col>
-      </v-row>
-    </div>
+    
+    <v-card class="elevation-2 rounded-lg" outlined>
+      <v-card-title class="pb-2">
+        <v-icon color="purple" class="mr-2">mdi-gift</v-icon>
+        <span class="text-h6 font-weight-medium">선물 메시지 설정</span>
+      </v-card-title>
+      <v-card-text class="pt-2">
+        <v-btn 
+          block 
+          rounded 
+          color="indigo" 
+          dark 
+          class="mb-4 elevation-2"
+          @click="addPresentNew"
+        >
+          <v-icon left>mdi-plus</v-icon>
+          새 선물 추가
+        </v-btn>
+        
+        <v-card 
+          v-for="(presentItem, idx) in livePresent" 
+          :key="'present_' + presentItem.sticker"
+          class="mb-3 elevation-1 rounded-lg"
+          outlined
+        >
+          <v-card-text class="pb-2">
+            <v-row align="center" no-gutters>
+              <v-col cols="12" md="4" class="pr-md-3 mb-2 mb-md-0">
+                <v-card 
+                  class="d-flex align-center pa-2 rounded" 
+                  color="grey lighten-4"
+                  flat
+                >
+                  <v-avatar size="40" class="mr-2" v-if="presentItem.src">
+                    <v-img :src="presentItem.src" :alt="presentItem.title"/>
+                  </v-avatar>
+                  <v-icon v-else size="40" color="grey" class="mr-2">mdi-gift</v-icon>
+                  <div>
+                    <div class="font-weight-medium text-truncate">
+                      {{ substr(presentItem.title) }}
+                    </div>
+                    <div class="text-caption grey--text">
+                      {{ presentItem.sticker }}
+                    </div>
+                  </div>
+                </v-card>
+              </v-col>
+              <v-col cols="10" md="7" class="pr-2">
+                <v-textarea
+                  v-model="presentItem.message"
+                  label="선물 받았을 때 메시지"
+                  placeholder="선물을 받았을 때 표시될 메시지를 입력하세요..."
+                  rows="2"
+                  color="purple darken-2"
+                  filled
+                  dense
+                  auto-grow
+                  hide-details
+                  class="rounded"
+                />
+              </v-col>
+              <v-col cols="2" md="1" class="text-center">
+                <v-btn 
+                  icon 
+                  color="red darken-2" 
+                  @click="delPresentEvent(idx)"
+                  class="elevation-1"
+                  :disabled="idx === 0"
+                >
+                  <v-icon>mdi-delete</v-icon>
+                </v-btn>
+              </v-col>
+            </v-row>
+          </v-card-text>
+        </v-card>
+        
+        <v-divider class="my-4" v-if="livePresent.length > 0"></v-divider>
+        
+        <div class="text-caption grey--text text--darken-1" v-if="livePresent.length > 0">
+          <v-icon small class="mr-1">mdi-information</v-icon>
+          팁: 기본 선물은 삭제할 수 없으며, 선물별로 다른 감사 메시지를 설정할 수 있습니다.
+        </div>
+      </v-card-text>
+    </v-card>
   </v-container>
 </template>
 
@@ -154,6 +209,20 @@ export default class CmdMessage extends Mixins(GlobalMixins) {
 			this.cfg.save();
 		});
 	}
+
+  public async addPresentNew() {
+    const sticker = await this.$openStickerModal();
+    if ( !sticker ) {
+      return;
+    }
+
+    this.livePresent.splice(1, 0, {
+      sticker: sticker.name,
+      src: sticker.image_thumbnail,
+      title: sticker.title,
+      message: '',
+    });
+  }
 
 	public addPresentEvent(idx: number) {
 		const sticker = this.validStickers[idx];
