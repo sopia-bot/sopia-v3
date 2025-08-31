@@ -55,6 +55,15 @@ export default class SideMenu extends Mixins(GlobalMixins) {
 			isActive: this.isActive.bind(this),
 		},
 		{
+			href: '/spoon-capture',
+			label: this.$t('page.SpoonCapture'),
+			icon: 'mdi-palette-outline',
+			activeIcon: 'mdi-palette',
+			isActive: () => {
+				return this.$route.path.startsWith('/spoon-capture');
+			},
+		},
+		{
 			href: '/bundle/store/',
 			label: this.$t('page.store'),
 			icon: 'mdi-bookshelf',

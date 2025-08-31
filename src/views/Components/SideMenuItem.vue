@@ -3,7 +3,7 @@
 		<v-row class="ma-2" style="height: 100%; position: relative;" align="center">
 			<v-col cols="12" class="pa-0" align="center">
 				<v-icon>{{ active ? activeIcon : icon }}</v-icon>
-				<p v-show="!active" class="ma-0 text-caption font-weight-thin" style="font-size: 0.6rem !important;">{{ label }}</p>
+				<p v-show="!active" class="ma-0 text-caption text--secondary font-weight-bold" style="font-size: 0.6rem !important;">{{ label }}</p>
 			</v-col>
 			<div v-show="active" class="selected-sidebar"></div>
 		</v-row>
