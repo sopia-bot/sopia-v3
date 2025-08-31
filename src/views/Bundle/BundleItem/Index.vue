@@ -133,7 +133,7 @@ export default class BundleItem extends Mixins(BundleMixins) {
 		await this.$swal({
 			icon: 'info',
 			html: '<h3>번들 관리는 번들 매니저에서 진행해주세요.</h3>',
-			confirmButtonText: '확인',
+			confirmButtonText: '번들 매니저 열기',
 		});
 
 		await ipcRenderer.invoke('open-bundle-manager');
@@ -143,7 +143,7 @@ export default class BundleItem extends Mixins(BundleMixins) {
 		await this.$swal({
 			icon: 'info',
 			html: '<h3>번들 관리는 번들 매니저에서 진행해주세요.</h3>',
-			confirmButtonText: '확인',
+			confirmButtonText: '번들 매니저 열기',
 		});
 		
 		await ipcRenderer.invoke('open-bundle-manager');
@@ -153,7 +153,7 @@ export default class BundleItem extends Mixins(BundleMixins) {
 		await this.$swal({
 			icon: 'info',
 			html: '<h3>번들 관리는 번들 매니저에서 진행해주세요.</h3>',
-			confirmButtonText: '확인',
+			confirmButtonText: '번들 매니저 열기',
 		});
 
 		await ipcRenderer.invoke('open-bundle-manager');
