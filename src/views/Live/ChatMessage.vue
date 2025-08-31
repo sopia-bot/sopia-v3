@@ -35,25 +35,27 @@
 			<v-list-item>
 				<v-list-item-avatar>
 				</v-list-item-avatar>
-				<v-card
-					tile dark
-					width="100%"
-					style="background: rgba(0, 0, 0, 0.5); border: thin solid rgb(255 255 255 / 30%)">
-					<v-list-item-content v-if="evt.event === LiveEvent.LIVE_MESSAGE" class="mx-4">
-						<pre style="white-space: pre-wrap;" class="chat-message" v-html="message"></pre>
-					</v-list-item-content>
-					<v-list-item v-else-if="evt.event === LiveEvent.LIVE_PRESENT" class="mx-4">
-						<v-list-item-avatar>
-							<v-img style="width: 100%;" :src="stickerImg" />
-						</v-list-item-avatar>
-						<v-list-item-title>
-							<h4>
-								{{ evt.data.amount }}{{ $t('spoon') }}
-								<span v-if="evt.data.combo > 1" class="font-weight-bold indigo--text text--accent-1">X {{ evt.data.combo }}</span>
-							</h4>
-						</v-list-item-title>
-					</v-list-item>
-				</v-card>
+				<div :class="{ 'shine-border': isSpecial, 'normal-border': !isSpecial }">
+					<v-card
+						tile dark
+						width="100%"
+						class="message-card">
+						<v-list-item-content v-if="evt.event === LiveEvent.LIVE_MESSAGE" class="mx-4">
+							<pre style="white-space: pre-wrap;" class="chat-message" v-html="message"></pre>
+						</v-list-item-content>
+						<v-list-item v-else-if="evt.event === LiveEvent.LIVE_PRESENT" class="mx-4">
+							<v-list-item-avatar>
+								<v-img style="width: 100%;" :src="stickerImg" />
+							</v-list-item-avatar>
+							<v-list-item-title>
+								<h4>
+									{{ evt.data.amount }}{{ $t('spoon') }}
+									<span v-if="evt.data.combo > 1" class="font-weight-bold indigo--text text--accent-1">X {{ evt.data.combo }}</span>
+								</h4>
+							</v-list-item-title>
+						</v-list-item>
+					</v-card>
+				</div>
 			</v-list-item>
 		</v-list>
 		<p
@@ -92,6 +94,7 @@ const URL_REGIX = /(https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9
 @Component
 export default class ChatMessage extends Mixins(GlobalMixins) {
 	@Prop(Object) public evt: any;
+	@Prop(Boolean) public isSpecial?: boolean;
 	public LiveEvent = EventList;
 
 	public defaultProfileUrl = require('assets/default-profile.png');
@@ -102,6 +105,10 @@ export default class ChatMessage extends Mixins(GlobalMixins) {
 
 	get profileURL() {
 		return this.evt.data.user?.profile_url || this.defaultProfileUrl;
+	}
+
+	public mounted() {
+		console.log('isSpecial', this.isSpecial);
 	}
 
 	public blockUser(id: number) {
@@ -137,5 +144,43 @@ export default class ChatMessage extends Mixins(GlobalMixins) {
 <style>
 .chat-message {
 	font-family: JoyPixels, GangwonEdu_OTFBoldA, sans-serif !important;
+}
+
+.message-card {
+	background: rgba(0, 0, 0, 0.5);
+	border: thin solid rgb(255 255 255 / 30%);
+}
+
+.normal-border {
+	border: thin solid rgb(255 255 255 / 30%);
+	width: 100%;
+}
+
+.shine-border {
+	position: relative;
+	border-radius: 8px;
+	width: 100%;
+	padding: 2px;
+	background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7, #dda0dd);
+	background-size: 400% 400%;
+	animation: shine 2s ease-in-out infinite;
+}
+
+.shine-border .message-card {
+	position: relative;
+	z-index: 1;
+	border-radius: 6px;
+}
+
+@keyframes shine {
+	0% {
+		background-position: 0% 50%;
+	}
+	50% {
+		background-position: 100% 50%;
+	}
+	100% {
+		background-position: 0% 50%;
+	}
 }
 </style>

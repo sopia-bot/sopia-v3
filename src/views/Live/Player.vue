@@ -49,7 +49,7 @@
 									<div
 										v-for="(event, idx) of liveEvents"
 										:key="idx">
-										<chat-message :evt="event"></chat-message>
+										<chat-message :evt="event" :isSpecial="isSpecialUser(event)"></chat-message>
 									</div>
 								</v-col>
 							</v-row>
@@ -157,6 +157,16 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 		partners.forEach((user) => {
 			this.specialUser.push([user.id, '💖']);
 		});
+	}
+
+	public isSpecialUser(evt: LiveEventStruct) {
+		if ( evt.data && (evt.data as { user: User }).user ) {
+			return this.specialUser.findIndex(([id]) => id === (evt.data as { user: User }).user.id.toString()) !== -1;
+		}
+		if ( evt.data && (evt.data as { author: User }).author ) {
+			return this.specialUser.findIndex(([id]) => id === (evt.data as { author: User }).author.id.toString()) !== -1;
+		}
+		return false;
 	}
 
 	public setSponsors() {
