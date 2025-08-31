@@ -330,21 +330,20 @@ export default class Editor extends Mixins(GlobalMixins) {
 		this.selectedItemId = pastedItem.id;
 	}
 
-	// 아이템 레이어 순서 변경
-	handleItemLayerChanged(itemId: string, direction: 'forward' | 'backward' | 'front' | 'back'): void {
-		const itemIndex = this.items.findIndex(item => item.id === itemId);
-		if (itemIndex === -1) return;
+	// 아이템 레이어 순서 변경 (배열 순서만 변경, Konva 노드 직접 조작 제거)
+	handleItemLayerChanged(itemId: string, direction: string): void {
+		const item = this.items.find(item => item.id === itemId);
+		if (!item) return;
 
-		const item = this.items[itemIndex];
-		const oldIndex = itemIndex;
-		let newIndex = itemIndex;
+		const oldIndex = this.items.indexOf(item);
+		let newIndex = oldIndex;
 
 		switch (direction) {
 			case 'forward':
-				newIndex = Math.min(itemIndex + 1, this.items.length - 1);
+				newIndex = Math.min(oldIndex + 1, this.items.length - 1);
 				break;
 			case 'backward':
-				newIndex = Math.max(itemIndex - 1, 0);
+				newIndex = Math.max(oldIndex - 1, 0);
 				break;
 			case 'front':
 				newIndex = this.items.length - 1;
@@ -359,25 +358,8 @@ export default class Editor extends Mixins(GlobalMixins) {
 			this.items.splice(oldIndex, 1);
 			this.items.splice(newIndex, 0, item);
 			
-			// Konva 노드의 zIndex 업데이트
-			const konvaNode = this.konvaNodeMap.get(item.id);
-			if (konvaNode) {
-				konvaNode.zIndex(newIndex);
-			}
-			
-			// Vue 반응성을 위한 강제 업데이트
-			this.$forceUpdate();
-			
-			// CanvasStage 강제 업데이트
-			this.$nextTick(() => {
-				const canvasStage = this.$refs.canvasStage as any;
-				if (canvasStage) {
-					canvasStage.$forceUpdate();
-				}
-			});
-			
-			// 히스토리에 레이어 변경 기록
-			this.addToHistory('layer', itemId, { oldIndex }, { newIndex });
+			// CanvasStage의 단일 v-for 구조가 배열 순서에 따라 자동으로 렌더링 순서를 조정함
+			// Konva 노드 직접 조작 불필요
 		}
 	}
 

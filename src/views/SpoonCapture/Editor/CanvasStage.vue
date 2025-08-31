@@ -15,7 +15,8 @@
 			@mouseup="handleStageMouseUp"
 			@touchstart="handleStageMouseDown"
 		>
-			<v-layer ref="layer">
+			<!-- 배경 레이어 -->
+			<v-layer ref="bgLayer">
 				<!-- 캔버스 경계 표시 -->
 				<v-rect
 					:config="canvasBorderConfig"
@@ -33,94 +34,29 @@
 						listening: false
 					}"
 				/>
-				<!-- 도형 렌더링 -->
-				<v-rect
-					v-for="item in rectangles"
+			</v-layer>
+			
+			<!-- 콘텐츠 레이어 -->
+			<v-layer ref="contentLayer">
+				<!-- 모든 아이템을 단일 v-for로 렌더링 -->
+				<component
+					v-for="item in items"
 					:key="item.id"
-					:ref="`rect_${item.id}`"
-					:config="item"
+					:is="getKonvaComponent(item.type)"
+					:ref="`item_${item.id}`"
+					:config="getItemConfig(item)"
 					@click="handleItemClick"
 					@tap="handleItemClick"
 					@dragend="handleDragEnd"
 					@transformend="handleTransformEnd"
+					@dblclick="item.type === 'text' ? handleTextDblClick : undefined"
+					@dbltap="item.type === 'text' ? handleTextDblClick : undefined"
 					draggable
 				/>
-				
-				<v-circle
-					v-for="item in circles"
-					:key="item.id"
-					:ref="`circle_${item.id}`"
-					:config="item"
-					@click="handleItemClick"
-					@tap="handleItemClick"
-					@dragend="handleDragEnd"
-					@transformend="handleTransformEnd"
-					draggable
-				/>
-				
-				<v-regular-polygon
-					v-for="item in triangles"
-					:key="item.id"
-					:ref="`triangle_${item.id}`"
-					:config="item"
-					@click="handleItemClick"
-					@tap="handleItemClick"
-					@dragend="handleDragEnd"
-					@transformend="handleTransformEnd"
-					draggable
-				/>
-				
-				<v-arrow
-					v-for="item in arrows"
-					:key="item.id"
-					:ref="`arrow_${item.id}`"
-					:config="item"
-					@click="handleItemClick"
-					@tap="handleItemClick"
-					@dragend="handleDragEnd"
-					@transformend="handleTransformEnd"
-					draggable
-				/>
-				
-				<v-star
-					v-for="item in stars"
-					:key="item.id"
-					:ref="`star_${item.id}`"
-					:config="item"
-					@click="handleItemClick"
-					@tap="handleItemClick"
-					@dragend="handleDragEnd"
-					@transformend="handleTransformEnd"
-					draggable
-				/>
-				
-				<!-- 텍스트 렌더링 -->
-				<v-text
-					v-for="item in texts"
-					:key="item.id"
-					:config="item"
-					@click="handleItemClick"
-					@tap="handleItemClick"
-					@dragend="handleDragEnd"
-					@transformend="handleTransformEnd"
-					@dblclick="handleTextDblClick"
-					@dbltap="handleTextDblClick"
-					draggable
-				/>
-				
-				<!-- 이미지 렌더링 -->
-				<v-image
-					v-for="item in images"
-					:key="item.id"
-					:ref="`image_${item.id}`"
-					:config="item"
-					@click="handleItemClick"
-					@tap="handleItemClick"
-					@dragend="handleDragEnd"
-					@transformend="handleTransformEnd"
-					draggable
-				/>
-				
+			</v-layer>
+			
+			<!-- UI 레이어 -->
+			<v-layer ref="uiLayer">
 				<!-- 다중 선택 영역 표시 -->
 				<v-rect
 					v-if="isSelecting"
@@ -315,79 +251,57 @@ export default class CanvasStage extends Vue {
 		};
 	}
 
-	get rectangles() {
-		return this.items
-			.filter(item => item.type === 'rect')
-			.map(item => this.convertToKonvaConfig(item as ShapeItem));
+	// 동적 컴포넌트 매핑
+	getKonvaComponent(type: string): string {
+		const componentMap: { [key: string]: string } = {
+			rect: 'v-rect',
+			circle: 'v-circle',
+			triangle: 'v-regular-polygon',
+			arrow: 'v-arrow',
+			star: 'v-star',
+			text: 'v-text',
+			image: 'v-image',
+		};
+		return componentMap[type] || 'v-rect';
 	}
 
-	get circles() {
-		return this.items
-			.filter(item => item.type === 'circle')
-			.map(item => {
-				const config = this.convertToKonvaConfig(item as ShapeItem);
+	// 통합된 config 변환 메서드
+	getItemConfig(item: CanvasItem): any {
+		switch (item.type) {
+			case 'rect':
+				return this.convertToKonvaConfig(item as ShapeItem);
+			case 'circle':
 				return {
-					...config,
+					...this.convertToKonvaConfig(item as ShapeItem),
 					radius: 50,
-					// 원형은 중심점 기준이므로 x, y가 중심점
 				};
-			});
-	}
-
-	get triangles() {
-		return this.items
-			.filter(item => item.type === 'triangle')
-			.map(item => {
-				const config = this.convertToKonvaConfig(item as ShapeItem);
+			case 'triangle':
 				return {
-					...config,
+					...this.convertToKonvaConfig(item as ShapeItem),
 					sides: 3,
 					radius: 50,
-					// 삼각형도 중심점 기준
 				};
-			});
-	}
-
-	get arrows() {
-		return this.items
-			.filter(item => item.type === 'arrow')
-			.map(item => {
-				const config = this.convertToKonvaConfig(item as ShapeItem);
+			case 'arrow':
 				return {
-					...config,
+					...this.convertToKonvaConfig(item as ShapeItem),
 					points: [0, 0, 100, 0],
 					pointerLength: 10,
 					pointerWidth: 10,
 				};
-			});
-	}
-
-	get stars() {
-		return this.items
-			.filter(item => item.type === 'star')
-			.map(item => {
-				const config = this.convertToKonvaConfig(item as ShapeItem);
+			case 'star':
 				return {
-					...config,
+					...this.convertToKonvaConfig(item as ShapeItem),
 					numPoints: 5,
 					innerRadius: 30,
 					outerRadius: 50,
-					// 별도 중심점 기준
 				};
-			});
-	}
-
-	get texts() {
-		return this.items
-			.filter(item => item.type === 'text')
-			.map(item => this.convertToKonvaTextConfig(item as TextItem));
-	}
-
-	get images() {
-		return this.items
-			.filter(item => item.type === 'image')
-			.map(item => this.convertToKonvaImageConfig(item as ImageItem))
-			.filter(config => config.image);
+			case 'text':
+				return this.convertToKonvaTextConfig(item as TextItem);
+			case 'image':
+				return this.convertToKonvaImageConfig(item as ImageItem);
+			default:
+				return this.convertToKonvaConfig(item as ShapeItem);
+		}
 	}
 
 	convertToKonvaConfig(item: ShapeItem) {
@@ -409,14 +323,14 @@ export default class CanvasStage extends Vue {
 			shadowOpacity: item.shadowOpacity,
 		};
 
-		// 도형 타입별로 좌표 시스템 조정
+		// 도형 타입별로 좌표 시스템 조정 (width/height 하드코딩 버그 수정)
 		if (item.type === 'rect') {
 			return {
 				...baseConfig,
 				x: item.x,
 				y: item.y,
-				width: 100,
-				height: 100,
+				width: item.width || 100,
+				height: item.height || 100,
 			};
 		} else if (item.type === 'circle' || item.type === 'triangle' || item.type === 'star') {
 			// 중심점 기준 도형들
@@ -546,7 +460,7 @@ export default class CanvasStage extends Vue {
 	// Konva 객체 참조를 BaseItem에 저장하는 메서드
 	updateItemRefs(): void {
 		this.items.forEach(item => {
-			const refName = `${item.type}_${item.id}`;
+			const refName = `item_${item.id}`;
 			const ref = this.$refs[refName] as any;
 			if (ref && ref[0] && ref[0].getNode) {
 				// Vue-Konva 컴포넌트에서 실제 Konva 객체 가져오기
@@ -836,13 +750,13 @@ export default class CanvasStage extends Vue {
 
 	updateTransformer() {
 		const transformer = this.$refs.transformer as any;
-		const layer = this.$refs.layer as any;
+		const contentLayer = this.$refs.contentLayer as any;
 		
-		if (!transformer || !layer) return;
+		if (!transformer || !contentLayer) return;
 
 		try {
 			// Vue 컴포넌트에서 실제 Konva 객체 가져오기
-			const konvaLayer = layer.getNode();
+			const konvaLayer = contentLayer.getNode();
 			const konvaTransformer = transformer.getNode();
 
 			if (this.selectedItemId && !this.multipleSelected) {
@@ -1212,9 +1126,9 @@ export default class CanvasStage extends Vue {
 		if (!item) return {};
 		
 		// Konva 노드에서 실제 경계 박스를 가져와서 Transformer와 동일한 크기로 설정
-		const layer = this.$refs.layer as any;
-		if (layer) {
-			const konvaLayer = layer.getNode();
+		const contentLayer = this.$refs.contentLayer as any;
+		if (contentLayer) {
+			const konvaLayer = contentLayer.getNode();
 			const node = konvaLayer.findOne(`#${itemId}`);
 			
 			if (node) {
@@ -1324,29 +1238,33 @@ export default class CanvasStage extends Vue {
 
 	// 레이어 순서 변경 메서드들
 	bringToFront(): void {
-		if (this.contextMenuItemId) {
-			this.$emit('item-layer-changed', this.contextMenuItemId, 'front');
+		if (this.contextMenuItemId || this.selectedItemId) {
+			const itemId = this.contextMenuItemId || this.selectedItemId;
+			this.$emit('item-layer-changed', itemId, 'front');
 			this.contextMenuVisible = false;
 		}
 	}
 
 	bringForward(): void {
-		if (this.contextMenuItemId) {
-			this.$emit('item-layer-changed', this.contextMenuItemId, 'forward');
+		if (this.contextMenuItemId || this.selectedItemId) {
+			const itemId = this.contextMenuItemId || this.selectedItemId;
+			this.$emit('item-layer-changed', itemId, 'forward');
 			this.contextMenuVisible = false;
 		}
 	}
 
 	sendBackward(): void {
-		if (this.contextMenuItemId) {
-			this.$emit('item-layer-changed', this.contextMenuItemId, 'backward');
+		if (this.contextMenuItemId || this.selectedItemId) {
+			const itemId = this.contextMenuItemId || this.selectedItemId;
+			this.$emit('item-layer-changed', itemId, 'backward');
 			this.contextMenuVisible = false;
 		}
 	}
 
 	sendToBack(): void {
-		if (this.contextMenuItemId) {
-			this.$emit('item-layer-changed', this.contextMenuItemId, 'back');
+		if (this.contextMenuItemId || this.selectedItemId) {
+			const itemId = this.contextMenuItemId || this.selectedItemId;
+			this.$emit('item-layer-changed', itemId, 'back');
 			this.contextMenuVisible = false;
 		}
 	}

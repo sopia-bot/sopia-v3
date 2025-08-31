@@ -36,7 +36,7 @@
 					</div>
 
 					<!-- 레이어 순서 조정 -->
-					<!-- <div class="property-section mb-4">
+					<div class="property-section mb-4">
 						<div class="property-title mb-2">레이어 순서</div>
 						
 						<div class="layer-controls">
@@ -84,7 +84,7 @@
 								맨 앞으로
 							</v-btn>
 						</div>
-					</div> -->
+					</div>
 
 					<div class="property-section mb-4">
 						<div class="property-title text-subtitle-1 mb-2">색상</div>
@@ -300,6 +300,57 @@
 						</div>
 					</div>
 
+					<!-- 레이어 순서 조정 -->
+					<div class="property-section mb-4">
+						<div class="property-title mb-2">레이어 순서</div>
+						
+						<div class="layer-controls">
+							<v-btn
+								small
+								outlined
+								class="mb-1 mr-1"
+								@click="moveToBack"
+								:disabled="!selectedItem"
+							>
+								<v-icon small left>mdi-arrange-send-to-back</v-icon>
+								맨 뒤로
+							</v-btn>
+							
+							<v-btn
+								small
+								outlined
+								class="mb-1 mr-1"
+								@click="moveBackward"
+								:disabled="!selectedItem"
+							>
+								<v-icon small left>mdi-arrange-send-backward</v-icon>
+								뒤로
+							</v-btn>
+							
+							<v-btn
+								small
+								outlined
+								class="mb-1 mr-1"
+								@click="moveForward"
+								:disabled="!selectedItem"
+							>
+								<v-icon small left>mdi-arrange-bring-forward</v-icon>
+								앞으로
+							</v-btn>
+							
+							<v-btn
+								small
+								outlined
+								class="mb-1"
+								@click="moveToFront"
+								:disabled="!selectedItem"
+							>
+								<v-icon small left>mdi-arrange-bring-to-front</v-icon>
+								맨 앞으로
+							</v-btn>
+						</div>
+					</div>
+
 					<div class="property-section mb-4">
 						<div class="property-title text-subtitle-1 mb-2">폰트</div>
 						
@@ -503,6 +554,57 @@
 								hide-details
 								@input="updateProperty('opacity', $event)"
 							></v-slider>
+						</div>
+					</div>
+
+					<!-- 레이어 순서 조정 -->
+					<div class="property-section mb-4">
+						<div class="property-title mb-2">레이어 순서</div>
+						
+						<div class="layer-controls">
+							<v-btn
+								small
+								outlined
+								class="mb-1 mr-1"
+								@click="moveToBack"
+								:disabled="!selectedItem"
+							>
+								<v-icon small left>mdi-arrange-send-to-back</v-icon>
+								맨 뒤로
+							</v-btn>
+							
+							<v-btn
+								small
+								outlined
+								class="mb-1 mr-1"
+								@click="moveBackward"
+								:disabled="!selectedItem"
+							>
+								<v-icon small left>mdi-arrange-send-backward</v-icon>
+								뒤로
+							</v-btn>
+							
+							<v-btn
+								small
+								outlined
+								class="mb-1 mr-1"
+								@click="moveForward"
+								:disabled="!selectedItem"
+							>
+								<v-icon small left>mdi-arrange-bring-forward</v-icon>
+								앞으로
+							</v-btn>
+							
+							<v-btn
+								small
+								outlined
+								class="mb-1"
+								@click="moveToFront"
+								:disabled="!selectedItem"
+							>
+								<v-icon small left>mdi-arrange-bring-to-front</v-icon>
+								맨 앞으로
+							</v-btn>
 						</div>
 					</div>
 				</div>
