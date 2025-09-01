@@ -179,6 +179,12 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 	public async created() {
 		this.setPartners();
 		this.setSponsors();
+		this.$evt.$off('app:quit');
+		this.$evt.$on('app:quit', () => {
+			if ( this.live ) {
+				this.liveLeave();
+			}
+		});
 		if ( this.live ) {
 			console.log("🚀 ~ LivePlayer ~ created ~ live:", this.live);
 			this.$sopia.liveMap.forEach((live: LiveInfo, liveId: number) => {
@@ -236,6 +242,10 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 						console.error(err);
 					}
 				});
+				if ( evt.event === LiveEvent.LIVE_CLOSED || (evt.event === LiveEvent.LIVE_UPDATE && evt.data.live.close_status === 1) ) {
+					this.liveLeave();
+					return;
+				}
 				if ( evt?.data?.live?.manager_ids ) {
 					this.managerIds = evt.data.live.manager_ids;
 				}

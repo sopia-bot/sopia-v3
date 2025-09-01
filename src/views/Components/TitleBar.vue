@@ -142,7 +142,10 @@ export default class TitleBar extends Mixins(GlobalMixins) {
 	}
 
 	public quit() {
-		ipcRenderer.send('app:quit');
+		this.$evt.$emit('app:quit');
+		setTimeout(() => {
+			ipcRenderer.send('app:quit');
+		}, 500);
 	}
 
 }
