@@ -182,7 +182,7 @@ import GlobalMixins from '@/plugins/mixins';
 import MonacoEditor from 'vue-monaco';
 import TreeView from './TreeView.vue';
 import ToolButton, { ToolButtonInterface } from './ToolButton.vue';
-import { BundlePackage } from '@/interface/Bundle';
+import { BundlePackage } from '@/interface/bundle';
 const fs = window.require('fs');
 const path = window.require('path');
 
