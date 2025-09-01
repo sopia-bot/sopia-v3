@@ -20,7 +20,7 @@
 			<live-player v-if="isLogin && currentLive.id" :live="currentLive" />
 		</div>
 		<!--<tutorials/>-->
-		<agree-live-info-dialog v-if="isLogin" :open="agreeLiveInfoDialogOpen" @update:open="agreeLiveInfoDialogOpen = $event" />
+		<!-- <agree-live-info-dialog v-if="isLogin" :open="agreeLiveInfoDialogOpen" @update:open="agreeLiveInfoDialogOpen = $event" /> -->
 	</v-app>
 </template>
 <style>
