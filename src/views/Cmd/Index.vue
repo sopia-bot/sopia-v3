@@ -47,7 +47,7 @@
 
 					<!-- Navigation Tabs -->
 					<v-card class="nav-card elevation-2 rounded-xl mb-4" color="white">
-						<v-card-text class="pa-4">
+						<v-card-text class="pa-4 d-flex justify-space-between align-center">
 							<v-chip-group
 								v-model="selectedTab"
 								active-class="indigo white--text"
@@ -66,6 +66,19 @@
 									{{ type.text }}
 								</v-chip>
 							</v-chip-group>
+							<v-btn
+								large
+								rounded
+								color="success"
+								dark
+								:loading="loading"
+								:disabled="loading"
+								@click="save"
+								class="px-8 font-weight-bold elevation-2"
+							>
+								<v-icon left>mdi-content-save</v-icon>
+								{{ $t('apply') }}
+							</v-btn>
 						</v-card-text>
 					</v-card>
 
@@ -94,19 +107,7 @@
 									</v-alert>
 								</v-col>
 								<v-col cols="12" md="4" class="text-md-right">
-									<v-btn
-										large
-										rounded
-										color="success"
-										dark
-										:loading="loading"
-										:disabled="loading"
-										@click="save"
-										class="px-8 font-weight-bold elevation-2"
-									>
-										<v-icon left>mdi-content-save</v-icon>
-										{{ $t('apply') }}
-									</v-btn>
+									
 								</v-col>
 							</v-row>
 						</v-card-text>
