@@ -14,13 +14,21 @@
 			:icon="menu.icon"
 			:openNew="menu.openNew"
 			:active-icon="menu.activeIcon"
-			:href="menu.href"></side-menu-item>
+			:isNew="menu.new"
+			:no-router="!!menu.onclick"
+			:href="menu.href"
+			@click="() => {
+				if (menu.onclick) {
+					menu.onclick();
+				}
+			}"></side-menu-item>
 	</v-navigation-drawer>
 </template>
 <script lang="ts">
 import { Component, Mixins } from 'vue-property-decorator';
 import GlobalMixins from '@/plugins/mixins';
 import SideMenuItem from './SideMenuItem.vue';
+const { ipcRenderer } = window.require('electron');
 
 @Component({
 	components: {
@@ -59,6 +67,7 @@ export default class SideMenu extends Mixins(GlobalMixins) {
 			label: this.$t('page.SpoonCapture'),
 			icon: 'mdi-palette-outline',
 			activeIcon: 'mdi-palette',
+			new: true,
 			isActive: () => {
 				return this.$route.path.startsWith('/spoon-capture');
 			},
@@ -66,10 +75,14 @@ export default class SideMenu extends Mixins(GlobalMixins) {
 		{
 			href: '/bundle/store/',
 			label: this.$t('page.store'),
-			icon: 'mdi-bookshelf',
-			activeIcon: 'mdi-book-open-variant',
+			icon: 'mdi-puzzle',
+			activeIcon: 'mdi-puzzle',
 			isActive: () => {
-				return this.$route.path.startsWith('/bundle/');
+				return false;
+			},
+			onclick: async () => {
+				console.log('open bundle manager');
+				await ipcRenderer.invoke('open-bundle-manager');
 			},
 		},
 		{

@@ -1,9 +1,10 @@
 <template>
-	<div style="height: 64px" class="sopia-sidemenu-item" :class="active ? 'active' : ''" @click="$assign(href, openNew)">
+	<div style="height: 64px" class="sopia-sidemenu-item" :class="active ? 'active' : ''" @click="handleClick">
 		<v-row class="ma-2" style="height: 100%; position: relative;" align="center">
 			<v-col cols="12" class="pa-0" align="center">
 				<v-icon>{{ active ? activeIcon : icon }}</v-icon>
 				<p v-show="!active" class="ma-0 text-caption text--secondary font-weight-bold" style="font-size: 0.6rem !important;">{{ label }}</p>
+				<v-chip v-if="isNew && !active" class="ma-0" color="green" text-color="white" x-small style="margin-top: -20px !important; font-size: 0.55rem !important;">NEW!</v-chip>
 			</v-col>
 			<div v-show="active" class="selected-sidebar"></div>
 		</v-row>
@@ -21,6 +22,17 @@ export default class SideMenuItem extends Mixins(GlobalMixins) {
 	@Prop(String) public activeIcon!: string;
 	@Prop(String) public href!: string;
 	@Prop(Boolean) public openNew!: boolean;
+	@Prop(Boolean) public isNew!: boolean;
+	@Prop(Boolean) public noRouter!: boolean;
+
+	public handleClick() {
+		if (this.noRouter) {
+			console.log('click', this.noRouter);
+			this.$emit('click');
+			return;
+		}
+		this.$assign(this.href, this.openNew);
+	}
 }
 </script>
 <style scoped>

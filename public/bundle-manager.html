@@ -253,12 +253,20 @@
                             전체 번들 보기
                         </button>
                     </div>
-                    <button onclick="openBundleFolder()" class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white rounded-md hover:bg-gray-50 transition-colors duration-200 border border-gray-200">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
-                        </svg>
-                        <span>번들 폴더 열기</span>
-                    </button>
+                    <div class="flex space-x-2">
+                        <button id="uploadBtn" onclick="uploadBundle()" class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors duration-200">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                            <span>번들 업로드</span>
+                        </button>
+                        <button onclick="openBundleFolder()" class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white rounded-md hover:bg-gray-50 transition-colors duration-200 border border-gray-200">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                            </svg>
+                            <span>번들 폴더 열기</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -270,6 +278,7 @@
                             <tr>
                                 <th class="w-1/2 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">모듈 정보</th>
                                 <th class="w-24 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                                <th class="w-24 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">주간 다운로드</th>
                                 <th class="w-32 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style="padding-right: 60px;">작업</th>
                             </tr>
                         </thead>
@@ -581,6 +590,9 @@
                             '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Official</span>' : 
                             ''}
                     </td>
+                    <td class="w-24 px-6 py-4 text-center">
+                        <span class="text-sm font-medium text-gray-900">${module.weekly_downloads ? module.weekly_downloads.toLocaleString() : '0'}</span>
+                    </td>
                     <td class="w-32 px-6 py-4 text-sm text-right">
                         ${module.isUsed ? 
                             (module.version === module.installedVersion ? 
@@ -623,10 +635,16 @@
                 (module['description'] && module.description?.toLowerCase().includes(searchTerm))
             );
 
-            // isUsed 상태에 따라 정렬 (true인 항목이 먼저 오도록)
+            // 정렬: 1차 - isUsed 상태 (설치된 것 우선), 2차 - weekly_downloads 내림차순
             filteredModules.sort((a, b) => {
-                if (a.isUsed === b.isUsed) return 0;
-                return a.isUsed ? -1 : 1;
+                // 1차 정렬: 설치된 모듈이 먼저 오도록
+                if (a.isUsed !== b.isUsed) {
+                    return a.isUsed ? -1 : 1;
+                }
+                // 2차 정렬: weekly_downloads 내림차순
+                const aDownloads = a.weekly_downloads || 0;
+                const bDownloads = b.weekly_downloads || 0;
+                return bDownloads - aDownloads;
             });
 
             renderModules(filteredModules);
@@ -691,9 +709,164 @@
                             }
                         });
                         modules = serverBundles;
+                        
+                        // 최초 진입시 설치된 번들이 없으면 all 탭으로 변경
+                        if (currentFilter === 'installed') {
+                            const installedModules = modules.filter(module => module.isUsed);
+                            if (installedModules.length === 0) {
+                                currentFilter = 'all';
+                                document.querySelectorAll('.tab-button').forEach(btn => {
+                                    if (btn.dataset.filter === 'all') {
+                                        btn.classList.remove('text-gray-600', 'bg-white', 'border-gray-200');
+                                        btn.classList.add('active', 'text-blue-600', 'bg-blue-50', 'border-blue-200');
+                                    } else {
+                                        btn.classList.remove('active', 'text-blue-600', 'bg-blue-50', 'border-blue-200');
+                                        btn.classList.add('text-gray-600', 'bg-white', 'border-gray-200');
+                                    }
+                                });
+                            }
+                        }
+                        
                         filterByTab(currentFilter);
                     }
                 });
+        }
+
+        let uploadFlag = false;
+
+        async function checkFile(src) {
+            if (!fs.existsSync(src)) {
+                console.error('Could not find file:', src);
+                showSnackbar('파일을 찾을 수 없습니다: ' + path.basename(src), 'error');
+                return false;
+            }
+            return true;
+        }
+
+        async function checkPackageProperty(pkg, key) {
+            if (!pkg[key]) {
+                console.error('Package property missing:', key);
+                showSnackbar(`package.json에 ${key} 속성이 필요합니다.`, 'error');
+                return false;
+            }
+            return true;
+        }
+
+        async function uploadBundle() {
+            if (uploadFlag) return;
+            
+            uploadFlag = true;
+            const uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.classList.add('button-loading');
+            
+            try {
+                const result = await ipcRenderer.invoke('open-dialog', {
+                    properties: ['openDirectory'],
+                    title: 'Upload Bundle',
+                    defaultPath: bundleRootPath,
+                });
+                
+                if (result.canceled) {
+                    console.log('Canceled folder select for bundle upload.');
+                    return;
+                }
+
+                const target = result.filePaths[0];
+                const packageFile = path.join(target, 'package.json');
+                
+                if (!await checkFile(packageFile)) return;
+
+                const pkg = JSON.parse(fs.readFileSync(packageFile, 'utf8'));
+                console.log('Package content:', pkg);
+
+                if (!await checkPackageProperty(pkg, 'name')) return;
+                if (!await checkPackageProperty(pkg, 'version')) return;
+
+                if (!pkg['page-version'] || pkg['page-version'] < 2) {
+                    showSnackbar('page-version이 2 이상이어야 합니다.', 'error');
+                    return;
+                }
+
+                if (!pkg.description) {
+                    pkg.description = 'No description';
+                }
+
+                const zipFile = target + '.zip';
+                if (fs.existsSync(zipFile)) {
+                    console.log('Exists zip file. remove it', zipFile);
+                    fs.unlinkSync(zipFile);
+                }
+
+                ipcRenderer.sendSync('package:create', target, zipFile);
+
+                if (!fs.existsSync(zipFile)) {
+                    console.error('Create zip file error.', zipFile);
+                    showSnackbar('ZIP 파일 생성에 실패했습니다.', 'error');
+                    return;
+                }
+
+                console.log('Create zip file success.', zipFile);
+
+                try {
+                    const formData = new FormData();
+                    formData.append('name', pkg.name);
+                    formData.append('version', pkg.version);
+                    formData.append('file', new Blob([fs.readFileSync(zipFile)], { type: 'application/zip' }), 'bundle.zip');
+
+                    const response = await fetch(BASE_URL + '/bundle/', {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': 'Bearer ' + (window.appCfg.get('auth.sopia.token') || ''),
+                        },
+                        body: formData
+                    });
+
+                    const result = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(result.msg || 'Upload failed');
+                    }
+
+                    fs.unlinkSync(zipFile);
+                    showSnackbar('번들 업로드가 완료되었습니다.', 'success');
+                    
+                    // 업로드 후 모듈 목록 새로고침
+                    reloadModules();
+                    
+                } catch (err) {
+                    console.error('Package upload error', err);
+                    showSnackbar('업로드 중 오류가 발생했습니다: ' + err.message, 'error');
+                    if (fs.existsSync(zipFile)) {
+                        fs.unlinkSync(zipFile);
+                    }
+                    return;
+                }
+
+            } catch (error) {
+                console.error('Upload bundle error:', error);
+                showSnackbar('업로드 중 오류가 발생했습니다.', 'error');
+            } finally {
+                uploadFlag = false;
+                uploadBtn.classList.remove('button-loading');
+            }
+        }
+
+        function showSnackbar(message, type = 'info') {
+            const snackbar = document.getElementById('snackbar');
+            snackbar.textContent = message;
+            snackbar.style.display = 'block';
+            
+            if (type === 'error') {
+                snackbar.style.backgroundColor = '#ef4444';
+            } else if (type === 'success') {
+                snackbar.style.backgroundColor = '#10b981';
+            } else {
+                snackbar.style.backgroundColor = '#1f2937';
+            }
+            
+            setTimeout(() => {
+                snackbar.style.display = 'none';
+            }, 3000);
         }
 
         document.addEventListener('DOMContentLoaded', () => {

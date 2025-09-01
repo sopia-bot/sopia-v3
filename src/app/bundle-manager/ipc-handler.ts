@@ -1,5 +1,5 @@
 import CfgLite from "cfg-lite";
-import { app, ipcMain, IpcMainEvent, shell } from "electron";
+import { app, ipcMain, IpcMainEvent, shell, dialog } from "electron";
 import { bun, bunx } from "../bun";
 import path from "path";
 import { createRequire } from "module";
@@ -36,6 +36,10 @@ export function registerBundleIpc() {
 			console.log('cfg-lite: Cannot open cfg file.', file, err.message);
 			evt.returnValue = false;
 		}
+	});
+
+	ipcMain.handle('open-dialog', async (event, options: any) => {
+		return await dialog.showOpenDialog(options);
 	});
 
 	ipcMain.on('isdev', (evt: IpcMainEvent) => {
