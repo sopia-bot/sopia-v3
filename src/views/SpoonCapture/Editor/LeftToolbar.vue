@@ -10,7 +10,7 @@
 			
 			<v-card-text class="pa-2">
 				<!-- 도형 도구 -->
-				<div class="tool-section mb-3">
+				<!-- <div class="tool-section mb-3">
 					<div class="tool-section-title mb-2">도형</div>
 					
 					<v-row no-gutters>
@@ -33,7 +33,7 @@
 							</v-tooltip>
 						</v-col>
 					</v-row>
-				</div>
+				</div> -->
 
 				<!-- 텍스트 도구 -->
 				<div class="tool-section mb-3">

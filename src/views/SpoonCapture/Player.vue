@@ -124,6 +124,15 @@
                                         <v-btn 
                                             icon 
                                             small
+                                            @click="captureMessage(event.idx)"
+                                            class="visibility-btn"
+                                            title="메시지 캡쳐"
+                                        >
+                                            <v-icon small>mdi-camera</v-icon>
+                                        </v-btn>
+                                        <v-btn 
+                                            icon 
+                                            small
                                             @click="toggleChatVisibility(event.idx)"
                                             class="visibility-btn"
                                         >
@@ -967,7 +976,6 @@ export default class SpoonCapturePlayer extends Mixins(GlobalMixins) {
         const container = this.$refs.chatContainerElement as HTMLElement;
         if (container) {
             this.containerHeight = container.clientHeight || 930;
-            console.log('Container height updated:', this.containerHeight, 'Width calculated:', this.chatContainerWidth);
         }
     }
 
@@ -1415,7 +1423,7 @@ export default class SpoonCapturePlayer extends Mixins(GlobalMixins) {
     async captureMessage(eventIdx: number) {
         try {
             // 메시지 엘리먼트 찾기 - 실제 메시지 내용만 캡쳐
-            const messageElement = document.querySelector(`[data-event-idx="${eventIdx}"] .chat-message`) as HTMLElement;
+            const messageElement = document.querySelector(`[data-event-idx="${eventIdx}"] .chat-message,.gift-content`) as HTMLElement;
             if (!messageElement) {
                 console.error('메시지 엘리먼트를 찾을 수 없습니다.');
                 return;

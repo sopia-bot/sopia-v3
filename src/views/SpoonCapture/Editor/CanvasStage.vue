@@ -1000,7 +1000,12 @@ export default class CanvasStage extends Vue {
 			}
 			
 			// 기존 Layer의 모든 객체를 복사 (경계선 제외)
-			const originalLayer = this.$refs.layer as any;
+			const originalLayer = this.$refs.contentLayer as any;
+			console.log('originalLayer:', originalLayer);
+			if (!originalLayer) {
+				console.error('contentLayer ref not found');
+				return;
+			}
 			const konvaLayer = originalLayer.getNode();
 			
 			konvaLayer.children.forEach((child: any) => {

@@ -26,7 +26,7 @@
 						<v-icon left>mdi-format-list-bulleted</v-icon>
 						방송 목록
 						<v-spacer></v-spacer>
-						<v-btn @click="loadLiveList" :loading="loading" color="primary">
+						<v-btn @click="() => loadLiveList(true)" :loading="loading" color="primary">
 							<v-icon left>mdi-refresh</v-icon>
 							새로고침
 						</v-btn>
@@ -126,6 +126,22 @@
 								</v-card>
 							</v-col>
 						</v-row>
+						
+						<!-- 더보기 로딩 상태 -->
+						<div v-if="isLoadingMore" class="text-center py-4">
+							<v-progress-circular
+								indeterminate
+								color="primary"
+								size="40"
+							></v-progress-circular>
+							<div class="mt-2 text--secondary">더 많은 방송을 불러오는 중...</div>
+						</div>
+						
+						<!-- 더 이상 로드할 데이터가 없을 때 -->
+						<div v-else-if="!hasMore && liveList.length > 0" class="text-center py-4">
+							<v-icon color="grey">mdi-check-circle</v-icon>
+							<div class="mt-2 text--secondary">모든 방송을 불러왔습니다.</div>
+						</div>
 					</v-card-text>
 				</v-col>
 			</v-row>
@@ -172,35 +188,95 @@ export default class SpoonCapture extends Mixins(GlobalMixins) {
 	private currentChats: ChatMessage[] = [];
 	private playTimer: NodeJS.Timeout | null = null;
 	private allChats: ChatMessage[] = [];
+	
+	// 페이지네이션 관련
+	private currentPage = 0;
+	private pageSize = 30;
+	private hasMore = true;
+	private isLoadingMore = false;
+	private allLiveFiles: string[] = [];
 
 	async mounted() {
 		await this.loadLiveList();
+		this.setupScrollListener();
+	}
+	
+	setupScrollListener() {
+		const container = document.querySelector('.v-main');
+		if (container) {
+			container.addEventListener('scroll', this.handleScroll);
+		}
 	}
 
 	beforeDestroy() {
 		if (this.playTimer) {
 			clearInterval(this.playTimer);
 		}
+		// 스크롤 이벤트 리스너 제거
+		const container = document.querySelector('.v-main');
+		if (container) {
+			container.removeEventListener('scroll', this.handleScroll);
+		}
+	}
+	
+	handleScroll = () => {
+		if (this.isLoadingMore || !this.hasMore) return;
+		
+		const container = document.querySelector('.v-main');
+		if (!container) return;
+		
+		// 스크롤이 끝에서 200px 이내에 도달했을 때 더 로드
+		const scrollTop = container.scrollTop;
+		const scrollHeight = container.scrollHeight;
+		const clientHeight = container.clientHeight;
+		
+		if (scrollTop + clientHeight >= scrollHeight - 200) {
+			this.loadMoreLives();
+		}
+	}
+	
+	async loadMoreLives() {
+		if (this.isLoadingMore || !this.hasMore) return;
+		
+		await this.loadLiveList(false);
 	}
 
-	async loadLiveList() {
-		this.loading = true;
+	async loadLiveList(reset = true) {
+		if (reset) {
+			this.loading = true;
+			this.currentPage = 0;
+			this.liveList = [];
+			this.hasMore = true;
+			this.allLiveFiles = [];
+		} else {
+			this.isLoadingMore = true;
+		}
+		
 		try {
 			const historyPath = this.$path('userData', 'historydb');
 			
 			if (!fs.existsSync(historyPath)) {
 				console.log('History directory does not exist:', historyPath);
 				this.liveList = [];
+				this.hasMore = false;
 				return;
 			}
 
-			const files = fs.readdirSync(historyPath);
-			console.log('Files in history directory:', files);
-			const dbFiles = files.filter((file: string) => file.endsWith('.db'));
+			// 첫 번째 로딩일 때만 파일 목록 가져오기
+			if (reset) {
+				const files = fs.readdirSync(historyPath);
+				console.log('Files in history directory:', files);
+				this.allLiveFiles = files.filter((file: string) => file.endsWith('.db'));
+			}
 			
-			this.liveList = [];
+			// 현재 페이지에 해당하는 파일들만 처리
+			const startIndex = this.currentPage * this.pageSize;
+			const endIndex = startIndex + this.pageSize;
+			const currentPageFiles = this.allLiveFiles.slice(startIndex, endIndex);
 			
-			for (const dbFile of dbFiles) {
+			const newLiveList: LiveInfo[] = [];
+			
+			for (const dbFile of currentPageFiles) {
 				try {
 					const liveId = parseInt(dbFile.replace('.db', ''));
 					const dbPath = path.join(historyPath, dbFile);
@@ -222,7 +298,7 @@ export default class SpoonCapture extends Mixins(GlobalMixins) {
 						const data = JSON.parse(row.data_json);
 						if (data.data && data.data.live) {
 							const live = data.data.live;
-							this.liveList.push({
+							newLiveList.push({
 								liveId: liveId,
 								title: live.title || '제목 없음',
 								imgUrl: live.img_url || '',
@@ -240,7 +316,14 @@ export default class SpoonCapture extends Mixins(GlobalMixins) {
 			}
 			
 			// 생성일 기준으로 정렬 (최신순)
-			this.liveList.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+			newLiveList.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+			
+			// 기존 목록에 추가
+			this.liveList.push(...newLiveList);
+			
+			// 다음 페이지 설정
+			this.currentPage++;
+			this.hasMore = endIndex < this.allLiveFiles.length;
 			
 		} catch (error) {
 			console.error('Error loading live list:', error);
@@ -250,6 +333,7 @@ export default class SpoonCapture extends Mixins(GlobalMixins) {
 			});
 		} finally {
 			this.loading = false;
+			this.isLoadingMore = false;
 		}
 	}
 
