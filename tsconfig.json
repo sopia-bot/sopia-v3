@@ -7,6 +7,7 @@
 		"importHelpers": true,
 		"moduleResolution": "node",
 		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
 		"allowSyntheticDefaultImports": true,
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
@@ -17,7 +18,9 @@
 		"types": [
 			"webpack-env",
 		  "vuetify",
-		  "vue-sweetalert2"
+		  "vue-sweetalert2",
+		  "node",
+		  "dom-mediacapture-record"
 		],
 		"lib": [
 			"esnext",

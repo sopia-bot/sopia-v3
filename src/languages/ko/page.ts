@@ -10,7 +10,7 @@ export default {
 	Bundles: '설치된 번들 폴더',
 	Sopia: '개인 코드 폴더',
 	Bundle: '번들',
-	store: '스토어',
+	store: '확장앱',
 	github: '깃허브',
 	guide: '사용법',
 	SpoonCapture: '스푼 캡처',
