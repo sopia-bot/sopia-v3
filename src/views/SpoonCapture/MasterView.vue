@@ -252,7 +252,7 @@ export default class MasterView extends Mixins(GlobalMixins) {
 // 메인 분할 컨테이너
 .split-container {
 	position: relative;
-	height: calc(100vh - 48px); // 툴바 높이 제외
+	height: calc(100vh - var(--titlebar-height)); // 툴바 높이 제외
 	padding: 16px;
 	box-sizing: border-box;
 }

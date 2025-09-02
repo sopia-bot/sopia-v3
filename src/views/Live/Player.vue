@@ -143,9 +143,9 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 
 	public get scrollHeight() {
 		if ( this.footMenuOpen ) {
-			return 'calc(100% - 358px)';
+			return 'calc(100% - 390px)';
 		}
-		return 'calc(100% - 138px)';
+		return 'calc(100% - 200px)';
 	}
 
 	public get isManager() {
@@ -467,7 +467,7 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 @media only screen and (max-width: 890px) {
 	.full-screen {
 		position: fixed !important;
-		top: 48px;
+		top: var(--titlebar-height);
 	}
 }
 </style>

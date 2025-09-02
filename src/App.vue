@@ -26,7 +26,7 @@
 <style>
 @import './assets/suit/SUIT-Variable.css';
 .h-100v {
-	height: 100vh;
+	height: calc(100vh - var(--titlebar-height));
 }
 html, body {
 	overflow: hidden;
@@ -258,5 +258,9 @@ export default class App extends Mixins(GlobalMixins) {
 }
 .v-application {
    font-family: JoyPixels, sans-serif !important;
+}
+:root {
+	--sidebar-width: 80px;
+	--titlebar-height: 77px;
 }
 </style>

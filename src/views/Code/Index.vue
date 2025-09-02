@@ -72,7 +72,7 @@
 					</v-toolbar-items>
 				</v-toolbar>
 
-				<div style="height: calc(100vh - 48px - 64px)">
+				<div style="height: calc(100vh - var(--titlebar-height) - 64px)">
 					<webview
 						ref="webview"
 						v-if="webviewRenderer"
@@ -97,7 +97,7 @@
 						<!-- E:Toolbar -->
 					</v-col>
 				</v-row>
-				<v-row class="ma-0" style="height: calc(100vh - 61px); overflow: auto;">
+				<v-row class="ma-0" style="height: calc(100vh - var(--titlebar-height)); overflow: auto;">
 					<!-- S:Folder Tree -->
 					<tree-view
 						ref="treeView"
@@ -715,7 +715,7 @@ export default class Code extends Mixins(GlobalMixins) {
 <style scope>
 .editor {
 	width: 100%;
-	height: 100%;
+	height: calc(100% - 48px);
 }
 .editor > .monaco-editor {
 	margin: 0;
@@ -730,7 +730,7 @@ export default class Code extends Mixins(GlobalMixins) {
 	font-family: Consolas, "Courier New", monospace;
 }
 .custom-dialog.v-dialog {
-	margin-top: 48px;
-	height: calc(100% - 48px);
+	margin-top: calc(var(--titlebar-height));
+	height: calc(100% - var(--titlebar-height));
 }
 </style>

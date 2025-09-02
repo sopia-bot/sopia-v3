@@ -5,8 +5,7 @@
  * Copyright (c) Raravel. Licensed under the MIT License.
 -->
 <template>
-	<v-main class="modern-cmd-layout" style="overflow-y: auto; max-height: calc(100vh - 48px);">
-		<v-container fluid class="pa-0">
+	<v-main class="modern-cmd-layout" style="overflow-y: auto; max-height: calc(100vh - var(--titlebar-height));">
 			<v-row justify="center" class="ma-0">
 				<v-col cols="12" md="10" lg="8" xl="6" class="pa-4">
 					<!-- Header Card -->
@@ -114,8 +113,6 @@
 					</v-card>
 				</v-col>
 			</v-row>
-			<div style="height: 50px;"></div>
-		</v-container>
 	</v-main>
 </template>
 <script lang="ts">
@@ -226,7 +223,6 @@ export default class Cmd extends Mixins(GlobalMixins) {
 <style scoped>
 .modern-cmd-layout {
 	background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-	min-height: 100vh;
 }
 
 .header-card {

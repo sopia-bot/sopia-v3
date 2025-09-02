@@ -1,7 +1,7 @@
 <template>
 	<v-main class="custom white" style="height: 100vh;">
-		<vue-scroll @handle-scroll="scrollEvent" style="max-height: calc(100vh - 48px);">
-			<div style="max-height: calc(100vh - 48px);">
+		<vue-scroll @handle-scroll="scrollEvent" style="max-height: calc(100vh - var(--titlebar-height));">
+			<div style="max-height: calc(100vh - var(--titlebar-height));">
 				<v-row class="ma-0 mb-12" align="center" v-if="livePartner.length">
 					<v-col cols="12" class="pa-0">
 						<v-row

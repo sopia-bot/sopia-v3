@@ -6,7 +6,7 @@
 -->
 <template>
 	<div>
-		<div v-if="version === 2" style="padding-left: 80px; height: calc(100vh - 48px);">
+		<div v-if="version === 2" style="padding-left: 80px; height: calc(100vh - var(--titlebar-height));">
 			<webview
 				ref="webview"
 				nodeintegration

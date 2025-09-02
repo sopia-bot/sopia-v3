@@ -6,7 +6,7 @@
 -->
 <template>
 	<v-main class="custom grey lighten-4" style="height: 100vh;">
-		<vue-scroll @handle-scroll="scrollEvent" style="max-height: calc(100vh - 48px);">
+		<vue-scroll @handle-scroll="scrollEvent" style="max-height: calc(100vh - var(--titlebar-height));">
 			<v-card v-for="(note, i) in releaseNotes" :key="note.node_id" class="ma-12">
 				<v-card-text>
 					<h1>{{ note.name }} <v-chip small outlined v-if="i == 0" class="ml-2" color="indigo">Latest</v-chip></h1>

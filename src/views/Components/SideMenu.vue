@@ -5,7 +5,7 @@
 		mini-variant
 		mini-variant-width="80"
 		class="grey lighten-4"
-		style="margin-top: 48px; height: calc(100vh - 48px);">
+		style="margin-top: 48px; height: calc(100vh - 48px); z-index: 10;">
 		<side-menu-item
 			v-for="(menu) of menuItems"
 			:key="menu.href"
