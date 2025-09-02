@@ -1,5 +1,5 @@
 <template>
-	<v-main class="custom" style="max-height: calc(100vh - 48px); min-height: calc(100vh - 48px); overflow-y: auto;">
+	<v-main class="custom" style="max-height: calc(100vh - var(--titlebar-height)); min-height: calc(100vh - var(--titlebar-height)); overflow-y: auto;">
 		<v-container fluid>
 			<!-- 헤더 -->
 			<v-row class="mb-4">
@@ -266,7 +266,12 @@ export default class SpoonCapture extends Mixins(GlobalMixins) {
 			if (reset) {
 				const files = fs.readdirSync(historyPath);
 				console.log('Files in history directory:', files);
-				this.allLiveFiles = files.filter((file: string) => file.endsWith('.db'));
+				this.allLiveFiles = files.filter((file: string) => file.endsWith('.db'))
+					.sort((a: string, b: string) => {
+						const aNum = parseInt(a.replace('.db', ''));
+						const bNum = parseInt(b.replace('.db', ''));
+						return bNum - aNum;
+					});
 			}
 			
 			// 현재 페이지에 해당하는 파일들만 처리
