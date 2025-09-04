@@ -281,9 +281,6 @@ export default class TitleBar extends Mixins(GlobalMixins) {
 }
 
 /* 크롬 스타일 탭 */
-.compact-nav {
-	background-color: var(--v-blue-grey-darken2) !important;
-}
 
 .chrome-tabs {
 	display: flex;
@@ -296,7 +293,7 @@ export default class TitleBar extends Mixins(GlobalMixins) {
 	height: 24px;
 	min-width: 80px;
 	max-width: 120px;
-	background: rgba(255, 255, 255, 0.1);
+	background: rgba(24, 7, 180, 0.5);
 	border-radius: 3px;
 	margin-right: 3px;
 	cursor: pointer;
@@ -308,20 +305,21 @@ export default class TitleBar extends Mixins(GlobalMixins) {
 }
 
 .chrome-tab:hover {
-	background: rgba(255, 255, 255, 0.15);
+	background: rgba(48, 0, 221, 0.7);
 	border-color: rgba(255, 255, 255, 0.3);
 }
 
 .chrome-tab.active {
-	background: rgba(255, 255, 255, 0.2);
+	background: #303F9F;
 	/* border-color: #2196F3; */
-	border-bottom: 2px solid #2196F3;
+	color: white;
+	border-bottom: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 .chrome-tab-text {
 	font-size: 0.7rem;
 	font-weight: 400;
-	color: rgba(0, 0, 0, 0.7);
+	color: white;
 	text-overflow: ellipsis;
 	overflow: hidden;
 	white-space: nowrap;
@@ -329,7 +327,7 @@ export default class TitleBar extends Mixins(GlobalMixins) {
 }
 
 .chrome-tab.active .chrome-tab-text {
-	color: rgba(0, 0, 0, 0.9);
+	color: rgba(255, 255, 255, 0.801);
 	font-weight: 500;
 }
 
