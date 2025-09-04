@@ -113,7 +113,25 @@
 									</v-card-text>
 									
 									<v-card-actions>
+										<v-btn
+											color="error"
+											text
+											small
+											@click.stop="deleteLive(live)"
+										>
+											<v-icon left small>mdi-delete</v-icon>
+											삭제
+										</v-btn>
 										<v-spacer></v-spacer>
+										<!-- <v-btn
+											color="success"
+											text
+											small
+											@click.stop="uploadLive(live)"
+										>
+											<v-icon left small>mdi-upload</v-icon>
+											업로드
+										</v-btn> -->
 										<v-btn
 											color="primary"
 											text
@@ -146,6 +164,59 @@
 				</v-col>
 			</v-row>
 		</v-container>
+
+		<!-- 업로드 모달 -->
+		<v-dialog v-model="uploadDialog" max-width="600px" persistent>
+			<v-card>
+				<v-card-title class="text-h5">
+					<v-icon left>mdi-upload</v-icon>
+					방송 업로드
+				</v-card-title>
+				<v-divider></v-divider>
+				<v-card-text class="pt-4">
+					<div v-if="selectedUploadLive">
+						<div class="mb-4">
+							<v-img
+								:src="selectedUploadLive.imgUrl"
+								:alt="selectedUploadLive.title"
+								height="120"
+								class="rounded"
+							>
+								<template v-slot:placeholder>
+									<v-row class="fill-height ma-0" align="center" justify="center">
+										<v-icon large color="grey lighten-1">mdi-video</v-icon>
+									</v-row>
+								</template>
+							</v-img>
+						</div>
+						<div class="text-h6 mb-2">{{ selectedUploadLive.title }}</div>
+						<div class="text--secondary mb-2">
+							<v-icon small class="mr-1">mdi-calendar</v-icon>
+							{{ formatDate(selectedUploadLive.created) }}
+						</div>
+						<div class="text--secondary mb-4">
+							<v-icon small class="mr-1">mdi-identifier</v-icon>
+							Live ID: {{ selectedUploadLive.liveId }}
+						</div>
+						
+						<v-alert type="info" outlined class="mb-4">
+							<v-icon slot="prepend">mdi-information</v-icon>
+							업로드 기능은 현재 개발 중입니다. 추후 구현 예정입니다.
+						</v-alert>
+					</div>
+				</v-card-text>
+				<v-divider></v-divider>
+				<v-card-actions>
+					<v-spacer></v-spacer>
+					<v-btn color="grey darken-1" text @click="closeUploadDialog">
+						취소
+					</v-btn>
+					<v-btn color="success" text @click="processUploadLive(selectedUploadLive)">
+						업로드
+					</v-btn>
+				</v-card-actions>
+			</v-card>
+		</v-dialog>
 	</v-main>
 </template>
 <script lang="ts">
@@ -154,6 +225,17 @@ import GlobalMixins from '@/plugins/mixins';
 const fs = window.require('fs');
 const path = window.require('path');
 const Database = window.require('better-sqlite3');
+const { ipcRenderer } = window.require('electron');
+const { spawn } = window.require('child_process');
+
+function getPath(file: string) {
+	const rootPath = ipcRenderer.sendSync('root-path');
+	if ( ipcRenderer.sendSync('is-packaged') ) {
+		return path.join(path.dirname(rootPath), `.ffmpeg/${file}.exe`);
+	} else {
+		return path.join(rootPath, `ffmpeg-binary/${file}.exe`);
+	}
+}
 
 interface LiveInfo {
 	liveId: number;
@@ -195,6 +277,10 @@ export default class SpoonCapture extends Mixins(GlobalMixins) {
 	private hasMore = true;
 	private isLoadingMore = false;
 	private allLiveFiles: string[] = [];
+	
+	// 업로드 모달 관련
+	private uploadDialog = false;
+	private selectedUploadLive: LiveInfo | null = null;
 
 	async mounted() {
 		await this.loadLiveList();
@@ -489,6 +575,316 @@ export default class SpoonCapture extends Mixins(GlobalMixins) {
 		} catch {
 			return dateString;
 		}
+	}
+
+	// 삭제 기능
+	async deleteLive(live: LiveInfo) {
+		try {
+			const result = await this.$swal({
+				title: '방송 기록 삭제',
+				html: `
+					<div style="text-align: left;">
+						<p><strong>${live.title}</strong></p>
+						<p>생성일: ${this.formatDate(live.created)}</p>
+						<p>Live ID: ${live.liveId}</p>
+						<br>
+						<p style="color: #e74c3c;">이 작업은 되돌릴 수 없습니다.</p>
+					</div>
+				`,
+				icon: 'warning',
+				showCancelButton: true,
+				confirmButtonColor: '#e74c3c',
+				cancelButtonColor: '#6c757d',
+				confirmButtonText: '삭제',
+				cancelButtonText: '취소',
+				reverseButtons: true
+			});
+
+			if (result.isConfirmed) {
+				const historyPath = this.$path('userData', 'historydb');
+				
+				// 1. {live.id}.db 파일 삭제
+				const dbFilePath = path.join(historyPath, `${live.liveId}.db`);
+				if (fs.existsSync(dbFilePath)) {
+					fs.unlinkSync(dbFilePath);
+				}
+				
+				// 2. {live.id} 폴더 삭제 (있는 경우)
+				const folderPath = path.join(historyPath, live.liveId.toString());
+				if (fs.existsSync(folderPath)) {
+					// 폴더 내 모든 파일 삭제
+					const files = fs.readdirSync(folderPath);
+					for (const file of files) {
+						const filePath = path.join(folderPath, file);
+						const stat = fs.statSync(filePath);
+						if (stat.isDirectory()) {
+							// 하위 폴더가 있는 경우 재귀적으로 삭제
+							this.deleteFolderRecursive(filePath);
+						} else {
+							fs.unlinkSync(filePath);
+						}
+					}
+					fs.rmdirSync(folderPath);
+				}
+
+				// 목록에서 제거
+				const index = this.liveList.findIndex(item => item.liveId === live.liveId);
+				if (index !== -1) {
+					this.liveList.splice(index, 1);
+				}
+
+				this.$noti({
+					type: 'success',
+					content: '방송 기록이 삭제되었습니다.'
+				});
+			}
+		} catch (error) {
+			console.error('Error deleting live:', error);
+			this.$noti({
+				type: 'error',
+				content: '방송 기록 삭제 중 오류가 발생했습니다.'
+			});
+		}
+	}
+
+	// 폴더 재귀적 삭제 헬퍼 함수
+	private deleteFolderRecursive(folderPath: string) {
+		if (fs.existsSync(folderPath)) {
+			const files = fs.readdirSync(folderPath);
+			for (const file of files) {
+				const filePath = path.join(folderPath, file);
+				const stat = fs.statSync(filePath);
+				if (stat.isDirectory()) {
+					this.deleteFolderRecursive(filePath);
+				} else {
+					fs.unlinkSync(filePath);
+				}
+			}
+			fs.rmdirSync(folderPath);
+		}
+	}
+
+	// 업로드 기능
+	uploadLive(live: LiveInfo) {
+		this.selectedUploadLive = live;
+		this.uploadDialog = true;
+	}
+
+	// 업로드 모달 닫기
+	closeUploadDialog() {
+		this.uploadDialog = false;
+		this.selectedUploadLive = null;
+	}
+
+	async processUploadLive(live: LiveInfo|null) {
+		if ( !live ) return;
+
+		const ffmpegPath = getPath('ffmpeg');
+		const ffprobePath = getPath('ffprobe');
+
+		// sqlite 에서 마지막 live_update 데이터 가져오기
+		const db = new Database(live.dbPath);
+		const lastSavedDate = db.prepare(`SELECT
+			saved_date
+		FROM live_history_tbl
+		ORDER BY saved_date DESC
+		LIMIT 1
+		`).get();
+		db.close();
+
+		if ( !lastSavedDate || !lastSavedDate.saved_date ) return;
+
+		// meta.json 을 확인하고, 비어있는 공백 파일 생성
+		const metaFile = path.join(path.dirname(live.dbPath), live.liveId.toString(), 'meta.json');
+		if (!fs.existsSync(metaFile)) {
+			fs.writeFileSync(metaFile, '[]', 'utf-8');
+		}
+
+		const meta = JSON.parse(fs.readFileSync(metaFile, 'utf-8')) as { currentTime: number, file: string }[];
+
+		const liveMeta: { file: string, duration: number, isGap: boolean }[] = [];
+		let totalLiveTime = 0;
+		
+		// 시작 기준 시간 (live.created)
+		const liveStartTime = new Date(live.created).getTime();
+		let currentReferenceTime = liveStartTime;
+
+		for (const item of meta) {
+			const itemStartTime = item.currentTime;
+			const timeDiff = (itemStartTime - currentReferenceTime) / 1000; // 초 단위
+
+			console.log('item', item.file);
+			console.log('itemStartTime', itemStartTime);
+			console.log('currentReferenceTime', currentReferenceTime);
+			console.log('timeDiff', timeDiff);
+
+			// 시간 차이가 있으면 무음 파일 생성
+			if (timeDiff > 0) {
+				const gapDurationSeconds = Math.floor(timeDiff);
+				const gapFilePath = await this.createSilentAudio(gapDurationSeconds, live.liveId);
+				
+				liveMeta.push({
+					file: gapFilePath,
+					duration: gapDurationSeconds,
+					isGap: true
+				});
+				
+				totalLiveTime += gapDurationSeconds;
+			}
+
+			// 현재 녹음 파일의 길이를 ffprobe로 측정
+			const recordingFilePath = path.join(path.dirname(live.dbPath), live.liveId.toString(), item.file);
+			if (fs.existsSync(recordingFilePath)) {
+				const fileDuration = await this.getAudioDuration(recordingFilePath, ffprobePath);
+				
+				liveMeta.push({
+					file: recordingFilePath,
+					duration: fileDuration,
+					isGap: false
+				});
+				
+				totalLiveTime += fileDuration;
+				
+				// 기준 시간 업데이트: currentTime + 파일 길이
+				currentReferenceTime = itemStartTime + (fileDuration * 1000);
+			}
+		}
+
+		// 전체 방송 시간 계산
+		const savedDate = new Date(lastSavedDate.saved_date);
+		// KST
+		savedDate.setHours(savedDate.getHours() + 9);
+		const totalBroadcastTime = (savedDate.getTime() - liveStartTime) / 1000;
+		
+		// 남은 시간이 있다면 마지막에 무음 파일 추가
+		const remainingTime = totalBroadcastTime - totalLiveTime;
+		console.log('Live Start Time:', liveStartTime);
+		console.log('Total Broadcast Time:', totalBroadcastTime, 'seconds');
+		console.log('Total Live Time:', totalLiveTime, 'seconds');
+		console.log('Remaining Time:', remainingTime, 'seconds');
+		if (remainingTime > 0) {
+			const finalGapFilePath = await this.createSilentAudio(Math.floor(remainingTime), live.liveId);
+			
+			liveMeta.push({
+				file: finalGapFilePath,
+				duration: Math.floor(remainingTime),
+				isGap: true
+			});
+		}
+
+		console.log('Live Meta:', liveMeta);
+		console.log('Total Live Time:', totalLiveTime, 'seconds');
+		console.log('Total Broadcast Time:', totalBroadcastTime, 'seconds');
+
+
+		// fs.writeFileSync(path.join(path.dirname(live.dbPath), live.liveId.toString(), 'meta.json'), JSON.stringify(liveMeta, null, 2), 'utf-8');
+		
+		const audioPath = path.join(path.dirname(live.dbPath), live.liveId.toString(), `${live.liveId}.m4a`);
+
+		const process = spawn(getPath('ffmpeg'), [
+			...liveMeta.flatMap(item => ['-i', item.file]),
+			'-ar', '48000',
+			'-ac', '2',
+			'-filter_complex', '[0:a][1:a][2:a][3:a][4:a][5:a]concat=n=6:v=0:a=1,aresample=async=1:first_pts=0',
+			'-c:a', 'libopus',
+			'-b:a', '64k',
+			'-application', 'audio',
+			'-f', 'mp4',
+			audioPath
+		]);
+
+		process.stdout.on('data', (data) => {
+			// console.log(`FFmpeg stdout: ${data}`);
+		});
+
+		process.stderr.on('data', (data) => {
+			// console.log(`FFmpeg stderr: ${data}`);
+		});
+
+		console.log('Merging audio...', [
+			...liveMeta.flatMap(item => ['-i', item.file]),
+			'-ar', '48000',
+			'-ac', '2',
+			'-filter_complex', '[0:a][1:a][2:a][3:a][4:a][5:a]concat=n=6:v=0:a=1,aresample=async=1:first_pts=0',
+			'-c:a', 'libopus',
+			'-b:a', '64k',
+			'-application', 'audio',
+			'-f', 'mp4',
+			audioPath
+		]);
+
+		process.on('close', (code) => {
+			if (code === 0) {
+				console.log('Audio merged successfully');
+			} else {
+				console.error(`FFmpeg process exited with code ${code}`);
+			}
+		});
+	}
+
+	// 무음 오디오 파일 생성
+	private async createSilentAudio(durationSeconds: number, liveId: number): Promise<string> {
+		return new Promise((resolve, reject) => {
+			const ffmpegPath = getPath('ffmpeg');
+			const outputDir = path.join(path.dirname(this.selectedUploadLive!.dbPath), liveId.toString());
+			const outputPath = path.join(outputDir, `silence_${Date.now()}_${durationSeconds}s.m4a`);
+
+			const args = [
+				'-f', 'lavfi',
+				'-i', `anullsrc=channel_layout=mono:sample_rate=48000`,
+				'-t', durationSeconds.toString(),
+				'-c:a', 'aac',
+				'-b:a', '64k',
+				'-y',
+				outputPath
+			];
+
+			const process = spawn(ffmpegPath, args);
+			
+			process.on('close', (code) => {
+				if (code === 0) {
+					resolve(outputPath);
+				} else {
+					reject(new Error(`FFmpeg process exited with code ${code}`));
+				}
+			});
+
+			process.on('error', (error) => {
+				reject(error);
+			});
+		});
+	}
+
+	// 오디오 파일 길이 측정
+	private async getAudioDuration(filePath: string, ffprobePath: string): Promise<number> {
+		return new Promise((resolve, reject) => {
+			const args = [
+				'-v', 'quiet',
+				'-show_entries', 'format=duration',
+				'-of', 'csv=p=0',
+				filePath
+			];
+
+			const process = spawn(ffprobePath, args);
+			let output = '';
+
+			process.stdout.on('data', (data) => {
+				output += data.toString();
+			});
+
+			process.on('close', (code) => {
+				if (code === 0) {
+					const duration = parseFloat(output.trim());
+					resolve(isNaN(duration) ? 0 : duration);
+				} else {
+					reject(new Error(`FFprobe process exited with code ${code}`));
+				}
+			});
+
+			process.on('error', (error) => {
+				reject(error);
+			});
+		});
 	}
 }
 </script>

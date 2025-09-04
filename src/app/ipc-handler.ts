@@ -86,6 +86,18 @@ export function registerIpcHandler() {
 		evt.returnValue = app.getPath(type as any);
 	});
 
+	ipcMain.on('is-packaged', (evt: IpcMainEvent) => {
+		evt.returnValue = app.isPackaged;
+	});
+
+	ipcMain.on('root-path', (evt: IpcMainEvent) => {
+		if ( app.isPackaged ) {
+			evt.returnValue = path.dirname(process.execPath);
+		} else {
+			evt.returnValue = process.cwd();
+		}
+	});
+
 	const buildTime = (time: Date): string => {
 		const yyyy = time.getFullYear();
 		const mm = (time.getMonth() + 1).toString().padStart(2, '0');
