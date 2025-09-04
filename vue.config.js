@@ -43,6 +43,7 @@ module.exports = {
 					"node_modules/file-uri-to-path/**/*",
 					"node_modules/rimraf/**/*",
 					"node_modules/@prisma/client/**/*",
+					"node_modules/json-stringify-safe/**/*",
 				],
 				extraFiles: [
 					{
@@ -74,8 +75,16 @@ module.exports = {
 						to: "resources/node_modules/@prisma/client"
 					},
 					{
+						from: "node_modules/json-stringify-safe/",
+						to: "resources/node_modules/json-stringify-safe"
+					},
+					{
 						from: 'bun-binary',
 						to: '.bun',
+					},
+					{
+						from: 'ffmpeg-binary',
+						to: '.ffmpeg',
 					},
 				],
 			},
