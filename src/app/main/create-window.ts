@@ -194,9 +194,35 @@ export default function createMainWindow() {
             win.loadURL('app://./index.html');
         }
 
-        // 윈도우 이동 이벤트 감지
+        // 윈도우 이동 이벤트 감지 (드래그 중)
+        let moveTimeout: NodeJS.Timeout | null = null;
         win.on('move', () => {
             if (win) {
+                // 기존 타이머 취소
+                if (moveTimeout) {
+                    clearTimeout(moveTimeout);
+                }
+                
+                // 이동 중임을 알림
+                win.webContents.send('window-moving');
+                
+                // 300ms 후에 이동 완료로 간주
+                moveTimeout = setTimeout(() => {
+                    if (win) {
+                        win.webContents.send('window-moved');
+                    }
+                }, 300);
+            }
+        });
+
+        // 윈도우 이동 완료 이벤트 (드래그 종료)
+        win.on('moved', () => {
+            if (win) {
+                // 타이머가 있다면 취소하고 즉시 저장
+                if (moveTimeout) {
+                    clearTimeout(moveTimeout);
+                    moveTimeout = null;
+                }
                 win.webContents.send('window-moved');
             }
         });

@@ -179,8 +179,20 @@ export default class App extends Mixins(GlobalMixins) {
 		
 		// Electron IPC로 윈도우 이동 이벤트 수신
 		const { ipcRenderer } = window.require('electron');
-		ipcRenderer.on('window-moved', () => {
+		
+		// 윈도우 이동 중 (연속 호출)
+		ipcRenderer.on('window-moving', () => {
 			this.onMove();
+		});
+		
+		// 윈도우 이동 완료 (드래그 종료)
+		ipcRenderer.on('window-moved', () => {
+			// 이동이 완료되었으므로 즉시 저장
+			if (this.moveTimeout) {
+				clearTimeout(this.moveTimeout);
+			}
+			this.saveWindowSize();
+			this.isMoving = false;
 		});
 
 		window.logout = () => {
