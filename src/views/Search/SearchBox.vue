@@ -14,7 +14,7 @@
 			
 		<v-card
 			:elevation="8"
-			style="position: fixed;"
+			style="position: fixed; z-index: 999;"
 			:style="boxStyle">
 			<v-list>
 				<v-list-item v-for="user in users" :key="user.tag">
@@ -27,7 +27,10 @@
 						offset-x="25"
 						offset-y="17">
 						<v-list-item-avatar
-							@click="$evt.$emit('live-join', user.current_live_id)"
+							@click="() => {
+								$evt.$emit('live-join', user.current_live_id);
+								outerClick();
+							}"
 							style="cursor: pointer;"
 							class="ml-0 grey lighten-2">
 							<v-img :src="user.profile_url"></v-img>
@@ -38,8 +41,8 @@
 					</v-list-item-avatar>
 
 					<v-list-item-content>
-						<v-list-item-title>
-							<router-link class="blue-grey--text" :to="`/user/${user.id}/`" @click="outerClick">{{ user.nickname }}</router-link>
+						<v-list-item-title @click="outerClick">
+							<router-link class="blue-grey--text" :to="`/user/${user.id}/`">{{ user.nickname }}</router-link>
 						</v-list-item-title>
 						<v-list-item-subtitle>@{{ user.tag }}</v-list-item-subtitle>
 					</v-list-item-content>
@@ -124,7 +127,7 @@ export default class PreviewList extends Mixins(GlobalMixins) {
 	}
 
 	public getCardTop() {
-		return (this.getBoxRect()?.top + this.getBoxRect()?.height) + 10 || 0;
+		return (this.getBoxRect()?.top + this.getBoxRect()?.height) + 40 || 0;
 	}
 
 	public outerClick() {
