@@ -74,60 +74,80 @@
 						</v-row>
 					</v-col>
 				</v-row>
-				<v-row v-if="liveSubscribed.length" class="ma-0" align="center">
-					<v-col
-						cols="12"
-						class="mt-6">
-						<h2 class="ml-3">{{ $t('home.following-dj') }}</h2>
-					</v-col>
-					<v-col
-						v-for="(live, idx) in liveSubscribed" :key="'sub' + idx + live.id"
-						cols="12"
-						sm="6"
-						md="4"
-						lg="3"
-						xl="2">
-						<!-- S:Live Item -->
-						<live-item :live="live" />
-						<!-- E:Live Item -->
-					</v-col>
-				</v-row>
-				<v-row v-if="liveMembership.length" class="ma-0" align="center">
-					<v-col
-						cols="12"
-						class="mt-6">
-						<h2 class="ml-3">{{ $t('home.membership') }}</h2>
-					</v-col>
-					<v-col
-						v-for="(live, idx) in liveMembership" :key="'sub' + idx + live.id"
-						cols="12"
-						sm="6"
-						md="4"
-						lg="3"
-						xl="2">
-						<!-- S:Live Item -->
-						<live-item :live="live" isMembership />
-						<!-- E:Live Item -->
-					</v-col>
-				</v-row>
-				<v-row v-if="liveList" class="ma-0" align="center">
-					<v-col
-						cols="12"
-						class="mt-6">
-						<h2 class="ml-3">{{ $t('home.now-live') }}</h2>
-					</v-col>
-					<v-col
-						v-for="(live, idx) in liveList" :key="'' + idx + live.id"
-						cols="12"
-						sm="6"
-						md="4"
-						lg="3"
-						xl="2">
-						<!-- S:Live Item -->
-						<live-item :live="live" />
-						<!-- E:Live Item -->
-					</v-col>
-				</v-row>
+				<!-- 팔로잉 DJ 섹션 -->
+				<div v-if="liveSubscribed.length" class="live-section">
+					<div class="section-header">
+						<div class="section-title-container">
+							<v-icon large color="primary" class="section-icon">mdi-heart</v-icon>
+							<h2 class="section-title">{{ $t('home.following-dj') }}</h2>
+							<v-chip small color="primary" text-color="white" class="count-chip">
+								{{ liveSubscribed.length }}
+							</v-chip>
+						</div>
+						<v-divider class="section-divider"></v-divider>
+					</div>
+					<div class="cards-container">
+						<div class="cards-grid">
+							<div
+								v-for="(live, idx) in liveSubscribed" 
+								:key="'sub' + idx + live.id"
+								class="card-wrapper"
+							>
+								<live-item :live="live" />
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- 멤버십 섹션 -->
+				<div v-if="liveMembership.length" class="live-section">
+					<div class="section-header">
+						<div class="section-title-container">
+							<v-icon large color="amber" class="section-icon">mdi-crown</v-icon>
+							<h2 class="section-title">{{ $t('home.membership') }}</h2>
+							<v-chip small color="amber" text-color="white" class="count-chip">
+								{{ liveMembership.length }}
+							</v-chip>
+						</div>
+						<v-divider class="section-divider"></v-divider>
+					</div>
+					<div class="cards-container">
+						<div class="cards-grid">
+							<div
+								v-for="(live, idx) in liveMembership" 
+								:key="'membership' + idx + live.id"
+								class="card-wrapper"
+							>
+								<live-item :live="live" isMembership />
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- 현재 라이브 섹션 -->
+				<div v-if="liveList" class="live-section">
+					<div class="section-header">
+						<div class="section-title-container">
+							<v-icon large color="red" class="section-icon">mdi-broadcast</v-icon>
+							<h2 class="section-title">{{ $t('home.now-live') }}</h2>
+							<v-chip small color="red" text-color="white" class="count-chip">
+								{{ liveList.length }}
+							</v-chip>
+						</div>
+						<v-divider class="section-divider"></v-divider>
+					</div>
+					<div class="cards-container">
+						<div class="cards-grid">
+							<div
+								v-for="(live, idx) in liveList" 
+								:key="'live' + idx + live.id"
+								class="card-wrapper"
+							>
+								<live-item :live="live" />
+							</div>
+						</div>
+					</div>
+				</div>
 			</div>
 		</vue-scroll>
 	</v-main>
@@ -175,11 +195,17 @@ export default class Home extends Mixins(GlobalMixins) {
 				this.loadComplete = true;
 			} else {
 				const res = await this.liveManager.next();
+				console.log('res', res);
 				this.liveManager.res = res;
 				this.liveList = this.liveList.concat(res.results);
 			}
 		} else {
 			this.liveManager = await this.$sopia.api.lives.popular();
+			console.log('liveManager', this.liveManager);
+			if ( this.liveManager.res.status_code === 460 ) {
+				window.logout();
+				return;
+			}
 			this.liveList = this.liveManager.res.results;
 		}
 
@@ -256,12 +282,126 @@ export default class Home extends Mixins(GlobalMixins) {
 }
 </script>
 <style>
+/* 기존 파트너 슬라이드 스타일 유지 */
 .partner-slide-nav {
 	position: absolute;
 	width: 100%;
 	height: 200px;
 	background: linear-gradient(0deg, rgba(255,255,255,1) 25%, rgba(255,255,255,0.469625350140056) 53%, rgba(255,255,255,0) 100%);
+}
 
+/* 새로운 라이브 섹션 스타일 */
+.live-section {
+	margin: 48px 0;
+	padding: 0 24px;
+}
+
+.section-header {
+	margin-bottom: 32px;
+}
+
+.section-title-container {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	margin-bottom: 16px;
+}
+
+.section-icon {
+	opacity: 0.9;
+}
+
+.section-title {
+	font-size: 28px;
+	font-weight: 700;
+	color: #1a1a1a;
+	margin: 0;
+	letter-spacing: -0.5px;
+}
+
+.count-chip {
+	font-weight: 600;
+	font-size: 12px;
+}
+
+.section-divider {
+	opacity: 0.2;
+}
+
+.cards-container {
+	position: relative;
+}
+
+.cards-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 16px;
+	padding: 8px 0;
+}
+
+.card-wrapper {
+	display: flex;
+	justify-content: center;
+	animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+	from {
+		opacity: 0;
+		transform: translateY(30px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* 반응형 디자인 */
+@media (max-width: 1200px) {
+	.cards-grid {
+		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+		gap: 14px;
+	}
+}
+
+@media (max-width: 768px) {
+	.live-section {
+		margin: 32px 0;
+		padding: 0 16px;
+	}
+	
+	.section-title-container {
+		gap: 12px;
+	}
+	
+	.section-title {
+		font-size: 24px;
+	}
+	
+	.cards-grid {
+		grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+		gap: 12px;
+	}
+}
+
+@media (max-width: 480px) {
+	.cards-grid {
+		grid-template-columns: 1fr;
+		gap: 16px;
+	}
+	
+	.section-title {
+		font-size: 22px;
+	}
+}
+
+/* 다크 모드 지원 */
+.theme--dark .section-title {
+	color: #ffffff;
+}
+
+.theme--dark .section-divider {
+	opacity: 0.3;
 }
 .partner-banner-wrapper {
 	height: 500px;
