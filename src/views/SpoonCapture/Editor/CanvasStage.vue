@@ -47,7 +47,9 @@
 					:config="getItemConfig(item)"
 					@click="handleItemClick"
 					@tap="handleItemClick"
+					@dragmove="handleDragMove"
 					@dragend="handleDragEnd"
+					@transform="handleTransform"
 					@transformend="handleTransformEnd"
 					@dblclick="item.type === 'text' ? handleTextDblClick : undefined"
 					@dbltap="item.type === 'text' ? handleTextDblClick : undefined"
@@ -69,6 +71,14 @@
 					:key="`selection-${itemId}`"
 					:config="getSelectionBorderConfig(itemId)"
 					v-show="multipleSelected && selectedItems.length > 1"
+				/>
+				
+				<!-- 스마트 가이드라인 -->
+				<v-line
+					v-for="(guideline, index) in guidelines"
+					:key="`guideline-${index}`"
+					:config="guideline"
+					v-show="showGuidelines"
 				/>
 				
 				<!-- Transformer -->
@@ -167,6 +177,11 @@ export default class CanvasStage extends Vue {
 	private selectionRect = { x: 0, y: 0, width: 0, height: 0 };
 	private selectedItems: string[] = [];
 	private multipleSelected = false;
+	
+	// 스마트 가이드라인을 위한 상태
+	private guidelines: any[] = [];
+	private snapTolerance = 25; // 스냅 허용 오차를 25px로 증가
+	private showGuidelines = false;
 	
 	// 내부 선택 상태
 	private internalSelectedItemId: string | null = null;
@@ -696,6 +711,9 @@ export default class CanvasStage extends Vue {
 		const id = e.target.id();
 		const node = e.target;
 		
+		// 가이드라인 숨기기
+		this.hideGuidelines();
+		
 		// 다중선택된 상태이고 드래그된 객체가 선택된 객체 중 하나라면
 		if (this.multipleSelected && this.selectedItems.includes(id)) {
 			// 드래그된 객체의 이동 거리 계산
@@ -722,9 +740,110 @@ export default class CanvasStage extends Vue {
 		});
 	}
 
+	handleDragMove(e: any) {
+		const id = e.target.id();
+		const node = e.target;
+		
+		console.log('Drag move detected for item:', id);
+		
+		// 드래그 중인 객체의 현재 상태로 가이드라인 계산
+		const draggedItem = {
+			id: id,
+			x: node.x(),
+			y: node.y(),
+			width: node.width() || 100,
+			height: node.height() || 100,
+			scaleX: node.scaleX() || 1,
+			scaleY: node.scaleY() || 1,
+			type: this.items.find(item => item.id === id)?.type || 'rect'
+		};
+		
+		const snapResult = this.calculateGuidelines(draggedItem);
+		console.log('Guidelines calculated:', this.guidelines.length, 'Snap result:', snapResult);
+		
+		this.displayGuidelines();
+		
+		// 스냅핑 적용
+		if (snapResult.snapX !== null) {
+			console.log('Snapping X to:', snapResult.snapX);
+			node.x(snapResult.snapX);
+		}
+		if (snapResult.snapY !== null) {
+			console.log('Snapping Y to:', snapResult.snapY);
+			node.y(snapResult.snapY);
+		}
+		
+		// 다중선택된 상태이고 드래그된 객체가 선택된 객체 중 하나라면
+		if (this.multipleSelected && this.selectedItems.includes(id)) {
+			// 드래그된 객체의 이동 거리 계산
+			const deltaX = node.x() - (this.items.find(item => item.id === id)?.x || 0);
+			const deltaY = node.y() - (this.items.find(item => item.id === id)?.y || 0);
+			
+			// 선택된 모든 객체들을 같은 거리만큼 이동
+			this.selectedItems.forEach(itemId => {
+				if (itemId !== id) { // 드래그된 객체는 이미 이동됨
+					const stage = this.$refs.stage as any;
+					const itemNode = stage?.getStage()?.findOne(`#${itemId}`);
+					if (itemNode) {
+						const item = this.items.find(item => item.id === itemId);
+						if (item) {
+							itemNode.x(item.x + deltaX);
+							itemNode.y(item.y + deltaY);
+						}
+					}
+				}
+			});
+		}
+	}
+
+	handleTransform(e: any) {
+		const id = e.target.id();
+		const node = e.target;
+		
+		console.log('Transform detected for item:', id);
+		
+		// 리사이즈 중인 객체의 현재 상태로 가이드라인 계산
+		const transformedItem = {
+			id: id,
+			x: node.x(),
+			y: node.y(),
+			width: (node.width() || 100) * (node.scaleX() || 1),
+			height: (node.height() || 100) * (node.scaleY() || 1),
+			scaleX: 1, // 스케일을 이미 width/height에 반영했으므로 1로 설정
+			scaleY: 1,
+			type: this.items.find(item => item.id === id)?.type || 'rect'
+		};
+		
+		const snapResult = this.calculateGuidelines(transformedItem);
+		console.log('Transform guidelines:', this.guidelines.length, 'Snap result:', snapResult);
+		
+		this.displayGuidelines();
+		
+		// 스냅핑 적용 (transform 시에는 위치만 스냅)
+		if (snapResult.snapX !== null) {
+			console.log('Transform snapping X to:', snapResult.snapX);
+			node.x(snapResult.snapX);
+		}
+		if (snapResult.snapY !== null) {
+			console.log('Transform snapping Y to:', snapResult.snapY);
+			node.y(snapResult.snapY);
+		}
+		
+		this.$emit('item-transformed', id, {
+			x: node.x(),
+			y: node.y(),
+			rotation: node.rotation(),
+			scaleX: node.scaleX(),
+			scaleY: node.scaleY(),
+		});
+	}
+	
 	handleTransformEnd(e: any) {
 		const id = e.target.id();
 		const node = e.target;
+		
+		// 가이드라인 숨기기
+		this.hideGuidelines();
 		
 		this.$emit('item-transformed', id, {
 			x: node.x(),
@@ -800,13 +919,14 @@ export default class CanvasStage extends Vue {
 			return;
 		}
 
-		if (!this.selectedItemId) return;
-
-		// Delete 키로 객체 삭제
+		// Delete 키로 객체 삭제 (단일 선택 또는 다중 선택 모두 처리)
 		if (e.key === 'Delete') {
 			e.preventDefault();
-			this.deleteSelectedItem();
+			this.deleteSelectedItems();
+			return;
 		}
+
+		if (!this.selectedItemId && this.selectedItems.length === 0) return;
 
 		// Ctrl+D로 객체 복사
 		if (e.ctrlKey && e.key === 'd') {
@@ -894,9 +1014,27 @@ export default class CanvasStage extends Vue {
 
 	// 객체 조작 메서드들
 	private copiedItem: CanvasItem | null = null;
+	private pasteCount = 0;
 
 	deleteSelectedItem() {
 		if (this.selectedItemId) {
+			this.$emit('item-deleted', this.selectedItemId);
+		}
+	}
+
+	// 선택된 아이템들 삭제 (단일 또는 다중)
+	deleteSelectedItems() {
+		if (this.multipleSelected && this.selectedItems.length > 0) {
+			// 다중 선택된 경우 모든 선택된 아이템 삭제
+			this.selectedItems.forEach(itemId => {
+				this.$emit('item-deleted', itemId);
+			});
+			// 선택 상태 초기화
+			this.selectedItems = [];
+			this.multipleSelected = false;
+			this.selectedItemId = null;
+		} else if (this.selectedItemId) {
+			// 단일 선택된 경우
 			this.$emit('item-deleted', this.selectedItemId);
 		}
 	}
@@ -920,18 +1058,36 @@ export default class CanvasStage extends Vue {
 		if (this.selectedItemId) {
 			const selectedItem = this.items.find(item => item.id === this.selectedItemId);
 			if (selectedItem) {
-				this.copiedItem = { ...selectedItem };
+				// 깊은 복사를 통해 참조 문제 해결
+				this.copiedItem = JSON.parse(JSON.stringify(selectedItem));
+				// 복사할 때 붙여넣기 카운트 초기화
+				this.pasteCount = 0;
 			}
 		}
 	}
 
+	// 붙여넣기 오프셋 계산 (매번 다른 위치에 붙여넣기)
+	getPasteOffset(): { x: number; y: number } {
+		this.pasteCount++;
+		return {
+			x: 20 * this.pasteCount,
+			y: 20 * this.pasteCount,
+		};
+	}
+
 	pasteItem() {
 		if (this.copiedItem) {
+			// 매번 새로운 객체를 생성하여 중복 붙여넣기 문제 해결
+			const copiedData = JSON.parse(JSON.stringify(this.copiedItem));
+			
+			// 현재 붙여넣기 횟수를 고려한 오프셋 계산
+			const pasteOffset = this.getPasteOffset();
+			
 			const pastedItem = {
-				...this.copiedItem,
+				...copiedData,
 				id: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-				x: this.copiedItem.x + 20,
-				y: this.copiedItem.y + 20,
+				x: copiedData.x + pasteOffset.x,
+				y: copiedData.y + pasteOffset.y,
 			};
 			this.$emit('item-pasted', pastedItem);
 		}
@@ -1241,6 +1397,206 @@ export default class CanvasStage extends Vue {
 		this.contextMenuVisible = true;
 	}
 
+	// 스마트 가이드라인 관련 메서드들
+	calculateGuidelines(draggedItem: any): { snapX: number | null, snapY: number | null } {
+		this.guidelines = [];
+		let snapX: number | null = null;
+		let snapY: number | null = null;
+		let minSnapDistanceX = this.snapTolerance;
+		let minSnapDistanceY = this.snapTolerance;
+		
+		if (!draggedItem) return { snapX, snapY };
+		
+		const draggedBounds = this.getItemBounds(draggedItem);
+		const otherItems = this.items.filter(item => item.id !== draggedItem.id);
+		
+		console.log('Dragged bounds:', draggedBounds);
+		console.log('Other items count:', otherItems.length);
+		
+		// 다른 객체들과의 정렬 가이드라인 계산
+		otherItems.forEach(item => {
+			const bounds = this.getItemBounds(item);
+			console.log(`Checking item ${item.id} bounds:`, bounds);
+			
+			// 수직 정렬 가이드라인 (좌측, 중앙, 우측)
+			const leftDist = Math.abs(draggedBounds.left - bounds.left);
+			if (leftDist < this.snapTolerance && leftDist < minSnapDistanceX) {
+				this.addVerticalGuideline(bounds.left);
+				snapX = bounds.left;
+				minSnapDistanceX = leftDist;
+				console.log('Left snap detected:', bounds.left);
+			}
+			
+			const centerXDist = Math.abs(draggedBounds.centerX - bounds.centerX);
+			if (centerXDist < this.snapTolerance && centerXDist < minSnapDistanceX) {
+				this.addVerticalGuideline(bounds.centerX);
+				snapX = bounds.centerX - (draggedBounds.centerX - draggedItem.x);
+				minSnapDistanceX = centerXDist;
+				console.log('Center X snap detected:', bounds.centerX);
+			}
+			
+			const rightDist = Math.abs(draggedBounds.right - bounds.right);
+			if (rightDist < this.snapTolerance && rightDist < minSnapDistanceX) {
+				this.addVerticalGuideline(bounds.right);
+				snapX = bounds.right - (draggedBounds.right - draggedItem.x);
+				minSnapDistanceX = rightDist;
+				console.log('Right snap detected:', bounds.right);
+			}
+			
+			// 수평 정렬 가이드라인 (상단, 중앙, 하단)
+			const topDist = Math.abs(draggedBounds.top - bounds.top);
+			if (topDist < this.snapTolerance && topDist < minSnapDistanceY) {
+				this.addHorizontalGuideline(bounds.top);
+				snapY = bounds.top;
+				minSnapDistanceY = topDist;
+				console.log('Top snap detected:', bounds.top);
+			}
+			
+			const centerYDist = Math.abs(draggedBounds.centerY - bounds.centerY);
+			if (centerYDist < this.snapTolerance && centerYDist < minSnapDistanceY) {
+				this.addHorizontalGuideline(bounds.centerY);
+				snapY = bounds.centerY - (draggedBounds.centerY - draggedItem.y);
+				minSnapDistanceY = centerYDist;
+				console.log('Center Y snap detected:', bounds.centerY);
+			}
+			
+			const bottomDist = Math.abs(draggedBounds.bottom - bounds.bottom);
+			if (bottomDist < this.snapTolerance && bottomDist < minSnapDistanceY) {
+				this.addHorizontalGuideline(bounds.bottom);
+				snapY = bounds.bottom - (draggedBounds.bottom - draggedItem.y);
+				minSnapDistanceY = bottomDist;
+				console.log('Bottom snap detected:', bounds.bottom);
+			}
+		});
+		
+		// 캔버스 경계와의 정렬 가이드라인
+		const canvasLeftDist = Math.abs(draggedBounds.left);
+		if (canvasLeftDist < this.snapTolerance && canvasLeftDist < minSnapDistanceX) {
+			this.addVerticalGuideline(0);
+			snapX = 0;
+			minSnapDistanceX = canvasLeftDist;
+			console.log('Canvas left snap detected');
+		}
+		
+		const canvasCenterXDist = Math.abs(draggedBounds.centerX - this.canvasWidth / 2);
+		if (canvasCenterXDist < this.snapTolerance && canvasCenterXDist < minSnapDistanceX) {
+			this.addVerticalGuideline(this.canvasWidth / 2);
+			snapX = (this.canvasWidth / 2) - (draggedBounds.centerX - draggedItem.x);
+			minSnapDistanceX = canvasCenterXDist;
+			console.log('Canvas center X snap detected');
+		}
+		
+		const canvasRightDist = Math.abs(draggedBounds.right - this.canvasWidth);
+		if (canvasRightDist < this.snapTolerance && canvasRightDist < minSnapDistanceX) {
+			this.addVerticalGuideline(this.canvasWidth);
+			snapX = this.canvasWidth - (draggedBounds.right - draggedItem.x);
+			minSnapDistanceX = canvasRightDist;
+			console.log('Canvas right snap detected');
+		}
+		
+		const canvasTopDist = Math.abs(draggedBounds.top);
+		if (canvasTopDist < this.snapTolerance && canvasTopDist < minSnapDistanceY) {
+			this.addHorizontalGuideline(0);
+			snapY = 0;
+			minSnapDistanceY = canvasTopDist;
+			console.log('Canvas top snap detected');
+		}
+		
+		const canvasCenterYDist = Math.abs(draggedBounds.centerY - this.canvasHeight / 2);
+		if (canvasCenterYDist < this.snapTolerance && canvasCenterYDist < minSnapDistanceY) {
+			this.addHorizontalGuideline(this.canvasHeight / 2);
+			snapY = (this.canvasHeight / 2) - (draggedBounds.centerY - draggedItem.y);
+			minSnapDistanceY = canvasCenterYDist;
+			console.log('Canvas center Y snap detected');
+		}
+		
+		const canvasBottomDist = Math.abs(draggedBounds.bottom - this.canvasHeight);
+		if (canvasBottomDist < this.snapTolerance && canvasBottomDist < minSnapDistanceY) {
+			this.addHorizontalGuideline(this.canvasHeight);
+			snapY = this.canvasHeight - (draggedBounds.bottom - draggedItem.y);
+			minSnapDistanceY = canvasBottomDist;
+			console.log('Canvas bottom snap detected');
+		}
+		
+		return { snapX, snapY };
+	}
+	
+	getItemBounds(item: any): any {
+		const width = item.width || 100;
+		const height = item.height || 100;
+		const scaleX = item.scaleX || 1;
+		const scaleY = item.scaleY || 1;
+		
+		let bounds;
+		if (item.type === 'circle' || item.type === 'triangle' || item.type === 'star') {
+			// 중심점 기준 도형들
+			bounds = {
+				left: item.x - (width * scaleX) / 2,
+				top: item.y - (height * scaleY) / 2,
+				right: item.x + (width * scaleX) / 2,
+				bottom: item.y + (height * scaleY) / 2,
+			};
+		} else {
+			// 좌상단 기준 도형들
+			bounds = {
+				left: item.x,
+				top: item.y,
+				right: item.x + (width * scaleX),
+				bottom: item.y + (height * scaleY),
+			};
+		}
+		
+		bounds.centerX = (bounds.left + bounds.right) / 2;
+		bounds.centerY = (bounds.top + bounds.bottom) / 2;
+		
+		return bounds;
+	}
+	
+	addVerticalGuideline(x: number): void {
+		// 중복 가이드라인 방지
+		const exists = this.guidelines.some(guide => 
+			guide.points[0] === x && guide.points[2] === x
+		);
+		if (exists) return;
+		
+		this.guidelines.push({
+			points: [x, 0, x, this.canvasHeight],
+			stroke: '#ff4081',
+			strokeWidth: 1.5,
+			dash: [8, 4],
+			listening: false,
+			opacity: 0.9,
+			perfectDrawEnabled: false
+		});
+	}
+	
+	addHorizontalGuideline(y: number): void {
+		// 중복 가이드라인 방지
+		const exists = this.guidelines.some(guide => 
+			guide.points[1] === y && guide.points[3] === y
+		);
+		if (exists) return;
+		
+		this.guidelines.push({
+			points: [0, y, this.canvasWidth, y],
+			stroke: '#ff4081',
+			strokeWidth: 1.5,
+			dash: [8, 4],
+			listening: false,
+			opacity: 0.9,
+			perfectDrawEnabled: false
+		});
+	}
+	
+	displayGuidelines(): void {
+		this.showGuidelines = true;
+	}
+	
+	hideGuidelines(): void {
+		this.showGuidelines = false;
+		this.guidelines = [];
+	}
+	
 	// 레이어 순서 변경 메서드들
 	bringToFront(): void {
 		if (this.contextMenuItemId || this.selectedItemId) {
