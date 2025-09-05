@@ -90,13 +90,98 @@ export default class App extends Mixins(GlobalMixins) {
 		console.log('enter transition', args);
 	}
 
+	private resizeTimeout: any = null;
+	private moveTimeout: any = null;
+	private isResizing: boolean = false;
+	private isMoving: boolean = false;
+
 	public async created() {
 		const req = await this.$sopia.api.users.followings(4324890);
 		this.$store.commit('partners', req.res.results);
 	}
 
+	public onResize() {
+		// 리사이즈 중임을 표시
+		this.isResizing = true;
+		
+		// 기존 타이머가 있다면 취소
+		if (this.resizeTimeout) {
+			clearTimeout(this.resizeTimeout);
+		}
+		
+		// 500ms 후에 설정 저장 (디바운싱)
+		this.resizeTimeout = setTimeout(() => {
+			this.saveWindowSize();
+			this.isResizing = false;
+		}, 500);
+	}
+
+	public onMove() {
+		// 윈도우 이동 중임을 표시
+		this.isMoving = true;
+		
+		// 기존 타이머가 있다면 취소
+		if (this.moveTimeout) {
+			clearTimeout(this.moveTimeout);
+		}
+		
+		// 500ms 후에 설정 저장 (디바운싱)
+		this.moveTimeout = setTimeout(() => {
+			this.saveWindowSize();
+			this.isMoving = false;
+		}, 500);
+	}
+
+	public onMouseUp() {
+		// 마우스를 뗐을 때 리사이즈 또는 이동 중이었다면 즉시 저장
+		if (this.isResizing || this.isMoving) {
+			if (this.resizeTimeout) {
+				clearTimeout(this.resizeTimeout);
+			}
+			if (this.moveTimeout) {
+				clearTimeout(this.moveTimeout);
+			}
+			this.saveWindowSize();
+			this.isResizing = false;
+			this.isMoving = false;
+		}
+	}
+
+	private saveWindowSize() {
+		// 윈도우 크기와 위치 모두 저장
+		const windowState = {
+			width: window.innerWidth,
+			height: window.innerHeight,
+			x: window.screenX,
+			y: window.screenY
+		};
+		this.$cfg.set('window-state', windowState);
+		this.$cfg.save();
+	}
+
+	public beforeDestroy() {
+		window.removeEventListener('resize', this.onResize);
+		window.removeEventListener('mouseup', this.onMouseUp);
+		// 윈도우 이동 이벤트는 Electron의 메인 프로세스에서 처리되므로 여기서는 제거하지 않음
+		if (this.resizeTimeout) {
+			clearTimeout(this.resizeTimeout);
+		}
+		if (this.moveTimeout) {
+			clearTimeout(this.moveTimeout);
+		}
+	}
+
 	public async mounted() {
 		const auth = this.$cfg.get('auth');
+
+		window.addEventListener('resize', this.onResize);
+		window.addEventListener('mouseup', this.onMouseUp);
+		
+		// Electron IPC로 윈도우 이동 이벤트 수신
+		const { ipcRenderer } = window.require('electron');
+		ipcRenderer.on('window-moved', () => {
+			this.onMove();
+		});
 
 		window.logout = () => {
 			this.$cfg.delete('auth');
