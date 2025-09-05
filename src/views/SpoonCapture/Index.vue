@@ -13,7 +13,7 @@
 							저장된 방송 기록을 재생하고 화면을 캡쳐할 수 있습니다.
 						</v-card-subtitle>
 						<v-card-actions>
-							사용방법에 대한 자세한 내용은 <v-btn text color="indigo" class="text-decoration-underline text-blue" @click="$assign('https://sopia.dev/docs/spoon-taxi/spoon-capture', true)">이곳</v-btn>을 클릭해주세요.
+							사용방법에 대한 자세한 내용은 <v-btn color="indigo" class="text-blue font-weight-bold mx-2" dark @click="$assign('https://sopia.dev/docs/spoon-taxi/spoon-capture', true)">이곳</v-btn>을 클릭해주세요.
 						</v-card-actions>
 					</v-card>
 				</v-col>
