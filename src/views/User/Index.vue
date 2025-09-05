@@ -9,14 +9,15 @@
 		<!-- S:Image Dialog -->
 		<v-dialog
 			v-model="image.show"
-			width="80%"
-			max-width="1000px"
+			width="90%"
+			max-width="1200px"
 			content-class="custom">
 			<v-img
 				:src="image.src"
-				aspect-ratio="1.7"
+				max-height="80vh"
 				contain
-				width="100%"></v-img>
+				@click="image.show = false"
+			></v-img>
 		</v-dialog>
 		<!-- E:Image Dialog -->
 		<v-container class="pa-0 pa-md-4">
