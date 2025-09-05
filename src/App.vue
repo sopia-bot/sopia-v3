@@ -263,4 +263,7 @@ export default class App extends Mixins(GlobalMixins) {
 	--sidebar-width: 80px;
 	--titlebar-height: 77px;
 }
+.no-drag {
+	-webkit-app-region: no-drag;
+}
 </style>

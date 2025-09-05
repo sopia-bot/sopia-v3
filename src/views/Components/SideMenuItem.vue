@@ -1,5 +1,5 @@
 <template>
-	<div style="height: 64px" class="sopia-sidemenu-item" :class="active ? 'active' : ''" @click="handleClick">
+	<div style="height: 64px" class="sopia-sidemenu-item no-drag" :class="active ? 'active' : ''" @click="handleClick">
 		<v-row class="ma-2" style="height: 100%; position: relative;" align="center">
 			<v-col cols="12" class="pa-0" align="center">
 				<v-icon>{{ active ? activeIcon : icon }}</v-icon>
