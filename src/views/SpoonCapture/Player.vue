@@ -70,7 +70,7 @@
                                             <v-btn 
                                                 icon 
                                                 small
-                                                @click="captureMessage(event.idx)"
+                                                @click="captureMessage(event.idx, $event)"
                                                 class="visibility-btn"
                                                 title="메시지 캡쳐"
                                             >
@@ -124,7 +124,7 @@
                                         <v-btn 
                                             icon 
                                             small
-                                            @click="captureMessage(event.idx)"
+                                            @click="captureMessage(event.idx, $event)"
                                             class="visibility-btn"
                                             title="메시지 캡쳐"
                                         >
@@ -1420,19 +1420,22 @@ export default class SpoonCapturePlayer extends Mixins(GlobalMixins) {
     }
 
     // 캡쳐 관련 메서드들
-    async captureMessage(eventIdx: number) {
+    async captureMessage(eventIdx: number, evt: any) {
         try {
             // 메시지 엘리먼트 찾기 - 실제 메시지 내용만 캡쳐
-            const messageElement = document.querySelector(`[data-event-idx="${eventIdx}"] .chat-message,.gift-content`) as HTMLElement;
+            const messageElement = (evt.target.closest('.spoon-chat-item') || document.querySelector(`.spoon-chat-item[data-event-idx="${eventIdx}"]`)) as HTMLElement;
             if (!messageElement) {
                 console.error('메시지 엘리먼트를 찾을 수 없습니다.');
                 return;
             }
 
-            console.log('캡쳐할 메시지 엘리먼트:', messageElement);
+            const captureElement = messageElement.querySelector('.chat-message,.gift-content') as HTMLElement;
+
+            console.log('캡쳐할 메시지 엘리먼트:', captureElement);
+            console.log('evt', evt);
 
             // Canvas API를 사용한 기본 캡쳐
-            const canvas = await this.captureElementToCanvas(messageElement);
+            const canvas = await this.captureElementToCanvas(captureElement);
             const dataUrl = canvas.toDataURL('image/png');
             
             // Editor.vue에 이미지 추가
@@ -2182,7 +2185,6 @@ export default class SpoonCapturePlayer extends Mixins(GlobalMixins) {
 }
 
 .gift-image {
-    width: 32px;
     height: 32px;
     border-radius: 4px;
     object-fit: cover;
