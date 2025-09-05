@@ -206,7 +206,7 @@
 <body class="bg-gray-100 min-h-screen">
     <div class="title-bar">
         <div class="text-base font-medium text-gray-700">모듈 관리자</div>
-        <button class="close-button no-drag" onclick="window.close()">
+        <button class="close-button no-drag" onclick="handleWindowClose()">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
@@ -214,6 +214,25 @@
     </div>
     <div class="content">
         <div class="max-w-7xl mx-auto">
+            <!-- 번들 설정 안내 알림 -->
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-blue-700 font-medium">
+                            번들 설정은 소피아창 왼쪽 상단 탭에서 할 수 있습니다.
+                        </p>
+                        <p class="text-xs text-blue-600 mt-1">
+                            설치된 번들 중 설정 페이지가 있는 번들은 메인 화면 상단에 탭으로 표시됩니다.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
             <!-- 경고 문구 -->
             <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8">
                 <div class="flex">
@@ -306,6 +325,21 @@
         </div>
     </div>
 
+    <!-- 닫기 확인 모달 -->
+    <div id="closeConfirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">창 닫기 확인</div>
+            <div class="modal-message">
+                현재 다운로드 또는 삭제 중인 번들이 있습니다.<br>
+                정말로 창을 닫으시겠습니까?
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-button modal-button-cancel" onclick="closeCloseConfirmModal()">취소</button>
+                <button class="modal-button modal-button-confirm" onclick="forceCloseWindow()">닫기</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 스낵바 추가 -->
     <div id="snackbar" class="snackbar"></div>
 
@@ -320,6 +354,7 @@
         const { exec } = require('child_process');
         const os = require('os');
         let currentFilter = 'installed';
+        let activeOperations = new Set(); // 진행 중인 작업들을 추적
 
         function killProcessByName(name) {
             return new Promise((resolve, reject) => {
@@ -491,6 +526,39 @@
             }, 3000);
         }
 
+        // bundleOrder 관리 함수들
+        function removeBundleFromOrder(bundleName) {
+            const bundleOrder = window.appCfg.get('bundle-tab-order') || [];
+            const updatedOrder = bundleOrder.filter(item => item.name !== bundleName);
+            
+            // order 값들을 재정렬
+            const reorderedList = updatedOrder.map((item, index) => ({
+                order: index,
+                name: item.name
+            }));
+            
+            window.appCfg.set('bundle-tab-order', reorderedList);
+            window.appCfg.save();
+        }
+
+        function addBundleToOrder(bundleName) {
+            const bundleOrder = window.appCfg.get('bundle-tab-order') || [];
+            const maxOrder = bundleOrder.length > 0 ? Math.max(...bundleOrder.map(item => item.order)) : -1;
+            
+            // 이미 존재하는지 확인
+            const existingIndex = bundleOrder.findIndex(item => item.name === bundleName);
+            if (existingIndex === -1) {
+                // 가장 뒤에 추가
+                bundleOrder.push({
+                    order: maxOrder + 1,
+                    name: bundleName
+                });
+                
+                window.appCfg.set('bundle-tab-order', bundleOrder);
+                window.appCfg.save();
+            }
+        }
+
         async function deleteBundle(name, event, killFlag = false, reloadFlag = true, showFlag = true) {
             event.stopPropagation();
             const button = event.target;
@@ -501,18 +569,25 @@
                 return;
             }
 
+            const operationId = `delete-${name}-${Date.now()}`;
+            activeOperations.add(operationId);
             button.classList.add('button-loading');
+            
             if (killFlag) {
                 await (async () => killSopia())();
             }
 
             fs.rm(path.join(bundleRootPath, name), { recursive: true, force: true }, () => {
+                // bundleOrder에서 삭제된 번들 제거
+                removeBundleFromOrder(name);
+                
                 if (reloadFlag) {
                     showSnackbar('모듈이 삭제되었습니다.');
                     setTimeout(() => {
                         reloadModules();
                     }, 500);
                 }
+                activeOperations.delete(operationId);
                 button.classList.remove('button-loading');
             });
         }
@@ -528,12 +603,45 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeConfirmModal();
+                closeCloseConfirmModal();
+            }
+        });
+
+        // 창 닫기 처리 함수
+        function handleWindowClose() {
+            if (activeOperations.size > 0) {
+                showCloseConfirmModal();
+            } else {
+                window.close();
+            }
+        }
+
+        function showCloseConfirmModal() {
+            document.getElementById('closeConfirmModal').style.display = 'flex';
+        }
+
+        function closeCloseConfirmModal() {
+            document.getElementById('closeConfirmModal').style.display = 'none';
+        }
+
+        function forceCloseWindow() {
+            closeCloseConfirmModal();
+            window.close();
+        }
+
+        // 닫기 확인 모달 외부 클릭 시 닫기
+        document.getElementById('closeConfirmModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('closeConfirmModal')) {
+                closeCloseConfirmModal();
             }
         });
 
         function downloadBundle(name, event, killFlag = false) {
             event.stopPropagation();
             const button = event.target;
+            const operationId = `download-${name}-${Date.now()}`;
+            
+            activeOperations.add(operationId);
             button.classList.add('button-loading');
             
             console.log('downloadBundle', name);
@@ -556,6 +664,10 @@
                     if (pkg.dependencies) {
                         await ipcRenderer.invoke('bun:install', bundlePath);
                     }
+                    
+                    // bundleOrder에 새로 설치된 번들 추가
+                    addBundleToOrder(name);
+                    
                     showSnackbar('모듈이 설치되었습니다.');
                     setTimeout(() => {
                         reloadModules();
@@ -568,6 +680,7 @@
                 showSnackbar('모듈 설치 중 오류가 발생했습니다.');
             })
             .finally(() => {
+                activeOperations.delete(operationId);
                 button.classList.remove('button-loading');
             });
         }
@@ -673,6 +786,19 @@
         });
 
         function reloadModules() {
+            // 로딩 상태 표시
+            const moduleList = document.getElementById('moduleList');
+            moduleList.innerHTML = `
+                <tr>
+                    <td colspan="4" class="px-6 py-8 text-center">
+                        <div class="flex flex-col items-center justify-center">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+                            <div class="text-gray-600">번들 목록을 로드하고 있습니다...</div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            
             fetch(BASE_URL + '/bundle/', {
                 headers: {
                     'Authorization': 'Bearer ' + window.appCfg.get('auth.sopia.token') || '',
@@ -728,7 +854,45 @@
                         }
                         
                         filterByTab(currentFilter);
+                    } else {
+                        // 오류 발생 시 오류 메시지 표시
+                        const moduleList = document.getElementById('moduleList');
+                        moduleList.innerHTML = `
+                            <tr>
+                                <td colspan="4" class="px-6 py-8 text-center">
+                                    <div class="flex flex-col items-center justify-center">
+                                        <svg class="h-12 w-12 text-red-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                        </svg>
+                                        <div class="text-gray-600 mb-2">번들 목록을 불러오는데 실패했습니다.</div>
+                                        <button onclick="reloadModules()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                                            다시 시도
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
                     }
+                })
+                .catch(error => {
+                    console.error('Error loading modules:', error);
+                    // 네트워크 오류 등의 경우 오류 메시지 표시
+                    const moduleList = document.getElementById('moduleList');
+                    moduleList.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="px-6 py-8 text-center">
+                                <div class="flex flex-col items-center justify-center">
+                                    <svg class="h-12 w-12 text-red-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <div class="text-gray-600 mb-2">네트워크 연결을 확인해주세요.</div>
+                                    <button onclick="reloadModules()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                                        다시 시도
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
                 });
         }
 
