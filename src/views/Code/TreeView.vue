@@ -53,6 +53,12 @@
 				</span>
 			</tree>
 		</div>
+		<div v-else class="loading-container">
+			<div class="loading-content">
+				<v-progress-circular indeterminate color="primary" size="24"></v-progress-circular>
+				<span class="loading-text">폴더 내용을 로딩중입니다...</span>
+			</div>
+		</div>
 	</div>
 </template>
 <script lang="ts">
@@ -63,6 +69,7 @@ const path = window.require('path');
 const fs = window.require('fs');
 const os = window.require('os');
 const rimraf = window.require('rimraf');
+const { readFile, readdir, stat } = window.require('fs/promises');
 
 @Component
 export default class TreeView extends Mixins(GlobalMixins) {
@@ -382,39 +389,35 @@ export default class TreeView extends Mixins(GlobalMixins) {
 		return 'mdi mdi-file-document';
 	}
 
-	public treeReload(cb: (...args: any) => any = () => {/* empty */}) {
+	public async treeReload(cb: (...args: any) => any = () => {/* empty */}) {
 		let treeRef = this.$refs.tree as any;
 		let tree = treeRef.tree;
 		this.oriFolderTree = tree.model;
 		this.treeRenderer = false;
-		this.folderTree = this.buildFolderTree(this.$path('userData', this.targetFolder));
-		this.$nextTick()
-			.then(() => {
-				this.treeRenderer = true;
-				this.$forceUpdate();
-				this.folderKey += 1;
+		this.folderTree = await this.buildFolderTree(this.$path('userData', this.targetFolder));
+		await this.$nextTick();
+		this.treeRenderer = true;
+		this.$forceUpdate();
+		this.folderKey += 1;
 
-				this.$nextTick()
-					.then(() => {
-						treeRef = this.$refs.tree as any;
-						tree = treeRef.tree;
-						treeRef.$off('node:selected');
-						treeRef.$on('node:selected', (node: any) => {
-							const file = node.data.value;
-							this.selectPath = file;
-							this.$emit('selected', node);
-						});
+		await this.$nextTick()
+		treeRef = this.$refs.tree as any;
+		tree = treeRef.tree;
+		treeRef.$off('node:selected');
+		treeRef.$on('node:selected', (node: any) => {
+			const file = node.data.value;
+			this.selectPath = file;
+			this.$emit('selected', node);
+		});
 
-						if ( this.selectPath ) {
-							const node = this.selectedNode;
-							if ( node ) {
-								node.select(true);
-							}
-						}
+		if ( this.selectPath ) {
+			const node = this.selectedNode;
+			if ( node ) {
+				node.select(true);
+			}
+		}
 
-						cb(tree);
-					});
-			});
+		cb(tree);
 	}
 
 	public searchNode(nodes: any, value: any): any {
@@ -459,13 +462,13 @@ export default class TreeView extends Mixins(GlobalMixins) {
 		return false;
 	}
 
-	public readdir(PATH: string, DIR: string = '', ORI: any, sf?: any[]) {
+	public async readdir(PATH: string, DIR: string = '', ORI: any, sf?: any[]) {
 		try {
 			DIR = DIR || '';
 			const target = path.join(DIR, PATH);
 
 			if ( fs.existsSync(target) ) {
-				const fll = fs.readdirSync(target);
+				const fll = await readdir(target);
 				const arr: any = [];
 
 				if ( Array.isArray(fll) ) {
@@ -480,14 +483,14 @@ export default class TreeView extends Mixins(GlobalMixins) {
 						return a > b ? 1 : -1;
 					});
 
-					fl.forEach((f) => {
+					for ( const f of fl ) {
 						const fullPath = path.join(target, f);
 
 						if ( this.isIgnorePath(fullPath) ) {
-							return;
+							continue;
 						}
 
-						const stats = fs.statSync(fullPath);
+						const stats = await stat(fullPath);
 						const obj: any = { data: {} };
 						const oriObjIdx = Array.isArray(ORI) ? ORI.findIndex((oo) => {
 							if ( oo.data['value'] === fullPath ) { return true; }
@@ -511,7 +514,7 @@ export default class TreeView extends Mixins(GlobalMixins) {
 								expanded,
 							};
 							obj.data['isFolder'] = true;
-							obj['children'] = this.readdir(fullPath, '', oriObj && oriObj.children );
+							obj['children'] = await this.readdir(fullPath, '', oriObj && oriObj.children );
 
 						} else {
 							obj['state'] = oriObj['state'] || {};
@@ -520,7 +523,7 @@ export default class TreeView extends Mixins(GlobalMixins) {
 							obj['state']['dropable'] = false;
 						}
 						arr.push(obj);
-					});
+					}
 				}
 				return arr;
 			} else {
@@ -533,11 +536,11 @@ export default class TreeView extends Mixins(GlobalMixins) {
 		return [];
 	}
 
-	public buildFolderTree(src: string, selectedFile: string = '') {
+	public async buildFolderTree(src: string, selectedFile: string = '') {
 		const ori = this.oriFolderTree;
 
 		const sfs = selectedFile ? selectedFile.split('/') : [];
-		return this.readdir(src, '', ori, sfs);
+		return await this.readdir(src, '', ori, sfs);
 	}
 
 	public async moveNode(targetNode, distNode) {
@@ -565,10 +568,10 @@ export default class TreeView extends Mixins(GlobalMixins) {
 					this.treeReload();
 					return;
 				}
-				rimraf.sync(distTarget);
+				await rimraf(distTarget);
 			}
 
-			fs.renameSync(targetNode.data.value, distTarget);
+			await fs.rename(targetNode.data.value, distTarget);
 			this.$evt.$emit('code:tree-rerender', distTarget, !targetNode.data.isFolder);
 		}
 	}
@@ -659,5 +662,26 @@ export default class TreeView extends Mixins(GlobalMixins) {
 	background: rgba(32, 38, 104, 0.85) !important;
 	height: 73px;
 	overflow: hidden;
+}
+
+.loading-container {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 20px;
+	height: 100px;
+}
+
+.loading-content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+}
+
+.loading-text {
+	color: #263238;
+	font-size: 12px;
+	font-weight: 500;
 }
 </style>
