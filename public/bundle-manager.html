@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>모듈 관리자</title>
+    <title>번들 관리자</title>
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -23,6 +23,7 @@
         .title-bar {
             -webkit-app-region: drag;
             -webkit-user-select: none;
+            user-select: none;
             background-color: #e5e7eb;
             height: 40px;
             display: flex;
@@ -205,7 +206,7 @@
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="title-bar">
-        <div class="text-base font-medium text-gray-700">모듈 관리자</div>
+        <div class="text-base font-medium text-gray-700">번들 관리자</div>
         <button class="close-button no-drag" onclick="handleWindowClose()">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -243,7 +244,7 @@
                     </div>
                     <div class="ml-3">
                         <p class="text-sm text-yellow-700">
-                            모듈 다운로드, 삭제를 할 때 기존 소피아 프로그램은 종료됩니다. 관리자 프로그램 종료시 소피아가 다시 실행됩니다.
+                            번들 다운로드, 삭제를 할 때 기존 소피아 프로그램은 종료됩니다. 관리자 프로그램 종료시 소피아가 다시 실행됩니다.
                         </p>
                     </div>
                 </div>
@@ -254,7 +255,7 @@
                 <div class="relative">
                     <input type="text" id="searchInput" 
                         class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="모듈 검색 (한글/영문 이름, 설명)">
+                        placeholder="번들 검색 (한글/영문 이름, 설명)">
                 </div>
             </div>
 
@@ -279,6 +280,12 @@
                             </svg>
                             <span>번들 업로드</span>
                         </button>
+                        <button id="importBtn" onclick="importLocalBundle()" class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors duration-200">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <span>번들 가져오기</span>
+                        </button>
                         <button onclick="openBundleFolder()" class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white rounded-md hover:bg-gray-50 transition-colors duration-200 border border-gray-200">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
@@ -289,13 +296,13 @@
                 </div>
             </div>
 
-            <!-- 모듈 리스트 -->
+            <!-- 번들 리스트 -->
             <div class="bg-white rounded-lg shadow-md">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="w-1/2 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">모듈 정보</th>
+                                <th class="w-1/2 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">번들 정보</th>
                                 <th class="w-24 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
                                 <th class="w-24 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">주간 다운로드</th>
                                 <th class="w-32 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style="padding-right: 60px;">작업</th>
@@ -481,17 +488,17 @@
         let modules = [
             {
                 name: "sample-module",
-                "name:ko": "샘플 모듈",
+                "name:ko": "샘플 번들",
                 description: "This is a sample module",
-                "description:ko": "이것은 샘플 모듈입니다",
+                "description:ko": "이것은 샘플 번들입니다",
                 is_official: true,
                 isUsed: true
             },
             {
                 name: "test-module",
-                "name:ko": "테스트 모듈",
+                "name:ko": "테스트 번들",
                 description: "This is a test module",
-                "description:ko": "이것은 테스트 모듈입니다",
+                "description:ko": "이것은 테스트 번들입니다",
                 is_official: false,
                 isUsed: false
             }
@@ -582,7 +589,7 @@
                 removeBundleFromOrder(name);
                 
                 if (reloadFlag) {
-                    showSnackbar('모듈이 삭제되었습니다.');
+                    showSnackbar('번들이 삭제되었습니다.');
                     setTimeout(() => {
                         reloadModules();
                     }, 500);
@@ -668,16 +675,16 @@
                     // bundleOrder에 새로 설치된 번들 추가
                     addBundleToOrder(name);
                     
-                    showSnackbar('모듈이 설치되었습니다.');
+                    showSnackbar('번들이 설치되었습니다.');
                     setTimeout(() => {
                         reloadModules();
                     }, 500);
                 } else {
-                    showSnackbar('모듈 설치에 실패했습니다.');
+                    showSnackbar('번들 설치에 실패했습니다.');
                 }
             })
             .catch(error => {
-                showSnackbar('모듈 설치 중 오류가 발생했습니다.');
+                showSnackbar('번들 설치 중 오류가 발생했습니다.');
             })
             .finally(() => {
                 activeOperations.delete(operationId);
@@ -685,7 +692,7 @@
             });
         }
 
-        // 모듈 리스트 렌더링 함수
+        // 번들 리스트 렌더링 함수
         function renderModules(modules) {
             const moduleList = document.getElementById('moduleList');
             moduleList.innerHTML = modules.map(module => `
@@ -693,7 +700,12 @@
                     <td class="w-1/2 px-6 py-4">
                         <div class="flex items-center">
                             <div class="truncate">
-                                <div class="text-sm font-medium text-gray-900 truncate">${module["name:ko"] || module['name'] || ''}</div>
+                                <div class="flex items-center">
+                                    <div class="text-sm font-medium text-gray-900 truncate">${module["name:ko"] || module['name'] || ''}</div>
+                                    ${module.isLocalLink ? 
+                                        '<span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">로컬</span>' : 
+                                        ''}
+                                </div>
                                 <div class="text-sm text-gray-500 truncate">${module["description:ko"] || module['description'] || ''}</div>
                             </div>
                         </div>
@@ -708,9 +720,12 @@
                     </td>
                     <td class="w-32 px-6 py-4 text-sm text-right">
                         ${module.isUsed ? 
-                            (module.version === module.installedVersion ? 
-                                '<button onclick="deleteBundle(\'' + module.name + '\', event, true, true, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-red-400 rounded-md hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-colors duration-200">삭제</button>' :
-                                '<div class="flex justify-end space-x-2"><button onclick="downloadBundle(\'' + module.name + '\', event, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-red-400 rounded-md hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-colors duration-200">삭제</button><button onclick="downloadBundle(\'' + module.name + '\', event, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-green-400 rounded-md hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 transition-colors duration-200">업데이트</button></div>'
+                            (module.isLocalLink ?
+                                '<button onclick="unlinkLocalBundle(\'' + module.name + '\', event)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-orange-400 rounded-md hover:bg-orange-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400 transition-colors duration-200">링크 해제</button>' :
+                                (module.version === module.installedVersion ? 
+                                    '<button onclick="deleteBundle(\'' + module.name + '\', event, true, true, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-red-400 rounded-md hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-colors duration-200">삭제</button>' :
+                                    '<div class="flex justify-end space-x-2"><button onclick="deleteBundle(\'' + module.name + '\', event, true, true, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-red-400 rounded-md hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-colors duration-200">삭제</button><button onclick="downloadBundle(\'' + module.name + '\', event, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-green-400 rounded-md hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 transition-colors duration-200">업데이트</button></div>'
+                                )
                             ) : 
                             '<button onclick="downloadBundle(\'' + module.name + '\', event, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-blue-400 rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 transition-colors duration-200">설치</button>'}
                     </td>
@@ -750,7 +765,7 @@
 
             // 정렬: 1차 - isUsed 상태 (설치된 것 우선), 2차 - weekly_downloads 내림차순
             filteredModules.sort((a, b) => {
-                // 1차 정렬: 설치된 모듈이 먼저 오도록
+                // 1차 정렬: 설치된 번들이 먼저 오도록
                 if (a.isUsed !== b.isUsed) {
                     return a.isUsed ? -1 : 1;
                 }
@@ -811,26 +826,56 @@
                         const items = fs.readdirSync(bundleRootPath);
                         items.forEach(item => {
                             try {
-                                const pkg = JSON.parse(fs.readFileSync(path.join(bundleRootPath, item, 'package.json'), 'utf8'));
+                                const bundlePath = path.join(bundleRootPath, item);
+                                const pkg = JSON.parse(fs.readFileSync(path.join(bundlePath, 'package.json'), 'utf8'));
+                                
+                                // 심볼릭 링크인지 확인
+                                const stats = fs.lstatSync(bundlePath);
+                                const isLocalLink = stats.isSymbolicLink() || (os.platform() === 'win32' && stats.isDirectory() && fs.readlinkSync && (() => {
+                                    try {
+                                        fs.readlinkSync(bundlePath);
+                                        return true;
+                                    } catch {
+                                        return false;
+                                    }
+                                })());
+                                
                                 const localBundle = serverBundles.find((b) => b.name === pkg.name);
                                 if ( localBundle ) {
                                     localBundle.isUsed = true;
                                     localBundle.installedVersion = pkg.version;
+                                    localBundle.isLocalLink = isLocalLink;
                                 } else {
                                     serverBundles.push({
                                         ...pkg,
                                         isUsed: true,
-                                        installedVersion: pkg.version
+                                        installedVersion: pkg.version,
+                                        isLocalLink: isLocalLink
                                     });
                                 }
                             } catch(err) {
                                 console.error(err);
+                                const bundlePath = path.join(bundleRootPath, item);
+                                let isLocalLink = false;
+                                try {
+                                    const stats = fs.lstatSync(bundlePath);
+                                    isLocalLink = stats.isSymbolicLink() || (os.platform() === 'win32' && stats.isDirectory() && fs.readlinkSync && (() => {
+                                        try {
+                                            fs.readlinkSync(bundlePath);
+                                            return true;
+                                        } catch {
+                                            return false;
+                                        }
+                                    })());
+                                } catch {}
+                                
                                 serverBundles.push({
                                     name: item,
                                     description: '번들 파일이 손상되었습니다.',
                                     version: '1.0.0',
                                     isUsed: true,
-                                    installedVersion: '1.0.0'
+                                    installedVersion: '1.0.0',
+                                    isLocalLink: isLocalLink
                                 });
                             }
                         });
@@ -897,6 +942,7 @@
         }
 
         let uploadFlag = false;
+        let importFlag = false;
 
         async function checkFile(src) {
             if (!fs.existsSync(src)) {
@@ -994,7 +1040,7 @@
                     fs.unlinkSync(zipFile);
                     showSnackbar('번들 업로드가 완료되었습니다.', 'success');
                     
-                    // 업로드 후 모듈 목록 새로고침
+                    // 업로드 후 번들 목록 새로고침
                     reloadModules();
                     
                 } catch (err) {
@@ -1012,6 +1058,132 @@
             } finally {
                 uploadFlag = false;
                 uploadBtn.classList.remove('button-loading');
+            }
+        }
+
+        // 로컬 번들 가져오기 함수
+        async function importLocalBundle() {
+            if (importFlag) return;
+            
+            importFlag = true;
+            const importBtn = document.getElementById('importBtn');
+            importBtn.classList.add('button-loading');
+            
+            try {
+                const result = await ipcRenderer.invoke('open-dialog', {
+                    properties: ['openDirectory'],
+                    title: '로컬 번들 폴더 선택',
+                    defaultPath: bundleRootPath,
+                });
+                
+                if (result.canceled) {
+                    console.log('Canceled folder select for local bundle import.');
+                    return;
+                }
+
+                const sourceFolder = result.filePaths[0];
+                const packageFile = path.join(sourceFolder, 'package.json');
+                
+                if (!await checkFile(packageFile)) return;
+
+                const pkg = JSON.parse(fs.readFileSync(packageFile, 'utf8'));
+                console.log('Local bundle package:', pkg);
+
+                if (!await checkPackageProperty(pkg, 'name')) return;
+                if (!await checkPackageProperty(pkg, 'version')) return;
+
+                const targetPath = path.join(bundleRootPath, pkg.name);
+                
+                // 이미 존재하는 번들인지 확인
+                if (fs.existsSync(targetPath)) {
+                    showSnackbar('이미 존재하는 번들입니다.', 'error');
+                    return;
+                }
+
+                // 심볼릭 링크 생성 (Windows에서는 junction 사용)
+                try {
+                    if (os.platform() === 'win32') {
+                        fs.symlinkSync(sourceFolder, targetPath, 'junction');
+                    } else {
+                        fs.symlinkSync(sourceFolder, targetPath, 'dir');
+                    }
+                    console.log('Created symlink:', sourceFolder, '->', targetPath);
+                } catch (error) {
+                    console.error('Error creating symlink:', error);
+                    showSnackbar('링크 생성에 실패했습니다: ' + error.message, 'error');
+                    return;
+                }
+
+                // dependencies가 있으면 설치
+                if (pkg.dependencies && Object.keys(pkg.dependencies).length > 0) {
+                    try {
+                        await ipcRenderer.invoke('bun:install', sourceFolder);
+                        console.log('Dependencies installed for local bundle');
+                    } catch (error) {
+                        console.error('Error installing dependencies:', error);
+                        showSnackbar('의존성 설치 중 오류가 발생했습니다.', 'error');
+                    }
+                }
+
+                // bundleOrder에 새로 가져온 번들 추가
+                addBundleToOrder(pkg.name);
+                
+                showSnackbar('로컬 번들이 성공적으로 가져와졌습니다.', 'success');
+                
+                // 번들 목록 새로고침
+                setTimeout(() => {
+                    reloadModules();
+                }, 500);
+                
+            } catch (error) {
+                console.error('Import local bundle error:', error);
+                showSnackbar('로컬 번들 가져오기 중 오류가 발생했습니다.', 'error');
+            } finally {
+                importFlag = false;
+                importBtn.classList.remove('button-loading');
+            }
+        }
+
+        // 로컬 번들 삭제 (unlink) 함수
+        async function unlinkLocalBundle(name, event) {
+            event.stopPropagation();
+            const button = event.target;
+            
+            const operationId = `unlink-${name}-${Date.now()}`;
+            activeOperations.add(operationId);
+            button.classList.add('button-loading');
+            
+            try {
+                const bundlePath = path.join(bundleRootPath, name);
+                
+                // 심볼릭 링크인지 확인
+                const stats = fs.lstatSync(bundlePath);
+                if (stats.isSymbolicLink() || (os.platform() === 'win32' && stats.isDirectory())) {
+                    // Windows에서는 junction도 directory로 인식되므로 추가 확인 필요
+                    try {
+                        fs.unlinkSync(bundlePath);
+                        console.log('Unlinked local bundle:', bundlePath);
+                        
+                        // bundleOrder에서 제거
+                        removeBundleFromOrder(name);
+                        
+                        showSnackbar('로컬 번들 링크가 해제되었습니다.', 'success');
+                        setTimeout(() => {
+                            reloadModules();
+                        }, 500);
+                    } catch (error) {
+                        console.error('Error unlinking bundle:', error);
+                        showSnackbar('번들 링크 해제에 실패했습니다.', 'error');
+                    }
+                } else {
+                    showSnackbar('이 번들은 로컬 링크가 아닙니다.', 'error');
+                }
+            } catch (error) {
+                console.error('Error checking bundle type:', error);
+                showSnackbar('번들 정보 확인 중 오류가 발생했습니다.', 'error');
+            } finally {
+                activeOperations.delete(operationId);
+                button.classList.remove('button-loading');
             }
         }
 
