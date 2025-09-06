@@ -5,7 +5,7 @@
  * Copyright (c) Raravel. Licensed under the MIT License.
 -->
 <template>
-	<v-main class="modern-cmd-layout" style="overflow-y: auto; max-height: calc(100vh - var(--titlebar-height));">
+	<v-main class="modern-cmd-layout" style="overflow-y: auto; height: calc(100vh - var(--titlebar-height)); max-height: calc(100vh - var(--titlebar-height));">
 			<v-row justify="center" class="ma-0">
 				<v-col cols="12" md="10" lg="8" xl="6" class="pa-4">
 					<!-- Header Card -->
