@@ -28,6 +28,14 @@ export default function createMainWindow() {
     const appCfg = new CfgLite(path.join(adp, 'app.cfg'));
     const windowState = appCfg.get('window-state') || { width: 800, height: 600, x: undefined, y: undefined };
 
+    if ( windowState.x < 0 ) {
+        delete windowState.x;
+    }
+
+    if ( windowState.y < 0 ) {
+        delete windowState.y;
+    }
+
     autoUpdater.logger = log;
 
     const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -66,10 +74,7 @@ export default function createMainWindow() {
         registerIpcHandler();
         // Create the browser window.
         win = new BrowserWindow({
-            width: windowState.width,
-            height: windowState.height,
-            x: windowState.x,
-            y: windowState.y,
+            ...windowState,
             webPreferences: {
                 // Use pluginOptions.nodeIntegration, leave this alone
                 // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
