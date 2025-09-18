@@ -201,11 +201,6 @@ export default class Home extends Mixins(GlobalMixins) {
 			}
 		} else {
 			this.liveManager = await this.$sopia.api.lives.popular();
-			console.log('liveManager', this.liveManager);
-			if ( this.liveManager.res.status_code === 460 ) {
-				window.logout();
-				return;
-			}
 			this.liveList = this.liveManager.res.results;
 		}
 
