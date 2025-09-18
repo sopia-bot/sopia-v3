@@ -216,38 +216,77 @@ export default class App extends Mixins(GlobalMixins) {
 				};
 				this.$cfg.set('auth.sopia', this.$api.user);
 				this.$cfg.save();
-				this.$sopia.loginToken(auth.spoon.id, auth.spoon.token, auth.spoon.refresh_token)
-					.then(async (user) => {
-						const token = await this.$sopia.refreshToken(user.id, auth.spoon.token, auth.spoon.refresh_token);
-						if ( token ) {
-							auth.spoon.token = token;
-							this.$store.commit('user', user);
-							this.$evt.$emit('user', user);
-							this.$cfg.set('auth.spoon.token', token);
-							this.$cfg.save();
 
-							this.isLogin = true;
+				let payload: any = null;
+				let isExpired: boolean = false;
+				try {
+					payload = JSON.parse(
+						Buffer.from(auth.spoon.token?.split('.')?.[1] || '', 'base64').toString('utf8')
+					);
+					isExpired = payload.exp < Date.now() / 1000;
+					this.$sopia.deviceUUID = payload.did;
+				} catch(err) {
+					console.log(err);
+				}
 
-							await this.$api.activityLog('logon');
-
-							console.log('isLogin', this.isLogin);
-							console.log('this.$api.user.agree_live_info', this.$api.user);
-							if ( !this.$api.user.agree_live_info ) {
-								this.showAgreeLiveInfoDialog();
-							}
-						} else {
-							throw Error('Invalid token');
-						}
-					})
-					.catch((err) => {
-						this.$cfg.delete('auth');
+				if ( isExpired && auth.spoon.refresh_token ) {
+					const res = await fetch('https://kr-auth.spooncast.net/tokens/', {
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							device_unique_id: this.$sopia.deviceUUID,
+							refresh_token: auth.spoon.refresh_token,
+							user_id: auth.spoon.id,
+						}),
+					}).then((res) => res.json());
+					if ( res?.data?.jwt ) {
+						auth.spoon.token = res.data.jwt;
+						this.$cfg.set('auth.spoon.token', res.data.jwt);
 						this.$cfg.save();
-						// this.$evt.$emit('login:skip-sopia-login', auth.sopia);
-						this.isLogin = false;
-						setTimeout(() => {
-							this.$assign('/login');
-						}, 100)
-					});
+
+						this.$sopia.loginToken(auth.spoon.id, auth.spoon.token)
+							.then(async (user) => {
+								this.$store.commit('user', user);
+								this.$evt.$emit('user', user);
+								await this.$api.activityLog('relogon');
+							});
+					}
+				} else {
+					this.$sopia.loginToken(auth.spoon.id, auth.spoon.token, auth.spoon.refresh_token)
+						.then(async (user) => {
+							const token = await this.$sopia.refreshToken(user.id, auth.spoon.token, auth.spoon.refresh_token);
+							if ( token ) {
+								auth.spoon.token = token;
+								this.$store.commit('user', user);
+								this.$evt.$emit('user', user);
+								this.$cfg.set('auth.spoon.token', token);
+								this.$cfg.save();
+
+								this.isLogin = true;
+
+								await this.$api.activityLog('logon');
+
+								console.log('isLogin', this.isLogin);
+								console.log('this.$api.user.agree_live_info', this.$api.user);
+								if ( !this.$api.user.agree_live_info ) {
+									this.showAgreeLiveInfoDialog();
+								}
+							} else {
+								throw Error('Invalid token');
+							}
+						})
+						.catch((err) => {
+							this.$cfg.delete('auth');
+							this.$cfg.save();
+							// this.$evt.$emit('login:skip-sopia-login', auth.sopia);
+							this.isLogin = false;
+							setTimeout(() => {
+								this.$assign('/login');
+							}, 100)
+						});
+				}
 			}
 		} else {
 			this.isLogin = false;

@@ -74,7 +74,9 @@ export default class LoginSpoon extends Mixins(GlobalMixins) {
 		}
 		const userInfo = result.data as LogonUser;
 		await this.$sopia.loginToken(userInfo.id, userInfo.token, userInfo.refresh_token)
-		
+		// console.log('token', token);
+		const payload = JSON.parse(Buffer.from(userInfo.token.split('.')[1], 'base64').toString('utf-8'));
+		this.$sopia.deviceUUID = payload.did;
 		this.$emit('logon', userInfo);
 	}
 
