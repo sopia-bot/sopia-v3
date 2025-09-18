@@ -249,6 +249,11 @@ export default class TitleBar extends Mixins(GlobalMixins) {
 	}
 
 	private checkAndShowTutorial() {
+		// 로그인 먼저 확인
+		if (!this.$sopia.logonUser) {
+			return;
+		}
+
 		// localStorage에서 튜토리얼 완료 플래그 확인
 		const tutorialCompleted = localStorage.getItem('sopia-bundle-tabs-tutorial-completed');
 		
