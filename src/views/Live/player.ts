@@ -191,13 +191,16 @@ export class Player {
 		
 		if (live.engine_name === 'ssm') {
 			this.player = await new SSMConnector(window.$sopia)
-					.Live(live)
-					.Connect();
+				.Live(live)
+				.Connect();
+			this.audio.srcObject = this.player.stream;
 		} else {
 			this.player = new Hls();
 			this.player.loadSource(live.url_hls);
 			this.player.attachMedia(this.audio);
 		}
+
+		this.audio.play();
 		
 		// 스트림 로드 후 자동으로 녹음 시작
 		await this.startRecording();
