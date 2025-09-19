@@ -33,7 +33,7 @@
 								</li>
 							</ul>
 							<p class="mb-1">입금하신 분께선 아래에 입금자명 및 적용받을 스푼 계정을 입력하신 후 <b>전송</b>버튼을 누르시면 확인 후 혜택이 적용됩니다. (최대 1일 소요.)</p>
-							<p class="mb-2">기타 문의사항은 오픈채팅: <a href="https://open.kakao.com/o/s0L8uSfd" target="_blank">개발자 윤군</a>을 찾아주시기 바랍니다.</p>
+							<p class="mb-2">기타 문의사항은 오픈채팅: <a href="https://open.kakao.com/o/sEr0aceg" target="_blank">개발자 윤군</a>을 찾아주시기 바랍니다.</p>
 							<v-textarea :disabled="loading" solo v-model="message" hide-details rows="5"></v-textarea>
 							<v-btn :disabled="loading" block depressed class="mt-2" color="green" @click="sendSponsor">전송</v-btn>
 							<v-col cols="12" align="center">

@@ -87,14 +87,22 @@ module.exports = {
 						to: '.ffmpeg',
 					},
 				],
-			},
-			mac: {
-				target: "dmg",
-				arch: [
-					"x64",
-					"arm64",
-					"universal",
-				],
+				// mac: {
+				// 	target: "dmg",
+				// 	arch: [
+				// 		"x64",
+				// 		"arm64",
+				// 		"universal",
+				// 	],
+				// },
+				win: {
+					target: "nsis"
+				},
+				nsis: {
+					oneClick: true,
+					deleteAppDataOnUninstall: true,
+					include: 'uninstaller.nsh'
+				}
 			},
 		},
 	},
