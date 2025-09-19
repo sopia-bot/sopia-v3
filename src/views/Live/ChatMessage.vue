@@ -35,7 +35,11 @@
 			<v-list-item>
 				<v-list-item-avatar>
 				</v-list-item-avatar>
-				<div :class="{ 'shine-border': isSpecial, 'normal-border': !isSpecial }">
+				<div :class="{
+					'shine-border': isSpecial,
+					'normal-border': !isSpecial,
+					'red': shineColor === 'red',
+				}">
 					<v-card
 						tile dark
 						width="100%"
@@ -95,6 +99,10 @@ const URL_REGIX = /(https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9
 export default class ChatMessage extends Mixins(GlobalMixins) {
 	@Prop(Object) public evt: any;
 	@Prop(Boolean) public isSpecial?: boolean;
+	@Prop({
+		type: String,
+		default: '',
+	}) public shineColor?: string;
 	public LiveEvent = EventList;
 
 	public defaultProfileUrl = require('assets/default-profile.png');
@@ -108,7 +116,7 @@ export default class ChatMessage extends Mixins(GlobalMixins) {
 	}
 
 	public mounted() {
-		console.log('isSpecial', this.isSpecial);
+		console.log('isSpecial', this.isSpecial, this.shineColor);
 	}
 
 	public blockUser(id: number) {
@@ -164,6 +172,11 @@ export default class ChatMessage extends Mixins(GlobalMixins) {
 	background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7, #dda0dd);
 	background-size: 400% 400%;
 	animation: shine 2s ease-in-out infinite;
+}
+
+.shine-border.red {
+	background: linear-gradient(45deg, #ff0000, #ff4444, #ff6666, #ff8888, #ffaaaa, #ff2222);
+	background-size: 400% 400%;
 }
 
 .shine-border .message-card {

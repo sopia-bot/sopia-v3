@@ -49,7 +49,7 @@
 									<div
 										v-for="(event, idx) of liveEvents"
 										:key="idx">
-										<chat-message :evt="event" :isSpecial="isSpecialUser(event)"></chat-message>
+										<chat-message :evt="event" :isSpecial="isSpecialUser(event)" :shineColor="getChatColor(event)"></chat-message>
 									</div>
 								</v-col>
 							</v-row>
@@ -165,12 +165,26 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 
 	public isSpecialUser(evt: LiveEventStruct) {
 		if ( evt.data && (evt.data as { user: User }).user ) {
-			return this.specialUser.findIndex(([id]) => id === (evt.data as { user: User }).user.id.toString()) !== -1;
+			return this.specialUser.findIndex(([id]) => id.toString() === (evt.data as { user: User }).user.id.toString()) !== -1;
 		}
 		if ( evt.data && (evt.data as { author: User }).author ) {
-			return this.specialUser.findIndex(([id]) => id === (evt.data as { author: User }).author.id.toString()) !== -1;
+			return this.specialUser.findIndex(([id]) => id.toString() === (evt.data as { author: User }).author.id.toString()) !== -1;
 		}
 		return false;
+	}
+
+	public getChatColor(evt: any) {
+		const userId = evt?.data?.user?.id || evt?.data?.author?.id || 0;
+		if ( userId ) {
+			const user = this.specialUser.find(([id]) => id.toString() === userId.toString());
+			if ( user ) {
+				if ( user[1] === '💖' ) {
+					return 'red';
+				}
+				return '';
+			}
+		}
+		return '';
 	}
 
 	public setSponsors() {
