@@ -17,7 +17,7 @@
 					<router-view></router-view>
 				</transition>
 			</v-sheet>
-			<live-player v-if="isLogin && currentLive.id" :live="currentLive" />
+			<live-player v-if="isLogin && currentLive.id" :live="currentLive" :isMembership="isMemberShip" :isRejoin="isRejoin"/>
 		</div>
 		<!--<tutorials/>-->
 		<!-- <agree-live-info-dialog v-if="isLogin" :open="agreeLiveInfoDialogOpen" @update:open="agreeLiveInfoDialogOpen = $event" /> -->
@@ -81,6 +81,8 @@ declare global {
 })
 export default class App extends Mixins(GlobalMixins) {
 	public currentLive: Live = {} as Live;
+	public isMemberShip: boolean = false;
+	public isRejoin: boolean = false;
 	public bundleUpdateDialogShow: boolean = false;
 	public bundleUpdateList: BundlePackage[] = [];
 	public isLogin: boolean = false;
@@ -240,7 +242,10 @@ export default class App extends Mixins(GlobalMixins) {
 							refresh_token: auth.spoon.refresh_token,
 							user_id: auth.spoon.id,
 						}),
-					}).then((res) => res.json());
+					}).then((res) => res.json())
+					.catch((err) => {
+						window.logout();
+					});
 					if ( res?.data?.jwt ) {
 						auth.spoon.token = res.data.jwt;
 						this.$cfg.set('auth.spoon.token', res.data.jwt);
@@ -294,7 +299,7 @@ export default class App extends Mixins(GlobalMixins) {
 		}
 
 		this.$evt.$off('live-join');
-		this.$evt.$on('live-join', async (live: number, isMembership: boolean) => {
+		this.$evt.$on('live-join', async (live: number, isMembership: boolean, isRejoin: boolean = false) => {
 			let config!: ApiLivesInfo.Request;
 			if ( isMembership ) {
 				const req = await this.$sopia.api.lives.token(live, {
@@ -314,6 +319,8 @@ export default class App extends Mixins(GlobalMixins) {
 			const req = await this.$sopia.api.lives.info(live, config);
 			this.$nextTick(async () => {
 				this.currentLive = req.res.results[0];
+				this.isMemberShip = isMembership;
+				this.isRejoin = isRejoin;
 				await this.$api.activityLog('live-join', req.res.results[0].id.toString());
 			});
 		});
@@ -321,6 +328,7 @@ export default class App extends Mixins(GlobalMixins) {
 		this.$evt.$off('live-leave');
 		this.$evt.$on('live-leave', () => {
 			this.currentLive = {} as Live;
+			this.isMemberShip = false;
 		});
 
 		this.$evt.$off('user');

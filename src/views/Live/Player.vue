@@ -5,7 +5,7 @@
  * Copyright (c) TreeSome. Licensed under the MIT License.
 -->
 <template>
-	<div v-if="live && live.id">
+	<div v-if="live && live.id && isJoined">
 		<div v-show="fullScreen">
 			<v-card
 				tile
@@ -122,11 +122,15 @@ const IgnoreEvent = [
 })
 export default class LivePlayer extends Mixins(GlobalMixins) {
 	@Prop(Object) public live!: Live;
+	@Prop(Boolean) public isMembership!: boolean;
+	@Prop(Boolean) public isRejoin!: boolean;
 
 	public fullScreen: boolean = true;
 	public liveEvents: any = [];
 	public footMenuOpen: boolean = false;
 	public alertTimer!: NodeJS.Timeout;
+	public disconnectTimer!: NodeJS.Timeout|null;
+	public isJoined: boolean = false;
 	public managerIds: number[] = [];
 	public lottieData: any = false;
 	public playingLottie: boolean = false;
@@ -198,6 +202,14 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 				if ( err.res ) {
 					switch ( err.res.error.code ) {
 						case 30021:
+							if ( this.isRejoin ) {
+								this.$nextTick(() => {
+									setTimeout(() => {
+										this.$evt.$emit('live-join', this.live.id, this.isMembership, true);
+									}, 1000);
+								});
+								break;
+							}
 							this.$swal({
 								html: this.$t(`lives.error.30021`),
 								toast: true,
@@ -222,6 +234,7 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 				this.$logger.err('live-join', err);
 			}
 
+			this.isJoined = true;
 			this.player.connect(this.live);
 			if ( this.$cfg.get('player.isMute') ) {
 				this.player.volume = 0;
@@ -233,6 +246,11 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 					this.live.socket.message(this.$t('lives.alert', pkg.version));
 				}
 			}, 1000 * 60 * 10 /* 10min */);
+			if ( this.isRejoin ) {
+				this.live.socket.message(`안녕하세요. ${this.live.author.nickname}님. 다시 돌아왔습니다.`);
+			} else {
+				this.live.socket.message(`안녕하세요. ${this.live.author.nickname}님. 오늘도 방송해 주셔서 감사합니다.`);
+			}
 			this.live.socket.on(LiveEvent.LIVE_EVENT_ALL, (evt: any) => {
 				setImmediate(async () => {
 					// 오류가 나더라도 이후 동작은 안전하게 하기 위함.
@@ -242,16 +260,34 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 						console.error(err);
 					}
 				});
+				if ( this.disconnectTimer ) {
+					clearInterval(this.disconnectTimer);
+				}
+				this.disconnectTimer = setTimeout(() => {
+					const liveId = this.live.id;
+					const isMembership = this.isMembership;
+					this.liveLeave();
+					this.$nextTick(() => {
+						setTimeout(() => {
+							this.$evt.$emit('live-join', liveId, isMembership, true);
+						}, 100);
+					});
+					this.$swal({
+						icon: 'warning',
+						toast: true,
+						position: 'top-end',
+						html: '방송과의 연결이 끊어졌습니다. 다시 연결을 시도합니다.',
+						showCloseButton: false,
+						showConfirmButton: false,
+						timer: 5000,
+					});
+				}, 1000 * 10 /* 10sec */);
 				if ( evt.event === LiveEvent.LIVE_CLOSED || (evt.event === LiveEvent.LIVE_UPDATE && evt.data.live.close_status === 1) ) {
 					this.liveLeave();
 					return;
 				}
 				if ( evt?.data?.live?.manager_ids ) {
 					this.managerIds = evt.data.live.manager_ids;
-				}
-				if ( evt.event === LiveEvent.LIVE_JOIN && evt.data.author.id === this.$sopia.logonUser.id ) {
-					// Joined logon account event ignore
-					return;
 				}
 
 				this.replaceSpecialInformation(evt);
@@ -331,6 +367,10 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 			if ( this.live?.socket ) {
 				console.log(this.live.socket);
 				this.live.socket.destroy();
+			}
+			if ( this.disconnectTimer ) {
+				clearInterval(this.disconnectTimer);
+				this.disconnectTimer = null;
 			}
 		} catch (err) {
 			console.error(err);
