@@ -174,6 +174,11 @@ export default class ChatMessage extends Mixins(GlobalMixins) {
 	animation: shine 2s ease-in-out infinite;
 }
 
+.shine-border.shine {
+	background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7, #dda0dd);
+	background-size: 400% 400%;
+}
+
 .shine-border.red {
 	background: linear-gradient(45deg, #ffacd6, #ffadd6, #ffa2cf, #ffa5cd, #ff5c97, #ffa6d2);
 	background-size: 400% 400%;

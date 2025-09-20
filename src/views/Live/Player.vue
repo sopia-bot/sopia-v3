@@ -184,7 +184,7 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 				if ( user[1] === '💎' ) {
 					return 'none';
 				}
-				return '';
+				return 'shine';
 			}
 		}
 		return '';
