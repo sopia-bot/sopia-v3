@@ -272,6 +272,9 @@ export default class App extends Mixins(GlobalMixins) {
 								this.$store.commit('user', user);
 								this.$evt.$emit('user', user);
 								await this.$api.activityLog('relogon');
+							})
+							.catch((err) => {
+								window.logout();
 							});
 					}
 				} else {
