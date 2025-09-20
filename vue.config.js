@@ -100,8 +100,8 @@ module.exports = {
 				},
 				nsis: {
 					oneClick: true,
-					deleteAppDataOnUninstall: true,
-					include: 'uninstaller.nsh'
+					deleteAppDataOnUninstall: false,
+					include: 'build/installer.nsh'
 				}
 			},
 		},
