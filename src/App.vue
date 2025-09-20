@@ -12,12 +12,12 @@
 		<bundle-update-dialog v-if="isLogin" v-model="bundleUpdateDialogShow" :items="bundleUpdateList" />
 		<side-menu v-if="isLogin"/>
 		<div class="ma-0 d-flex">
-			<v-sheet id="router-view" tile :key="$route.fullPath" color="white" style="max-width: 100vw; flex-basis: 80%; flex-grow: 1; flex-shrink: 1;">
+			<v-sheet id="router-view" tile :key="$route.fullPath" color="white" :style="{ maxWidth: maxWindowWidth }" style="flex-basis: 80%; flex-grow: 1; flex-shrink: 1;">
 				<transition name="scroll-y-reverse-transition">
 					<router-view></router-view>
 				</transition>
 			</v-sheet>
-			<live-player v-if="isLogin && currentLive.id" :live="currentLive" :isMembership="isMemberShip" :isRejoin="isRejoin"/>
+			<live-player v-if="isLogin && currentLive.id" :live="currentLive" :isMembership="isMemberShip" :isRejoin="isRejoin" @screen:change="screenChange"/>
 		</div>
 		<!--<tutorials/>-->
 		<!-- <agree-live-info-dialog v-if="isLogin" :open="agreeLiveInfoDialogOpen" @update:open="agreeLiveInfoDialogOpen = $event" /> -->
@@ -96,10 +96,26 @@ export default class App extends Mixins(GlobalMixins) {
 	private moveTimeout: any = null;
 	private isResizing: boolean = false;
 	private isMoving: boolean = false;
+	private liveFullScreen: boolean = false;
+
+	get maxWindowWidth() {
+		console.log('maxWindowWidth', this.liveFullScreen, this.currentLive)
+		if ( !this.liveFullScreen ) {
+			return '100vw';
+		}
+		if ( this.currentLive && this.currentLive.id ) {
+			return `calc(100vw - 450px)`;
+		}
+		return '100vw';
+	}
 
 	public async created() {
 		const req = await this.$sopia.api.users.followings(4324890);
 		this.$store.commit('partners', req.res.results);
+	}
+
+	public screenChange(fullScreen: boolean) {
+		this.liveFullScreen = fullScreen;
 	}
 
 	public onResize() {
@@ -300,29 +316,36 @@ export default class App extends Mixins(GlobalMixins) {
 
 		this.$evt.$off('live-join');
 		this.$evt.$on('live-join', async (live: number, isMembership: boolean, isRejoin: boolean = false) => {
-			let config!: ApiLivesInfo.Request;
-			if ( isMembership ) {
-				const req = await this.$sopia.api.lives.token(live, {
-					'data': {
-						'device_unique_id': this.$sopia.deviceUUID,
-					},
-				});
-				if ( req.res.status_code !== 200 ) {
-					throw req;
-				}
-				config = {
-					headers: {
-						'x-live-authorization': 'Bearer ' + req.res.results[0]?.jwt,
+			const joinLive = async () => {
+				let config!: ApiLivesInfo.Request;
+				if ( isMembership ) {
+					const req = await this.$sopia.api.lives.token(live, {
+						'data': {
+							'device_unique_id': this.$sopia.deviceUUID,
+						},
+					});
+					if ( req.res.status_code !== 200 ) {
+						throw req;
 					}
-				};
-			}
-			const req = await this.$sopia.api.lives.info(live, config);
-			this.$nextTick(async () => {
+					config = {
+						headers: {
+							'x-live-authorization': 'Bearer ' + req.res.results[0]?.jwt,
+						}
+					};
+				}
+				const req = await this.$sopia.api.lives.info(live, config);
+				await this.$nextTick();
 				this.currentLive = req.res.results[0];
 				this.isMemberShip = isMembership;
 				this.isRejoin = isRejoin;
-				await this.$api.activityLog('live-join', req.res.results[0].id.toString());
-			});
+				this.$api.activityLog('live-join', req.res.results[0].id.toString());
+			};
+
+			if ( isRejoin ) {
+				joinLive();
+			} else {
+				joinLive();
+			}
 		});
 
 		this.$evt.$off('live-leave');

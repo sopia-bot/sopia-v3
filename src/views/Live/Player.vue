@@ -5,12 +5,12 @@
  * Copyright (c) TreeSome. Licensed under the MIT License.
 -->
 <template>
-	<div v-if="live && live.id && isJoined">
+	<div v-if="live && live.id && isJoined" :style="{ width: fullScreen ? '450px' : 'unset' }">
 		<div v-show="fullScreen">
 			<v-card
 				tile
 				class="full-screen">
-				<player-bar :live="live" @screen:close="fullScreen = false" @close="liveLeave"/>
+				<player-bar :live="live" @screen:close="() => screenChange(false)" @close="liveLeave"/>
 				<v-app-bar
 					dark absolute dense flat
 					style="margin-top: 56px;"
@@ -69,7 +69,7 @@
 			<v-btn
 				tile dark
 				large
-				@click="fullScreen = true;"
+				@click="screenChange(true)"
 				color="indigo accent-5">
 				<v-icon left>
 					mdi-chevron-up
@@ -491,6 +491,11 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 		}
 
 	}
+
+	public screenChange(fullScreen: boolean) {
+		this.fullScreen = fullScreen;
+		this.$emit('screen:change', this.fullScreen);
+	}
 }
 </script>
 <style scope>
@@ -508,7 +513,7 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 	max-width: 450px;
 	bottom: 0px;
 	right:0px;
-	z-index: 1;
+	z-index: 100;
 }
 
 .lottie-wrapper {
