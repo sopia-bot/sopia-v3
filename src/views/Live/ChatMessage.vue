@@ -38,7 +38,7 @@
 				<div :class="{
 					'shine-border': isSpecial,
 					'normal-border': !isSpecial,
-					'red': shineColor === 'red',
+					[shineColor || 'none']: true,
 				}">
 					<v-card
 						tile dark
@@ -177,6 +177,10 @@ export default class ChatMessage extends Mixins(GlobalMixins) {
 .shine-border.red {
 	background: linear-gradient(45deg, #ffacd6, #ffadd6, #ffa2cf, #ffa5cd, #ff5c97, #ffa6d2);
 	background-size: 400% 400%;
+}
+
+.shine-border.none {
+	background: none;
 }
 
 .shine-border .message-card {
