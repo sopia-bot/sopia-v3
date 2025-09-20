@@ -175,7 +175,7 @@ export default class ChatMessage extends Mixins(GlobalMixins) {
 }
 
 .shine-border.red {
-	background: linear-gradient(45deg, #ff0000, #ff4444, #ff6666, #ff8888, #ffaaaa, #ff2222);
+	background: linear-gradient(45deg, #ffacd6, #ffadd6, #ffa2cf, #ffa5cd, #ff5c97, #ffa6d2);
 	background-size: 400% 400%;
 }
 
