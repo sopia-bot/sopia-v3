@@ -286,36 +286,32 @@ export default class App extends Mixins(GlobalMixins) {
 				} else {
 					this.$sopia.loginToken(auth.spoon.id, auth.spoon.token, auth.spoon.refresh_token)
 						.then(async (user) => {
-							const token = await this.$sopia.refreshToken(user.id, auth.spoon.token, auth.spoon.refresh_token);
-							if ( token ) {
-								auth.spoon.token = token;
-								this.$store.commit('user', user);
-								this.$evt.$emit('user', user);
-								this.$cfg.set('auth.spoon.token', token);
-								this.$cfg.save();
+							try {
+								const token = await this.$sopia.refreshToken(user.id, auth.spoon.token, auth.spoon.refresh_token);
+								if ( token ) {
+									auth.spoon.token = token;
+									this.$store.commit('user', user);
+									this.$evt.$emit('user', user);
+									this.$cfg.set('auth.spoon.token', token);
+									this.$cfg.save();
 
-								this.isLogin = true;
+									this.isLogin = true;
 
-								await this.$api.activityLog('logon');
+									await this.$api.activityLog('logon');
 
-								console.log('isLogin', this.isLogin);
-								console.log('this.$api.user.agree_live_info', this.$api.user);
-								if ( !this.$api.user.agree_live_info ) {
-									this.showAgreeLiveInfoDialog();
+									if ( !this.$api.user.agree_live_info ) {
+										this.showAgreeLiveInfoDialog();
+									}
+								} else {
+									window.logout();
 								}
-							} else {
-								throw Error('Invalid token');
+							} catch(err) {
+								window.logout();
 							}
 						})
-						.catch((err) => {
-							this.$cfg.delete('auth');
-							this.$cfg.save();
-							// this.$evt.$emit('login:skip-sopia-login', auth.sopia);
-							this.isLogin = false;
-							setTimeout(() => {
-								this.$assign('/login');
-							}, 100)
-						});
+					.catch((err) => {
+						window.logout();
+					});
 				}
 			}
 		} else {
