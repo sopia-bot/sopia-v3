@@ -203,7 +203,7 @@ export class Player {
 		this.audio.play();
 		
 		// 스트림 로드 후 자동으로 녹음 시작
-		await this.startRecording();
+		// await this.startRecording();
 	}
 
 	// Player.vue에서 필요한 connect 메서드 추가
