@@ -3,57 +3,72 @@
 	<v-dialog
 		v-model="value"
 		persistent
-		max-width="600px"
-		width="80%">
-		<v-card>
-			<v-card-title>
-				<p class="ma-0" style="text-align: center; width:100%;">{{ $t('bundle.update.need') }}</p>
+		max-width="700px"
+		width="90%">
+		<v-card elevation="8" class="rounded-lg">
+			<v-card-title class="text-h5 font-weight-bold primary white--text">
+				<v-icon left color="white" class="mr-2">mdi-package-variant</v-icon>
+				{{ $t('bundle.update.need') }}
 			</v-card-title>
-			<v-container class="mb-4">
-				<update-list-item
-					v-for="pkg of items"
-					:key="pkg.name"
-					:pkg="pkg"
-					:ref="pkg.name"
-					@install:done="resolve"/>
-			</v-container>
-			<v-card-actions v-if="installDone">
+			
+			<v-card-text class="pa-0">
+				<v-container class="py-4">
+					<v-row>
+						<v-col cols="12">
+							<div class="text-subtitle-1 mb-3 grey--text text--darken-1">
+								업데이트 가능한 번들 목록
+							</div>
+							<v-list class="transparent">
+								<update-list-item
+									v-for="(pkg, index) of items"
+									:key="pkg.name"
+									:pkg="pkg"
+									:ref="pkg.name"
+									:class="{ 'mb-2': index < items.length - 1 }"
+									@install:done="resolve"/>
+							</v-list>
+						</v-col>
+					</v-row>
+				</v-container>
+			</v-card-text>
+			
+			<v-divider></v-divider>
+			
+			<v-card-actions class="pa-4" v-if="installDone">
 				<v-spacer></v-spacer>
 				<v-btn
-					depressed tile dark
+					large
+					rounded
+					color="success"
+					dark
 					:disabled="installing"
-					color="indigo darken-1"
 					@click="$emit('input', false)">
+					<v-icon left>mdi-check-circle</v-icon>
 					{{ $t('close') }}
 				</v-btn>
 			</v-card-actions>
-			<v-card-actions v-else>
+			
+			<v-card-actions class="pa-4" v-else>
 				<v-btn
-					depressed dark
+					large
+					rounded
 					outlined
-					:dark="!installing"
+					color="grey darken-1"
 					:disabled="installing"
-					color="red darken-1"
 					@click="$emit('input', false)">
+					<v-icon left>mdi-close</v-icon>
 					{{ $t('close') }}
 				</v-btn>
 				<v-spacer></v-spacer>
-				<!-- <v-btn
-					depressed rounded
-					:dark="!installing"
-					:disabled="installing"
-					:loading="installing"
-					color="green darken-1"
-					@click="installSelect">
-					{{ $t('bundle.update.select') }}
-				</v-btn> -->
 				<v-btn
-					depressed rounded
-					:dark="!installing"
+					large
+					rounded
+					color="primary"
+					dark
 					:disabled="installing"
 					:loading="installing"
-					color="indigo darken-1"
 					@click="installAll">
+					<v-icon left>mdi-open-in-new</v-icon>
 					번들 매니저 열기
 				</v-btn>
 			</v-card-actions>
