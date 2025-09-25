@@ -329,7 +329,7 @@
 				</v-row>
 				<!-- E: history box -->
 			</v-col>
-			<v-col cols="6" style="overflow-y: auto; max-height: calc(100vh - 48px);">
+			<v-col cols="6" style="overflow-y: auto; max-height: calc(100vh - var(--titlebar-height));">
 				<v-row align="center" class="ma-0" style="height: 90px;">
 					<v-col cols="8" align="left">
 						<span
