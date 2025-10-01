@@ -1213,8 +1213,9 @@ export default class SpoonCapturePlayer extends Mixins(GlobalMixins) {
                 } else {
                     // 캐시에 없으면 새로 로드하고 캐시에 저장
                     const response = await axios.get(sticker.lottie_url);
-                    this.lottieCache.set(stickerName, response.data);
-                    this.lottiePlay(response.data);
+                    const processedData = this.processLottieData(response.data);
+                    this.lottieCache.set(stickerName, processedData);
+                    this.lottiePlay(processedData);
                 }
             }
         } catch (error) {
@@ -1323,6 +1324,47 @@ export default class SpoonCapturePlayer extends Mixins(GlobalMixins) {
         this.lottieInstance = null;
         this.lottieIsPlaying = false;
         this.lottieProgress = 0;
+    }
+
+    processLottieData(lottieData: any): any {
+        // 로티 데이터가 없거나 assets가 없으면 원본 반환
+        if (!lottieData || !lottieData.assets) {
+            return lottieData;
+        }
+
+        // assets 배열을 복사하여 수정
+        const processedData = JSON.parse(JSON.stringify(lottieData));
+        
+        processedData.assets.forEach((asset: any) => {
+            // 이미지 에셋이고 base64 데이터가 포함된 경우
+            if (asset.p && asset.p.startsWith('data:image/')) {
+                // base64 이미지를 blob URL로 변환
+                try {
+                    const base64Data = asset.p.split(',')[1];
+                    const mimeType = asset.p.match(/data:([^;]+)/)?.[1] || 'image/png';
+                    
+                    // base64를 blob으로 변환
+                    const byteCharacters = atob(base64Data);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: mimeType });
+                    
+                    // blob URL 생성
+                    const blobUrl = URL.createObjectURL(blob);
+                    
+                    // 에셋 경로를 blob URL로 교체
+                    asset.p = blobUrl;
+                    asset.u = ''; // basePath 제거
+                } catch (error) {
+                    console.warn('base64 이미지 처리 실패:', error);
+                }
+            }
+        });
+
+        return processedData;
     }
 
     async addGiftEvent() {

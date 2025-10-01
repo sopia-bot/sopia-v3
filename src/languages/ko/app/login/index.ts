@@ -34,7 +34,7 @@ export default {
 	'policy-agree-3': '에 동의합니다.',
 	'sign-description': '아직 소피아 계정이 없나요?',
 	'find-id': '아이디가 기억이 나지 않아요.',
-	'input-spoon-id': '소피아를 사용중이던 계정을 검색해 주세요.',
+	'input-spoon-id': '소피아를 사용중이던 "스푼"계정을 검색해 주세요.',
 	'finded-spoon-id': '[$0] 님의 소피아 아이디는 [$1] 입니다.',
 	'cannot-find-id': '사용자 정보를 찾을 수 없습니다.',
 	'unauthorized-logout': '로그인 정보가 잘못되었습니다. 다시 로그인 해주세요.',
