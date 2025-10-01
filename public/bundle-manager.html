@@ -202,6 +202,113 @@
                 transform: rotate(360deg);
             }
         }
+        
+        /* Prose 스타일 (README.md 렌더링용) */
+        .prose {
+            color: #374151;
+            line-height: 1.75;
+        }
+        .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+            color: #111827;
+            font-weight: 600;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        .prose h1 { font-size: 1.875rem; }
+        .prose h2 { font-size: 1.5rem; }
+        .prose h3 { font-size: 1.25rem; }
+        .prose h4 { font-size: 1.125rem; }
+        .prose p {
+            margin-top: 1em;
+            margin-bottom: 1em;
+        }
+        .prose ul, .prose ol {
+            margin-top: 1em;
+            margin-bottom: 1em;
+            padding-left: 1.5em;
+        }
+        .prose li {
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+        }
+        .prose code {
+            background-color: #f3f4f6;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+            font-size: 0.875em;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+        .prose pre {
+            background-color: #1f2937;
+            color: #f9fafb;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin-top: 1em;
+            margin-bottom: 1em;
+        }
+        .prose pre code {
+            background-color: transparent;
+            padding: 0;
+            color: inherit;
+        }
+        .prose blockquote {
+            border-left: 4px solid #d1d5db;
+            padding-left: 1rem;
+            margin-left: 0;
+            margin-right: 0;
+            font-style: italic;
+            color: #6b7280;
+        }
+        .prose a {
+            color: #3b82f6;
+            text-decoration: underline;
+        }
+        .prose a:hover {
+            color: #1d4ed8;
+        }
+        .prose table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1em;
+            margin-bottom: 1em;
+        }
+        .prose th, .prose td {
+            border: 1px solid #d1d5db;
+            padding: 0.5rem;
+            text-align: left;
+        }
+        .prose th {
+            background-color: #f9fafb;
+            font-weight: 600;
+        }
+        .prose img {
+            max-width: 100%;
+            height: auto;
+            margin: 1em 0;
+            border-radius: 0.5rem;
+        }
+        .prose hr {
+            border: none;
+            border-top: 1px solid #e5e7eb;
+            margin: 2em 0;
+        }
+        .prose strong {
+            font-weight: 600;
+            color: #111827;
+        }
+        .prose em {
+            font-style: italic;
+        }
+        .prose del {
+            text-decoration: line-through;
+            color: #6b7280;
+        }
+        .prose mark {
+            background-color: #fef3c7;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -347,6 +454,31 @@
         </div>
     </div>
 
+    <!-- README 모달 -->
+    <div id="readmeModal" class="modal">
+        <div class="modal-content" style="max-width: 800px; width: 90%; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;">
+            <div class="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-900" id="readmeModalTitle">번들 정보</h2>
+                    <p class="text-sm text-gray-500 mt-1" id="readmeModalSubtitle">README.md</p>
+                </div>
+                <button onclick="closeReadmeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto">
+                <div id="readmeContent" class="prose prose-sm max-w-none">
+                    <div class="flex items-center justify-center py-8">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <span class="ml-3 text-gray-600">README.md를 불러오는 중...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 스낵바 추가 -->
     <div id="snackbar" class="snackbar"></div>
 
@@ -355,6 +487,7 @@
         const {ipcRenderer} = require('electron');
         const path = require('path');
         const fs = require('fs');
+        const marked = require('marked');
         const getAppPath = (type) => ipcRenderer.sendSync('app:get-path', type);
         const bundleRootPath = path.join(getAppPath('userData'), 'bundles');
         const BASE_URL = 'https://api.sopia.dev';
@@ -362,6 +495,15 @@
         const os = require('os');
         let currentFilter = 'installed';
         let activeOperations = new Set(); // 진행 중인 작업들을 추적
+
+        // marked 라이브러리 설정
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            sanitize: false,
+            smartLists: true,
+            smartypants: false
+        });
 
         function killProcessByName(name) {
             return new Promise((resolve, reject) => {
@@ -696,7 +838,7 @@
         function renderModules(modules) {
             const moduleList = document.getElementById('moduleList');
             moduleList.innerHTML = modules.map(module => `
-                <tr class="module-row cursor-pointer">
+                <tr class="module-row cursor-pointer" onclick="showBundleReadme('${module.name}', '${module["name:ko"] || module['name'] || ''}', ${module.isLocalLink || false})">
                     <td class="w-1/2 px-6 py-4">
                         <div class="flex items-center">
                             <div class="truncate">
@@ -718,7 +860,7 @@
                     <td class="w-24 px-6 py-4 text-center">
                         <span class="text-sm font-medium text-gray-900">${module.weekly_downloads ? module.weekly_downloads.toLocaleString() : '0'}</span>
                     </td>
-                    <td class="w-32 px-6 py-4 text-sm text-right">
+                    <td class="w-32 px-6 py-4 text-sm text-right" onclick="event.stopPropagation()">
                         ${module.isUsed ? 
                             (module.isLocalLink ?
                                 '<button onclick="unlinkLocalBundle(\'' + module.name + '\', event)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-orange-400 rounded-md hover:bg-orange-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400 transition-colors duration-200">링크 해제</button>' :
@@ -1228,6 +1370,103 @@
             }
             
             reloadModules();
+        });
+
+        // README.md 모달 관련 함수들
+        function showBundleReadme(bundleName, displayName, isLocalLink) {
+            // 로컬 링크된 번들은 동작하지 않음
+            if (isLocalLink) {
+                showSnackbar('로컬 링크된 번들은 README를 확인할 수 없습니다.');
+                return;
+            }
+
+            const modal = document.getElementById('readmeModal');
+            const titleElement = document.getElementById('readmeModalTitle');
+            const subtitleElement = document.getElementById('readmeModalSubtitle');
+            const contentElement = document.getElementById('readmeContent');
+
+            // 모달 제목 설정
+            titleElement.textContent = displayName;
+            subtitleElement.textContent = `${bundleName} - README.md`;
+
+            // 로딩 상태 표시
+            contentElement.innerHTML = `
+                <div class="flex items-center justify-center py-8">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span class="ml-3 text-gray-600">README.md를 불러오는 중...</span>
+                </div>
+            `;
+
+            // 모달 표시
+            modal.style.display = 'flex';
+
+            // README.md 가져오기
+            fetchBundleReadme(bundleName, contentElement);
+        }
+
+        async function fetchBundleReadme(bundleName, contentElement) {
+            try {
+                const module = modules.find(m => m.name === bundleName);
+                if (!module) {
+                    throw new Error('번들을 찾을 수 없습니다.');
+                }
+
+                // API 호출하여 README.md 가져오기
+                const response = await fetch(`${BASE_URL}/bundle/${bundleName}/${module.version}/tree/README.md`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + (window.appCfg.get('auth.sopia.token') || ''),
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('README.md를 찾을 수 없습니다.');
+                }
+
+                const data = await response.json();
+                
+                if (data.msg !== 'success' || !data.data || !data.data[0]) {
+                    throw new Error('README.md를 찾을 수 없습니다.');
+                }
+
+                const file = data.data[0];
+                const buffer = Buffer.from(file.data, file.encoding);
+                const readmeContent = buffer.toString();
+
+                // Markdown을 HTML로 변환 (marked 라이브러리 사용)
+                const htmlContent = marked.parse(readmeContent);
+                contentElement.innerHTML = htmlContent;
+
+            } catch (error) {
+                console.error('README fetch error:', error);
+                contentElement.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-12 text-gray-500">
+                        <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <p class="text-lg font-medium mb-2">README.md를 찾을 수 없습니다</p>
+                        <p class="text-sm">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+
+        function closeReadmeModal() {
+            document.getElementById('readmeModal').style.display = 'none';
+        }
+
+        // README 모달 외부 클릭 시 닫기
+        document.getElementById('readmeModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('readmeModal')) {
+                closeReadmeModal();
+            }
+        });
+
+        // ESC 키로 README 모달 닫기
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeReadmeModal();
+            }
         });
 
     </script>
