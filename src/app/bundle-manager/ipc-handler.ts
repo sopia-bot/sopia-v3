@@ -54,6 +54,53 @@ export function registerBundleIpc() {
 		shell.openPath(path);
 	});
 
+	const readDirectory = (dir: string, cb: (...args: any) => any, oriDir?: string) => {
+		if ( !oriDir ) {
+			oriDir = dir;
+			dir = '';
+		}
+
+		const target = path.resolve(oriDir, dir);
+		const items = fs.readdirSync(target);
+		items.forEach((item: string) => {
+			const t = path.resolve(target, item);
+			const st = path.join(dir, item).replace(/\\/g, '/');
+			const stat = fs.statSync(t);
+			cb(st, stat.isDirectory());
+			if ( stat.isDirectory() ) {
+				readDirectory(st, cb, oriDir);
+			}
+		});
+	};
+	
+	ipcMain.on('package:create', (evt: IpcMainEvent, src: string, dst: string) => {
+		console.log('package:create', src, dst);
+		try {
+			const pkg = JSON.parse(fs.readFileSync(path.join(src, 'package.json'), 'utf8'));
+			let ignore: string[] = [];
+			if ( pkg.sopia ) {
+				ignore = (pkg?.sopia?.['ignore:upload'] || []).map((i: string) => path.join(src, i));
+			}
+
+			const zip = new AdmZip();
+			readDirectory(src, (p: string, isDir: boolean) => {
+				if ( !isDir ) {
+					const fullPath = path.join(src, p);
+					if ( ignore.includes(fullPath) ) {
+						return;
+					}
+					zip.addLocalFile(fullPath, path.dirname(p));
+				}
+			});
+
+			zip.writeZip(dst);
+			evt.returnValue = true;
+		} catch (err) {
+			console.error(err);
+			evt.returnValue = false;
+		}
+	});
+
 	ipcMain.handle('package:uncompress-buffer', (evt, b64str: string, dst: string) => {
 		console.log('package:uncompress-buffer', dst);
 
