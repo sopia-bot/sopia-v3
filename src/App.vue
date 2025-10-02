@@ -247,40 +247,44 @@ export default class App extends Mixins(GlobalMixins) {
 					console.log(err);
 				}
 
-				if ( isExpired && auth.spoon.refresh_token ) {
-					try {
-						const res = await fetch('https://kr-auth.spooncast.net/tokens/', {
-							method: 'PUT',
-							headers: {
-								'Content-Type': 'application/json',
-							},
-							body: JSON.stringify({
-								device_unique_id: this.$sopia.deviceUUID,
-								refresh_token: auth.spoon.refresh_token,
-								user_id: auth.spoon.id,
-							}),
-						}).then((res) => res.json())
-						.catch((err) => {
-							window.logout();
-						});
-						if ( res?.data?.jwt ) {
-							auth.spoon.token = res.data.jwt;
-							this.$cfg.set('auth.spoon.token', res.data.jwt);
-							this.$cfg.save();
+				if ( isExpired ) {
+					if ( auth.spoon.refresh_token) {
+						try {
+							const res = await fetch('https://kr-auth.spooncast.net/tokens/', {
+								method: 'PUT',
+								headers: {
+									'Content-Type': 'application/json',
+								},
+								body: JSON.stringify({
+									device_unique_id: this.$sopia.deviceUUID,
+									refresh_token: auth.spoon.refresh_token,
+									user_id: auth.spoon.id,
+								}),
+							}).then((res) => res.json())
+							.catch((err) => {
+								window.logout();
+							});
+							if ( res?.data?.jwt ) {
+								auth.spoon.token = res.data.jwt;
+								this.$cfg.set('auth.spoon.token', res.data.jwt);
+								this.$cfg.save();
 
-							this.$sopia.loginToken(auth.spoon.id, auth.spoon.token)
-								.then(async (user) => {
-									this.$store.commit('user', user);
-									this.$evt.$emit('user', user);
-									await this.$api.activityLog('relogon');
-								})
-								.catch((err) => {
-									window.logout();
-								});
-						} else {
+								this.$sopia.loginToken(auth.spoon.id, auth.spoon.token)
+									.then(async (user) => {
+										this.$store.commit('user', user);
+										this.$evt.$emit('user', user);
+										await this.$api.activityLog('relogon');
+									})
+									.catch((err) => {
+										window.logout();
+									});
+							} else {
+								window.logout();
+							}
+						} catch(err) {
 							window.logout();
 						}
-					} catch(err) {
+					} else {
 						window.logout();
 					}
 				} else {
