@@ -317,8 +317,8 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 					if ( sticker && sticker.lottie_url ) {
 						axios.get(sticker.lottie_url)
 							.then((res) => {
-								const processedData = this.processLottieData(res.data);
-								this.lottiePlay(processedData);
+								// const processedData = this.processLottieData(res.data);
+								this.lottiePlay(res.data);
 							});
 					}
 				}
@@ -433,46 +433,39 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 		if ( author ) evt.data.author.nickname = author[1] + evt.data.author.nickname;
 	}
 
-	public processLottieData(lottieData: any): any {
-		// 로티 데이터가 없거나 assets가 없으면 원본 반환
-		if (!lottieData || !lottieData.assets) {
-			return lottieData;
-		}
-
-		// assets 배열을 복사하여 수정
-		const processedData = JSON.parse(JSON.stringify(lottieData));
-		
-		processedData.assets.forEach((asset: any) => {
-			// 이미지 에셋이고 base64 데이터가 포함된 경우
-			if (asset.p && asset.p.startsWith('data:image/')) {
-				// base64 이미지를 blob URL로 변환
-				try {
-					const base64Data = asset.p.split(',')[1];
-					const mimeType = asset.p.match(/data:([^;]+)/)?.[1] || 'image/png';
-					
-					// base64를 blob으로 변환
-					const byteCharacters = atob(base64Data);
-					const byteNumbers = new Array(byteCharacters.length);
-					for (let i = 0; i < byteCharacters.length; i++) {
-						byteNumbers[i] = byteCharacters.charCodeAt(i);
-					}
-					const byteArray = new Uint8Array(byteNumbers);
-					const blob = new Blob([byteArray], { type: mimeType });
-					
-					// blob URL 생성
-					const blobUrl = URL.createObjectURL(blob);
-					
-					// 에셋 경로를 blob URL로 교체
-					asset.p = blobUrl;
-					asset.u = ''; // basePath 제거
-				} catch (error) {
-					console.warn('base64 이미지 처리 실패:', error);
-				}
-			}
-		});
-
-		return processedData;
-	}
+	processLottieData(lottieData: any): Promise<any> {
+        // assets 정규화
+        if (lottieData.assets) {
+            lottieData.assets = lottieData.assets.map((asset: any) => {
+                // base64 이미지면 u는 ""로
+                if (asset.p && asset.p.startsWith('data:image')) {
+                    asset.u = "";
+                }
+                // id, w, h 등 필수 필드 보정
+                if (!asset.id && asset.refId) {
+                    asset.id = asset.refId;
+                }
+                if (!asset.w) {
+                    asset.w = 512;
+                }
+                if (!asset.h) {
+                    asset.h = 512;
+                }
+                return asset;
+            });
+        }
+        // layers의 refId가 assets의 id와 매칭되는지 확인
+        if (lottieData.layers && lottieData.assets) {
+            const assetIds = lottieData.assets.map((a: any) => a.id);
+            lottieData.layers.forEach((layer: any) => {
+                if (layer.refId && !assetIds.includes(layer.refId)) {
+                    // 매칭 안 되면 refId를 assets[0].id로 강제
+                    layer.refId = lottieData.assets[0]?.id;
+                }
+            });
+        }
+        return lottieData;
+    }
 
 	public async createDB(liveId: number) {	
 		const targetDir = this.$path('userData', 'historydb');

@@ -1326,45 +1326,38 @@ export default class SpoonCapturePlayer extends Mixins(GlobalMixins) {
         this.lottieProgress = 0;
     }
 
-    processLottieData(lottieData: any): any {
-        // 로티 데이터가 없거나 assets가 없으면 원본 반환
-        if (!lottieData || !lottieData.assets) {
-            return lottieData;
-        }
-
-        // assets 배열을 복사하여 수정
-        const processedData = JSON.parse(JSON.stringify(lottieData));
-        
-        processedData.assets.forEach((asset: any) => {
-            // 이미지 에셋이고 base64 데이터가 포함된 경우
-            if (asset.p && asset.p.startsWith('data:image/')) {
-                // base64 이미지를 blob URL로 변환
-                try {
-                    const base64Data = asset.p.split(',')[1];
-                    const mimeType = asset.p.match(/data:([^;]+)/)?.[1] || 'image/png';
-                    
-                    // base64를 blob으로 변환
-                    const byteCharacters = atob(base64Data);
-                    const byteNumbers = new Array(byteCharacters.length);
-                    for (let i = 0; i < byteCharacters.length; i++) {
-                        byteNumbers[i] = byteCharacters.charCodeAt(i);
-                    }
-                    const byteArray = new Uint8Array(byteNumbers);
-                    const blob = new Blob([byteArray], { type: mimeType });
-                    
-                    // blob URL 생성
-                    const blobUrl = URL.createObjectURL(blob);
-                    
-                    // 에셋 경로를 blob URL로 교체
-                    asset.p = blobUrl;
-                    asset.u = ''; // basePath 제거
-                } catch (error) {
-                    console.warn('base64 이미지 처리 실패:', error);
+    processLottieData(lottieData: any): Promise<any> {
+        // assets 정규화
+        if (lottieData.assets) {
+            lottieData.assets = lottieData.assets.map((asset: any) => {
+                // base64 이미지면 u는 ""로
+                if (asset.p && asset.p.startsWith('data:image')) {
+                    asset.u = "";
                 }
-            }
-        });
-
-        return processedData;
+                // id, w, h 등 필수 필드 보정
+                if (!asset.id && asset.refId) {
+                    asset.id = asset.refId;
+                }
+                if (!asset.w) {
+                    asset.w = 512;
+                }
+                if (!asset.h) {
+                    asset.h = 512;
+                }
+                return asset;
+            });
+        }
+        // layers의 refId가 assets의 id와 매칭되는지 확인
+        if (lottieData.layers && lottieData.assets) {
+            const assetIds = lottieData.assets.map((a: any) => a.id);
+            lottieData.layers.forEach((layer: any) => {
+                if (layer.refId && !assetIds.includes(layer.refId)) {
+                    // 매칭 안 되면 refId를 assets[0].id로 강제
+                    layer.refId = lottieData.assets[0]?.id;
+                }
+            });
+        }
+        return lottieData;
     }
 
     async addGiftEvent() {
@@ -1547,15 +1540,50 @@ export default class SpoonCapturePlayer extends Mixins(GlobalMixins) {
                 backgroundColor: null, // 투명 배경 허용
                 scale: 2, // 고해상도를 위한 스케일링
                 useCORS: true, // CORS 이미지 허용
-                allowTaint: false, // 보안을 위해 taint 방지
+                allowTaint: true, // 보안을 위해 taint 방지
                 width: rect.width,
                 height: rect.height,
                 logging: false, // 콘솔 로그 비활성화
                 imageTimeout: 15000, // 이미지 로딩 타임아웃 (15초)
                 removeContainer: true, // 임시 컨테이너 제거
                 onclone: (document, element) => {
+                    // 숨김 요소 처리
                     const hiddenElements = element.querySelectorAll('.chat-hidden, .chat-controls');
                     hiddenElements.forEach((el) => (el as HTMLElement).style.visibility = 'hidden');
+                    
+                    // SVG 이미지 URL 디코딩 처리
+                    const svgImages = element.querySelectorAll('img[src*="data:image/svg+xml"]');
+                    svgImages.forEach((img) => {
+                        try {
+                            const imgElement = img as HTMLImageElement;
+                            const src = imgElement.src;
+                            if (src.includes('%')) {
+                                // URL 인코딩된 SVG를 디코딩
+                                const decodedSrc = decodeURIComponent(src);
+                                imgElement.src = decodedSrc;
+                                console.log('SVG URL 디코딩:', src, '->', decodedSrc);
+                            }
+                        } catch (error) {
+                            console.warn('SVG URL 디코딩 실패:', error);
+                        }
+                    });
+                    
+                    // SVG 요소의 background-image도 처리
+                    const elementsWithBgSvg = element.querySelectorAll('*');
+                    elementsWithBgSvg.forEach((el) => {
+                        const htmlElement = el as HTMLElement;
+                        const style = window.getComputedStyle(htmlElement);
+                        const bgImage = style.backgroundImage;
+                        if (bgImage && bgImage.includes('data:image/svg+xml') && bgImage.includes('%')) {
+                            try {
+                                const decodedBgImage = decodeURIComponent(bgImage);
+                                htmlElement.style.backgroundImage = decodedBgImage;
+                                console.log('SVG background-image 디코딩:', bgImage, '->', decodedBgImage);
+                            } catch (error) {
+                                console.warn('SVG background-image 디코딩 실패:', error);
+                            }
+                        }
+                    });
                 }
             });
             
