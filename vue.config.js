@@ -82,10 +82,14 @@ module.exports = {
 						from: 'bun-binary',
 						to: '.bun',
 					},
+					// {
+					// 	from: 'ffmpeg-binary',
+					// 	to: '.ffmpeg',
+					// },
 					{
-						from: 'ffmpeg-binary',
-						to: '.ffmpeg',
-					},
+						from: 'public/icon.png',
+						to: 'resources/icon.png',
+					}
 				],
 				// mac: {
 				// 	target: "dmg",
