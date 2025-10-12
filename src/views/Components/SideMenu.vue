@@ -67,7 +67,6 @@ export default class SideMenu extends Mixins(GlobalMixins) {
 			label: this.$t('page.SpoonCapture'),
 			icon: 'mdi-palette-outline',
 			activeIcon: 'mdi-palette',
-			new: true,
 			isActive: () => {
 				return this.$route.path.startsWith('/spoon-capture');
 			},
