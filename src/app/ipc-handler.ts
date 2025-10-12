@@ -34,7 +34,7 @@ function createTray() {
 	}
 
 	try {
-		const iconPath = path.join(__dirname, '../public/icon.png');
+		const iconPath = app.isPackaged ? path.join(path.dirname(app.getPath('exe')), './resources/icon.png') : path.join(__dirname, '../public/icon.png');
 		globalTray = new Tray(nativeImage.createFromPath(iconPath));
 		
 		const contextMenu = Menu.buildFromTemplate([
