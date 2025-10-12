@@ -1,5 +1,5 @@
 import path from 'path';
-import { app, BrowserWindow , ipcMain, IpcMainEvent, dialog, shell } from 'electron';
+import { app, BrowserWindow , ipcMain, IpcMainEvent, dialog, shell, Tray, Menu, nativeImage } from 'electron';
 import { ChildProcess, execSync, spawn } from 'child_process';
 import { install as npmInstall, InstallItem, InstallOptions } from 'npkgi';
 import express, { Application } from 'express';
@@ -9,6 +9,7 @@ import axios from 'axios';
 import Module, { createRequire } from 'module';
 import { bun, bunx } from './bun';
 import AdmZip from 'adm-zip';
+import AutoLaunch from 'auto-launch';
 
 import CfgLite from 'cfg-lite';
 import fs from 'fs';
@@ -18,12 +19,71 @@ import { registerStpApp } from './stp-protocol';
 export const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
-
-type PathType = 'home' | 'appData' | 'userData' | 'cache' | 'temp' | 'exe' | 'module' | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos' | 'recent' | 'logs' | 'crashDumps';
+type PathType = 'home' | 'appData' | 'userData' | 'temp' | 'exe' | 'module' | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos' | 'recent' | 'logs' | 'crashDumps' | 'sessionData';
 const CfgList: Record<string, any> = {};
 const getPath = (type: PathType, ...args: string[]) => path.resolve(app.getPath(type), ...args);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// 전역 트레이 변수
+let globalTray: Tray | null = null;
+
+// 트레이 생성 함수
+function createTray() {
+	if (globalTray) {
+		return globalTray; // 이미 트레이가 있으면 기존 것 반환
+	}
+
+	try {
+		const iconPath = path.join(__dirname, '../public/icon.png');
+		globalTray = new Tray(nativeImage.createFromPath(iconPath));
+		
+		const contextMenu = Menu.buildFromTemplate([
+			{
+				label: 'SOPIA 열기',
+				click: () => {
+					const windows = BrowserWindow.getAllWindows();
+					const mainWindow = windows.find(win => !win.isDestroyed());
+					if (mainWindow) {
+						mainWindow.show();
+						mainWindow.focus();
+					}
+				}
+			},
+			{
+				type: 'separator'
+			},
+			{
+				label: '종료',
+				click: () => {
+					app.quit();
+				}
+			}
+		]);
+		
+		globalTray.setContextMenu(contextMenu);
+		globalTray.setToolTip('SOPIA - DJ 보드');
+		
+		// 트레이 아이콘 클릭시 윈도우 토글
+		globalTray.on('click', () => {
+			const windows = BrowserWindow.getAllWindows();
+			const mainWindow = windows.find(win => !win.isDestroyed());
+			if (mainWindow) {
+				if (mainWindow.isVisible()) {
+					mainWindow.hide();
+				} else {
+					mainWindow.show();
+					mainWindow.focus();
+				}
+			}
+		});
+
+		console.log('트레이가 생성되었습니다.');
+		return globalTray;
+	} catch (error) {
+		console.error('트레이 생성 오류:', error);
+		return null;
+	}
+}
 
 export function registerIpcHandler() {
 	ipcMain.on('cfg-lite', (evt: IpcMainEvent, prop: string, file: string, ...args: any) => {
@@ -330,6 +390,10 @@ export function registerIpcHandler() {
 				process,
 				exports: moduleObj.exports,
 				console,
+				setTimeout,
+				setInterval,
+				clearTimeout,
+				clearInterval,
 				bun,
 				bunx,
 			};
@@ -437,6 +501,19 @@ export function registerIpcHandler() {
 		app.quit();
 	});
 
+	// 윈도우를 트레이로 숨기기
+	ipcMain.on('app:hide-to-tray', (evt: IpcMainEvent) => {
+		const win = BrowserWindow.fromWebContents(evt.sender);
+		if (win) {
+			// 트레이가 없으면 생성
+			if (!globalTray) {
+				createTray();
+			}
+			win.hide();
+			console.log('윈도우가 트레이로 숨겨졌습니다.');
+		}
+	});
+
 	ipcMain.handle('stp:regist', async (evt, domain: string, targetFile: string, packageDir: string) => {
 		if ( fs.existsSync(targetFile) ) {
 			const scriptText = fs.readFileSync(targetFile, 'utf-8');
@@ -458,6 +535,10 @@ export function registerIpcHandler() {
 				__dirname: path.dirname(targetFile),
 				__filename: targetFile,
 				__pkgdir: packageDir,
+				setTimeout,
+				setInterval,
+				clearTimeout,
+				clearInterval,
 				module: moduleObj,
 				process,
 				exports: moduleObj.exports,
@@ -499,5 +580,40 @@ export function registerIpcHandler() {
 			stdio: 'ignore',
 		});
 		return true;
+	});
+
+	// Auto Launch 설정
+	const autoLauncher = new AutoLaunch({
+		name: 'SOPIA',
+		path: process.execPath,
+		arguments: ['--mode', 'autolaunch']
+	});
+
+	// 자동 실행 상태 확인
+	ipcMain.handle('auto-launch-status', async (evt) => {
+		try {
+			const isEnabled = await autoLauncher.isEnabled();
+			return isEnabled;
+		} catch (error) {
+			console.error('자동 실행 상태 확인 오류:', error);
+			return false;
+		}
+	});
+
+	// 자동 실행 토글
+	ipcMain.handle('auto-launch-toggle', async (evt, enable: boolean) => {
+		try {
+			if (enable) {
+				await autoLauncher.enable();
+				console.log('자동 실행 활성화됨');
+			} else {
+				await autoLauncher.disable();
+				console.log('자동 실행 비활성화됨');
+			}
+			return { success: true };
+		} catch (error: any) {
+			console.error('자동 실행 설정 오류:', error);
+			return { success: false, error: error.message };
+		}
 	});
 };
