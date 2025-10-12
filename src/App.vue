@@ -371,6 +371,31 @@ export default class App extends Mixins(GlobalMixins) {
 		if ( !this.$store.state.loginDialog ) {
 			this.checkBundleUpldate();
 		}
+
+		// auto-launch 상태 이벤트 리스너
+		ipcRenderer.off('auto-launch-enabled', this.autoLaunchListener);
+		ipcRenderer.on('auto-launch-enabled', this.autoLaunchListener);
+	}
+
+	private autoLaunchListener() {
+		console.log('Auto-launch is enabled - 10초마다 체크됨');
+		// 여기에 auto-launch가 활성화되었을 때 실행할 로직 추가
+		// 예: DJ 보드 자동 참가 로직, 알림 표시 등
+		const djboard = this.$cfg.get('djboard');
+		if ( djboard ) {
+			if ( this.currentLive.id ) {
+				return;
+			}
+			this.$sopia.api.users.miniProfile(djboard.id)
+				.then((req) => {
+					const user = req.res.results[0];
+					if ( user.current_live?.id ) {
+						const liveId = user.current_live.id;
+						this.$evt.$emit('live-join', liveId, false, false);
+						
+					}
+				})
+		}
 	}
 
 	public async checkBundleUpldate() {

@@ -26,6 +26,11 @@ if (args.mode === 'bundle-manager') {
 	process.title = 'Sopia Bundle Manager';
 	app.setName('Sopia Bundle Manager');
 	createBundleManagerWindow();
+} else if (args.mode === 'autolaunch') {
+	process.title = 'Sopia';
+	app.setName('Sopia');
+	// autolaunch 모드에서는 백그라운드로 실행
+	createMainWindow(true); // 숨김 모드로 실행
 } else {
 	process.title = 'Sopia';
 	app.setName('Sopia');

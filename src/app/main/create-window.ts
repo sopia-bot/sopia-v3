@@ -1,4 +1,4 @@
-import { app, session, protocol, BrowserWindow, ipcMain } from 'electron';
+import { app, session, protocol, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'electron';
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib';
 import installExtension, { VUEJS_DEVTOOLS, REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer';
 import { autoUpdater } from 'electron-updater';
@@ -15,7 +15,7 @@ import CfgLite from 'cfg-lite';
 console.log(pkg);
 
 
-export default function createMainWindow() {
+export default function createMainWindow(hideWindow: boolean = false) {
     const adp = app.getPath('userData');
     if ( !fs.existsSync(path.join(adp, 'restore-flag'))) {
         if ( fs.existsSync(path.join(adp, 'app.cfg')) )  {
@@ -43,6 +43,7 @@ export default function createMainWindow() {
     // Keep a global reference of the window object, if you don't, the window will
     // be closed automatically when the JavaScript object is garbage collected.
     let win: BrowserWindow | null;
+    let tray: Tray | null = null;
 
     // Scheme must be registered before the app is ready
     protocol.registerSchemesAsPrivileged([
@@ -236,20 +237,50 @@ export default function createMainWindow() {
             win = null;
         });
 
+        // auto-launch 상태 체크 스케줄러 (10초마다)
+        const autoLaunchChecker = setInterval(async () => {
+            if (win && !win.isDestroyed()) {
+                try {
+                    const AutoLaunch = require('auto-launch');
+                    const autoLauncher = new AutoLaunch({
+                        name: 'SOPIA',
+                        path: process.execPath,
+                        arguments: ['--mode', 'autolaunch']
+                    });
+                    
+                    const isEnabled = await autoLauncher.isEnabled();
+                    if (isEnabled) {
+                        win.webContents.send('auto-launch-enabled');
+                    }
+                } catch (error) {
+                    console.error('Auto-launch 상태 확인 오류:', error);
+                }
+            } else {
+                // 윈도우가 없으면 스케줄러 정리
+                clearInterval(autoLaunchChecker);
+            }
+        }, 10000); // 10초마다 실행
+
         if ( isDevelopment ) {
             win.once('ready-to-show', () => {
-                win?.show();
+                if (!hideWindow) {
+                    win?.show();
+                }
             });
         } else {
             autoUpdater.checkForUpdates();
+            if (!hideWindow) {
+                win.once('ready-to-show', () => {
+                    win?.show();
+                });
+            }
         }
     };
 
     // Quit when all windows are closed.
     app.on('window-all-closed', () => {
-        // On macOS it is common for applications and their menu bar
-        // to stay active until the user quits explicitly with Cmd + Q
-        if (process.platform !== 'darwin') {
+        // autolaunch 모드이거나 macOS인 경우 앱을 종료하지 않음
+        if (process.platform !== 'darwin' && !hideWindow) {
             app.quit();
         }
     });
@@ -277,11 +308,62 @@ export default function createMainWindow() {
         // Install Vue Devtools
         try {
             await installExtension([VUEJS_DEVTOOLS, REACT_DEVELOPER_TOOLS]);
-        } catch (e) {
+        } catch (e: any) {
             console.error('Vue Devtools failed to install:', e.toString());
         }
         createWindow();
+        
+        // autolaunch 모드인 경우 트레이 설정
+        if (hideWindow) {
+            createTray();
+        }
     });
+
+    // 트레이 생성 함수
+    const createTray = () => {
+        const iconPath = path.join(__dirname, '../public/icon.png');
+        tray = new Tray(nativeImage.createFromPath(iconPath));
+        
+        const contextMenu = Menu.buildFromTemplate([
+            {
+                label: 'SOPIA 열기',
+                click: () => {
+                    if (win) {
+                        win.show();
+                        win.focus();
+                    } else {
+                        createWindow();
+                    }
+                }
+            },
+            {
+                type: 'separator'
+            },
+            {
+                label: '종료',
+                click: () => {
+                    app.quit();
+                }
+            }
+        ]);
+        
+        tray.setContextMenu(contextMenu);
+        tray.setToolTip('SOPIA - DJ 보드');
+        
+        // 트레이 아이콘 클릭시 윈도우 토글
+        tray.on('click', () => {
+            if (win) {
+                if (win.isVisible()) {
+                    win.hide();
+                } else {
+                    win.show();
+                    win.focus();
+                }
+            } else {
+                createWindow();
+            }
+        });
+    };
 
     registerBundleProtocol(app);
     registerSopiaTextProtocol(app);
