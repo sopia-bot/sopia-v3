@@ -90,7 +90,19 @@
 
                                 <!-- 선물 -->
                                 <div v-else-if="event.live_event === 'live_present' || event.live_event === 'live_present_like'" class="gift-message">
-                                    <div class="gift-content">
+                                    <!-- 구버전 스푼라디오 타입 -->
+                                    <div v-if="spoonMessageType === 'legacy'" class="gift-content legacy-style">
+                                        <div class="gift-image-container" v-if="getStickerImage(event.data.data.sticker)">
+                                            <img :src="getStickerImage(event.data.data.sticker) || ''" class="gift-image" :alt="getStickerName(event.data.data.sticker)">
+                                        </div>
+                                        <v-icon v-else small color="#FFD700" class="gift-icon">mdi-gift</v-icon>
+                                        <span class="gift-sender">{{ event.data.data.author.nickname }}</span>
+                                        <span class="gift-amount">{{ event.data.data.amount }}스푼</span>
+                                        <span v-if="event.data.data.combo > 1" class="gift-combo">X {{ event.data.data.combo }}</span>
+                                    </div>
+                                    
+                                    <!-- 소피아 타입 (현재) -->
+                                    <div v-else class="gift-content">
                                         <v-avatar size="24" class="gift-avatar">
                                             <v-img :src="event.data.data.author.profile_url">
                                                 <template v-slot:placeholder>
@@ -108,6 +120,7 @@
                                             <span class="gift-combo">X {{ event.data.data.combo }}</span>
                                         </div>
                                     </div>
+                                    
                                     <!-- 로티 애니메이션 재생 버튼 -->
                                     <v-btn 
                                         v-if="getStickerLottieUrl(event.data.data.sticker)"
@@ -159,7 +172,7 @@
                                         <v-btn 
                                             icon 
                                             small
-                                            @click="captureMessage(event.idx)"
+                                            @click="captureMessage(event.idx, $event)"
                                             class="visibility-btn"
                                             title="메시지 캡쳐"
                                         >
@@ -194,7 +207,7 @@
                                         <v-btn 
                                             icon 
                                             small
-                                            @click="captureMessage(event.idx)"
+                                            @click="captureMessage(event.idx, $event)"
                                             class="visibility-btn"
                                             title="메시지 캡쳐"
                                         >
@@ -488,6 +501,16 @@
                                 class="my-2"
                                 hide-details
                             ></v-switch>
+                            
+                            <v-select
+                                v-model="spoonMessageType"
+                                :items="spoonMessageTypeOptions"
+                                label="스푼 메시지 타입"
+                                dense
+                                outlined
+                                hide-details
+                                class="mb-3"
+                            ></v-select>
                             
                             <v-btn
                                 @click="addGiftEvent"
@@ -825,6 +848,7 @@ export default class SpoonCapturePlayer extends Mixins(GlobalMixins) {
     private customPlayerWidth = 520;
     private useAspectRatio = false;
     private stickerSortType = 'oldest'; // 'oldest', 'newest', 'price'
+    private spoonMessageType = 'legacy'; // 'legacy', 'sopia'
     
     private lottieData: any = null;
     private lottieOptions: any = {};
@@ -918,6 +942,11 @@ export default class SpoonCapturePlayer extends Mixins(GlobalMixins) {
         { text: '오래된 순', value: 'oldest' },
         { text: '최신순', value: 'newest' },
         { text: '가격 높은 순', value: 'price' }
+    ];
+
+    private spoonMessageTypeOptions = [
+        { text: '구버전 스푼라디오 타입', value: 'legacy' },
+        { text: '소피아 타입 (현재)', value: 'sopia' }
     ];
 
     // Computed property for present events
@@ -2300,6 +2329,53 @@ export default class SpoonCapturePlayer extends Mixins(GlobalMixins) {
 
 .gift-icon {
     margin: 0 2px;
+}
+
+/* 구버전 스푼라디오 타입 스타일 */
+.gift-content.legacy-style {
+    background: rgba(255, 255, 255, 1) !important;
+    color: #000000 !important;
+    padding: 2px 8px;
+    border-radius: 5px;
+    border: none;
+    backdrop-filter: none;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: fit-content;
+    box-shadow: none;
+}
+
+.gift-content.legacy-style .gift-sender {
+    color: #000000 !important;
+    font-weight: 700;
+    margin-right: 4px;
+}
+
+.gift-content.legacy-style .gift-amount {
+    color: #FF6B6B !important;
+    font-weight: 700;
+    margin-right: 4px;
+    font-size: 12px;
+}
+
+.gift-content.legacy-style .gift-combo {
+    color: #FF6B6B !important;
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.gift-content.legacy-style .gift-image {
+    height: 40px;
+    border-radius: 4px;
+    object-fit: cover;
+    margin-right: 6px;
+}
+
+.gift-content.legacy-style .gift-icon {
+    color: #FFD700 !important;
+    margin-right: 6px;
 }
 
 /* 좋아요 메시지 스타일 */
