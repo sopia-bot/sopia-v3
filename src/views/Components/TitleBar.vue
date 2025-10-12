@@ -323,11 +323,34 @@ export default class TitleBar extends Mixins(GlobalMixins) {
 		ipcRenderer.send('app:minimize');
 	}
 
-	public quit() {
-		this.$evt.$emit('app:quit');
-		setTimeout(() => {
-			ipcRenderer.send('app:quit');
-		}, 500);
+	public async quit() {
+		// 종료 확인 다이얼로그
+		const result = await this.$swal({
+			title: '프로그램을 종료하시겠습니까?',
+			text: '만약 방송에 참가중이라면 트레이 이동시 봇 동작을 계속합니다.',
+			icon: 'question',
+			showCancelButton: true,
+			showDenyButton: true,
+			confirmButtonText: '트레이',
+			denyButtonText: '종료',
+			cancelButtonText: '취소',
+			confirmButtonColor: '#3085d6',
+			denyButtonColor: '#d33',
+			cancelButtonColor: '#6c757d',
+			reverseButtons: false
+		});
+
+		if (result.isConfirmed) {
+			// 트레이 선택
+			ipcRenderer.send('app:hide-to-tray');
+		} else if (result.isDenied) {
+			// 종료 선택
+			this.$evt.$emit('app:quit');
+			setTimeout(() => {
+				ipcRenderer.send('app:quit');
+			}, 500);
+		}
+		// 취소 선택시 아무것도 하지 않음
 	}
 
 	// 드래그 드롭 메서드들
