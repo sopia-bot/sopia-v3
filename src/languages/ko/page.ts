@@ -14,4 +14,6 @@ export default {
 	github: '깃허브',
 	guide: '사용법',
 	SpoonCapture: '스푼 캡처',
+	DJBoard: 'DJ 보드',
+	Backup: '백업 / 복원',
 };

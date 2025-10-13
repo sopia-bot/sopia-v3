@@ -72,6 +72,15 @@ export default class SideMenu extends Mixins(GlobalMixins) {
 			},
 		},
 		{
+			href: '/backup/',
+			label: this.$t('page.Backup'),
+			icon: 'mdi-backup-restore',
+			activeIcon: 'mdi-backup-restore',
+			isActive: () => {
+				return this.$route.path.startsWith('/backup');
+			},
+		},
+		{
 			href: '/bundle/store/',
 			label: this.$t('page.store'),
 			icon: 'mdi-puzzle',

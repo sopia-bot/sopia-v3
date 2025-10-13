@@ -616,4 +616,657 @@ export function registerIpcHandler() {
 			return { success: false, error: error.message };
 		}
 	});
+
+	// ==================== 백업 관련 IPC 핸들러 ====================
+	
+	// 디스크 정보 조회 (Windows)
+	ipcMain.handle('backup:get-disk-info', async (evt, drive: string = 'C:') => {
+		try {
+			if (process.platform === 'win32') {
+				const output = execSync(`wmic logicaldisk where "DeviceID='${drive}'" get Size,FreeSpace /format:csv`, { encoding: 'utf-8' });
+				const lines = output.trim().split('\n').filter(line => line.trim() && !line.startsWith('Node'));
+				if (lines.length > 0) {
+					const parts = lines[0].split(',');
+					const freeSpace = parseInt(parts[1]) || 0;
+					const totalSize = parseInt(parts[2]) || 0;
+					return {
+						success: true,
+						total: totalSize,
+						free: freeSpace,
+						used: totalSize - freeSpace,
+					};
+				}
+			}
+			return { success: false, error: 'Unsupported platform' };
+		} catch (error: any) {
+			console.error('디스크 정보 조회 오류:', error);
+			return { success: false, error: error.message };
+		}
+	});
+
+	// 폴더 용량 조회 (재귀적)
+	function getFolderSize(folderPath: string): number {
+		let totalSize = 0;
+		try {
+			if (!fs.existsSync(folderPath)) return 0;
+			const files = fs.readdirSync(folderPath);
+			for (const file of files) {
+				const filePath = path.join(folderPath, file);
+				const stats = fs.statSync(filePath);
+				if (stats.isDirectory()) {
+					totalSize += getFolderSize(filePath);
+				} else {
+					totalSize += stats.size;
+				}
+			}
+		} catch (error) {
+			console.error(`폴더 용량 조회 오류 (${folderPath}):`, error);
+		}
+		return totalSize;
+	}
+
+	// sopia-v3 폴더 용량 조회 (1뎁스)
+	ipcMain.handle('backup:get-folder-sizes', async (evt) => {
+		try {
+			const sopiaPath = getPath('userData');
+			const items = fs.readdirSync(sopiaPath);
+			const sizes: Record<string, number> = {};
+			
+			for (const item of items) {
+				const itemPath = path.join(sopiaPath, item);
+				const stats = fs.statSync(itemPath);
+				if (stats.isDirectory()) {
+					sizes[item] = getFolderSize(itemPath);
+				} else {
+					sizes[item] = stats.size;
+				}
+			}
+			
+			const total = Object.values(sizes).reduce((sum, size) => sum + size, 0);
+			
+			return {
+				success: true,
+				total,
+				items: sizes,
+				path: sopiaPath,
+			};
+		} catch (error: any) {
+			console.error('폴더 용량 조회 오류:', error);
+			return { success: false, error: error.message };
+		}
+	});
+
+	// 설치된 번들 리스트 조회
+	ipcMain.handle('backup:get-bundles', async (evt) => {
+		try {
+			const bundlesPath = getPath('userData', 'bundles');
+			if (!fs.existsSync(bundlesPath)) {
+				return { success: true, bundles: [] };
+			}
+
+			const bundles: any[] = [];
+			const folders = fs.readdirSync(bundlesPath);
+
+			for (const folder of folders) {
+				const bundlePath = path.join(bundlesPath, folder);
+				const pkgPath = path.join(bundlePath, 'package.json');
+				
+				if (fs.existsSync(pkgPath)) {
+					try {
+						const pkgContent = fs.readFileSync(pkgPath, 'utf-8');
+						const pkgInfo = JSON.parse(pkgContent);
+						bundles.push({
+							id: folder,
+							name: pkgInfo['name:ko'] || pkgInfo['name'] || folder,
+							version: pkgInfo['version'] || '0.0.0',
+							description: pkgInfo['description:ko'] || pkgInfo['description'] || '',
+							path: bundlePath,
+						});
+					} catch (error) {
+						console.error(`번들 정보 파싱 오류 (${folder}):`, error);
+					}
+				}
+			}
+
+			return { success: true, bundles };
+		} catch (error: any) {
+			console.error('번들 리스트 조회 오류:', error);
+			return { success: false, error: error.message };
+		}
+	});
+
+	// 백업 생성
+	ipcMain.handle('backup:create', async (evt, options: {
+		name: string;
+		description: string;
+		items: {
+			bundles?: string[];
+			sopiaCode?: boolean;
+			history?: boolean;
+			appSettings?: boolean;
+			cmdSettings?: boolean;
+			localStorage?: boolean;
+		};
+		onProgress?: (progress: number, message: string) => void;
+	}) => {
+		try {
+			const backupDir = getPath('userData', 'backup');
+			if (!fs.existsSync(backupDir)) {
+				fs.mkdirSync(backupDir, { recursive: true });
+			}
+
+			const now = new Date();
+			const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`;
+			const backupFileName = `sopia-v3-backup-${timestamp}.zip`;
+			const backupFilePath = path.join(backupDir, backupFileName);
+
+			const zip = new AdmZip();
+			const metadata: any = {
+				name: options.name,
+				description: options.description,
+				createdAt: now.toISOString(),
+				version: pkg.version,
+				items: {},
+				files: [],
+			};
+
+			const userDataPath = getPath('userData');
+			let progress = 0;
+			const totalSteps = Object.values(options.items).filter(Boolean).length;
+			let currentStep = 0;
+
+			// 번들 백업
+			if (options.items.bundles && options.items.bundles.length > 0) {
+				metadata.items.bundles = options.items.bundles;
+				for (const bundleId of options.items.bundles) {
+					const bundlePath = path.join(userDataPath, 'bundles', bundleId);
+					if (fs.existsSync(bundlePath)) {
+						readDirectory(bundlePath, (p: string, isDir: boolean) => {
+							if (!isDir && !p.includes('node_modules')) {
+								const fullPath = path.join(bundlePath, p);
+								const zipPath = path.join('bundles', bundleId, p);
+								zip.addLocalFile(fullPath, path.dirname(zipPath));
+								metadata.files.push(zipPath);
+							}
+						});
+					}
+				}
+				currentStep++;
+				progress = (currentStep / totalSteps) * 100;
+				evt.sender.send('backup:progress', progress, '번들 백업 중...');
+			}
+
+			// 소피아 코드 백업
+			if (options.items.sopiaCode) {
+				metadata.items.sopiaCode = true;
+				const sopiaPath = path.join(userDataPath, 'sopia');
+				if (fs.existsSync(sopiaPath)) {
+					readDirectory(sopiaPath, (p: string, isDir: boolean) => {
+						if (!isDir) {
+							const fullPath = path.join(sopiaPath, p);
+							const zipPath = path.join('sopia', p);
+							zip.addLocalFile(fullPath, path.dirname(zipPath));
+							metadata.files.push(zipPath);
+						}
+					});
+				}
+				currentStep++;
+				progress = (currentStep / totalSteps) * 100;
+				evt.sender.send('backup:progress', progress, '소피아 코드 백업 중...');
+			}
+
+			// 방송 기록 백업
+			if (options.items.history) {
+				metadata.items.history = true;
+				const historyPath = path.join(userDataPath, 'historydb');
+				if (fs.existsSync(historyPath)) {
+					readDirectory(historyPath, (p: string, isDir: boolean) => {
+						if (!isDir) {
+							const fullPath = path.join(historyPath, p);
+							const zipPath = path.join('historydb', p);
+							zip.addLocalFile(fullPath, path.dirname(zipPath));
+							metadata.files.push(zipPath);
+						}
+					});
+				}
+				currentStep++;
+				progress = (currentStep / totalSteps) * 100;
+				evt.sender.send('backup:progress', progress, '방송 기록 백업 중...');
+			}
+
+			// 앱 설정 백업
+			if (options.items.appSettings) {
+				metadata.items.appSettings = true;
+				const appCfgPath = path.join(userDataPath, 'app.cfg');
+				if (fs.existsSync(appCfgPath)) {
+					zip.addLocalFile(appCfgPath, '');
+					metadata.files.push('app.cfg');
+				}
+				currentStep++;
+				progress = (currentStep / totalSteps) * 100;
+				evt.sender.send('backup:progress', progress, '앱 설정 백업 중...');
+			}
+
+			// Local Storage 백업
+			if (options.items.localStorage) {
+				metadata.items.localStorage = true;
+				const localStoragePath = path.join(userDataPath, 'Local Storage');
+				if (fs.existsSync(localStoragePath)) {
+					readDirectory(localStoragePath, (p: string, isDir: boolean) => {
+						if (!isDir) {
+							const fullPath = path.join(localStoragePath, p);
+							const zipPath = path.join('Local Storage', p);
+							zip.addLocalFile(fullPath, path.dirname(zipPath));
+							metadata.files.push(zipPath);
+						}
+					});
+				}
+				currentStep++;
+				progress = (currentStep / totalSteps) * 100;
+				evt.sender.send('backup:progress', progress, 'Local Storage 백업 중...');
+			}
+
+			// 명령어 설정 백업
+			if (options.items.cmdSettings) {
+				metadata.items.cmdSettings = true;
+				const cmdCfgPath = path.join(userDataPath, 'cmd.cfg');
+				if (fs.existsSync(cmdCfgPath)) {
+					zip.addLocalFile(cmdCfgPath, '');
+					metadata.files.push('cmd.cfg');
+				}
+				currentStep++;
+				progress = (currentStep / totalSteps) * 100;
+				evt.sender.send('backup:progress', progress, '명령어 설정 백업 중...');
+			}
+
+			// 메타데이터 추가
+			zip.addFile('metadata.json', Buffer.from(JSON.stringify(metadata, null, 2), 'utf-8'));
+			
+			// ZIP 파일 저장
+			zip.writeZip(backupFilePath);
+			evt.sender.send('backup:progress', 100, '백업 완료!');
+
+			return {
+				success: true,
+				filePath: backupFilePath,
+				fileName: backupFileName,
+				metadata,
+			};
+		} catch (error: any) {
+			console.error('백업 생성 오류:', error);
+			return { success: false, error: error.message };
+		}
+	});
+
+	// 백업 목록 조회
+	ipcMain.handle('backup:list', async (evt) => {
+		try {
+			const backupDir = getPath('userData', 'backup');
+			if (!fs.existsSync(backupDir)) {
+				return { success: true, backups: [] };
+			}
+
+			const files = fs.readdirSync(backupDir);
+			const backups: any[] = [];
+
+			for (const file of files) {
+				if (file.endsWith('.zip')) {
+					const filePath = path.join(backupDir, file);
+					const stats = fs.statSync(filePath);
+					
+					try {
+						const zip = new AdmZip(filePath);
+						const metadataEntry = zip.getEntry('metadata.json');
+						let metadata: any = {};
+						
+						if (metadataEntry) {
+							metadata = JSON.parse(metadataEntry.getData().toString('utf-8'));
+						}
+
+						backups.push({
+							fileName: file,
+							filePath,
+							size: stats.size,
+							createdAt: stats.birthtime,
+							metadata,
+						});
+					} catch (error) {
+						console.error(`백업 파일 읽기 오류 (${file}):`, error);
+					}
+				}
+			}
+
+			// 최신순 정렬
+			backups.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+			return { success: true, backups };
+		} catch (error: any) {
+			console.error('백업 목록 조회 오류:', error);
+			return { success: false, error: error.message };
+		}
+	});
+
+	// 백업 파일 내 파일 목록 조회
+	ipcMain.handle('backup:get-file-list', async (evt, backupFilePath: string) => {
+		try {
+			const zip = new AdmZip(backupFilePath);
+			const entries = zip.getEntries();
+			const files: any[] = [];
+
+			for (const entry of entries) {
+				if (!entry.isDirectory && entry.entryName !== 'metadata.json') {
+					files.push({
+						name: entry.entryName,
+						size: entry.header.size,
+						compressedSize: entry.header.compressedSize,
+					});
+				}
+			}
+
+			return { success: true, files };
+		} catch (error: any) {
+			console.error('파일 목록 조회 오류:', error);
+			return { success: false, error: error.message };
+		}
+	});
+
+	// 백업 복원
+	ipcMain.handle('backup:restore', async (evt, options: {
+		backupFilePath: string;
+		items: {
+			bundles?: string[]; // 선택된 번들 ID 배열
+			sopiaCode?: boolean;
+			history?: boolean;
+			appSettings?: boolean;
+			cmdSettings?: boolean;
+			localStorage?: boolean;
+		};
+		overwrite: Record<string, boolean>; // 각 항목별 덮어쓰기 여부
+	}) => {
+		try {
+			const zip = new AdmZip(options.backupFilePath);
+			const userDataPath = getPath('userData');
+			const conflicts: string[] = [];
+
+			// 충돌 확인
+			const metadataEntry = zip.getEntry('metadata.json');
+			if (!metadataEntry) {
+				return { success: false, error: '메타데이터를 찾을 수 없습니다.' };
+			}
+
+			const metadata = JSON.parse(metadataEntry.getData().toString('utf-8'));
+
+			// 번들 복원 - 선택된 번들만
+			if (options.items.bundles && options.items.bundles.length > 0) {
+				for (const bundleId of options.items.bundles) {
+					const bundlePath = path.join(userDataPath, 'bundles', bundleId);
+					if (fs.existsSync(bundlePath)) {
+						if (options.overwrite[`bundle_${bundleId}`]) {
+							fs.rmSync(bundlePath, { recursive: true, force: true });
+						} else {
+							continue; // 건너뛰기
+						}
+					}
+					
+					// 번들 압축 해제
+					const entries = zip.getEntries();
+					for (const entry of entries) {
+						if (entry.entryName.startsWith(`bundles/${bundleId}/`)) {
+							const targetPath = path.join(userDataPath, entry.entryName);
+							const dirname = path.dirname(targetPath);
+							if (!fs.existsSync(dirname)) {
+								fs.mkdirSync(dirname, { recursive: true });
+							}
+							if (!entry.isDirectory) {
+								zip.extractEntryTo(entry, dirname, false, true);
+							}
+						}
+					}
+				}
+			}
+
+			// 소피아 코드 복원
+			if (options.items.sopiaCode && metadata.items.sopiaCode) {
+				const sopiaPath = path.join(userDataPath, 'sopia');
+				if (fs.existsSync(sopiaPath) && !options.overwrite.sopiaCode) {
+					// 건너뛰기
+				} else {
+					if (fs.existsSync(sopiaPath)) {
+						fs.rmSync(sopiaPath, { recursive: true, force: true });
+					}
+					const entries = zip.getEntries();
+					for (const entry of entries) {
+						if (entry.entryName.startsWith('sopia/')) {
+							const targetPath = path.join(userDataPath, entry.entryName);
+							const dirname = path.dirname(targetPath);
+							if (!fs.existsSync(dirname)) {
+								fs.mkdirSync(dirname, { recursive: true });
+							}
+							if (!entry.isDirectory) {
+								zip.extractEntryTo(entry, dirname, false, true);
+							}
+						}
+					}
+				}
+			}
+
+			// 방송 기록 복원
+			if (options.items.history && metadata.items.history) {
+				const historyPath = path.join(userDataPath, 'historydb');
+				if (fs.existsSync(historyPath) && !options.overwrite.history) {
+					// 건너뛰기
+				} else {
+					if (fs.existsSync(historyPath)) {
+						fs.rmSync(historyPath, { recursive: true, force: true });
+					}
+					const entries = zip.getEntries();
+					for (const entry of entries) {
+						if (entry.entryName.startsWith('historydb/')) {
+							const targetPath = path.join(userDataPath, entry.entryName);
+							const dirname = path.dirname(targetPath);
+							if (!fs.existsSync(dirname)) {
+								fs.mkdirSync(dirname, { recursive: true });
+							}
+							if (!entry.isDirectory) {
+								zip.extractEntryTo(entry, dirname, false, true);
+							}
+						}
+					}
+				}
+			}
+
+			// 앱 설정 복원
+			if (options.items.appSettings && metadata.items.appSettings) {
+				const appCfgPath = path.join(userDataPath, 'app.cfg');
+				if (fs.existsSync(appCfgPath) && !options.overwrite.appSettings) {
+					// 건너뛰기
+				} else {
+					const entry = zip.getEntry('app.cfg');
+					if (entry) {
+						zip.extractEntryTo(entry, userDataPath, false, true);
+					}
+				}
+			}
+
+			// Local Storage 복원
+			if (options.items.localStorage && metadata.items.localStorage) {
+				const localStoragePath = path.join(userDataPath, 'Local Storage');
+				if (fs.existsSync(localStoragePath) && !options.overwrite.localStorage) {
+					// 건너뛰기
+				} else {
+					if (fs.existsSync(localStoragePath)) {
+						fs.rmSync(localStoragePath, { recursive: true, force: true });
+					}
+					const entries = zip.getEntries();
+					for (const entry of entries) {
+						if (entry.entryName.startsWith('Local Storage/')) {
+							const targetPath = path.join(userDataPath, entry.entryName);
+							const dirname = path.dirname(targetPath);
+							if (!fs.existsSync(dirname)) {
+								fs.mkdirSync(dirname, { recursive: true });
+							}
+							if (!entry.isDirectory) {
+								zip.extractEntryTo(entry, dirname, false, true);
+							}
+						}
+					}
+				}
+			}
+
+			// 명령어 설정 복원
+			if (options.items.cmdSettings && metadata.items.cmdSettings) {
+				const cmdCfgPath = path.join(userDataPath, 'cmd.cfg');
+				if (fs.existsSync(cmdCfgPath) && !options.overwrite.cmdSettings) {
+					// 건너뛰기
+				} else {
+					const entry = zip.getEntry('cmd.cfg');
+					if (entry) {
+						zip.extractEntryTo(entry, userDataPath, false, true);
+					}
+				}
+			}
+
+			return { success: true };
+		} catch (error: any) {
+			console.error('백업 복원 오류:', error);
+			return { success: false, error: error.message };
+		}
+	});
+
+	// 백업 충돌 확인
+	ipcMain.handle('backup:check-conflicts', async (evt, backupFilePath: string, selectedItems: any) => {
+		try {
+			const zip = new AdmZip(backupFilePath);
+			const metadataEntry = zip.getEntry('metadata.json');
+			if (!metadataEntry) {
+				return { success: false, error: '메타데이터를 찾을 수 없습니다.' };
+			}
+
+			const metadata = JSON.parse(metadataEntry.getData().toString('utf-8'));
+			const userDataPath = getPath('userData');
+			const conflicts: any[] = [];
+
+			// 번들 충돌 확인 - 선택된 번들만 확인
+			if (selectedItems.bundles && Array.isArray(selectedItems.bundles) && selectedItems.bundles.length > 0) {
+				for (const bundleId of selectedItems.bundles) {
+					const bundlePath = path.join(userDataPath, 'bundles', bundleId);
+					if (fs.existsSync(bundlePath)) {
+						// 번들 정보 읽기
+						const pkgPath = path.join(bundlePath, 'package.json');
+						let bundleName = bundleId;
+						if (fs.existsSync(pkgPath)) {
+							try {
+								const pkgContent = fs.readFileSync(pkgPath, 'utf-8');
+								const pkgInfo = JSON.parse(pkgContent);
+								bundleName = pkgInfo['name:ko'] || pkgInfo['name'] || bundleId;
+							} catch (err) {
+								// 파싱 실패 시 bundleId 사용
+							}
+						}
+						conflicts.push({
+							type: 'bundle',
+							id: bundleId,
+							name: bundleName,
+							message: `번들 "${bundleName}"이(가) 이미 존재합니다.`,
+						});
+					}
+				}
+			}
+
+			// 소피아 코드 충돌 확인
+			if (selectedItems.sopiaCode && metadata.items.sopiaCode) {
+				const sopiaPath = path.join(userDataPath, 'sopia');
+				if (fs.existsSync(sopiaPath)) {
+					conflicts.push({
+						type: 'sopiaCode',
+						id: 'sopiaCode',
+						name: '소피아 코드',
+						message: '소피아 코드 폴더가 이미 존재합니다.',
+					});
+				}
+			}
+
+			// 방송 기록 충돌 확인
+			if (selectedItems.history && metadata.items.history) {
+				const historyPath = path.join(userDataPath, 'historydb');
+				if (fs.existsSync(historyPath)) {
+					conflicts.push({
+						type: 'history',
+						id: 'history',
+						name: '방송 기록',
+						message: '방송 기록 폴더가 이미 존재합니다.',
+					});
+				}
+			}
+
+			// 앱 설정 충돌 확인
+			if (selectedItems.appSettings && metadata.items.appSettings) {
+				const appCfgPath = path.join(userDataPath, 'app.cfg');
+				if (fs.existsSync(appCfgPath)) {
+					conflicts.push({
+						type: 'appSettings',
+						id: 'appSettings',
+						name: '앱 설정',
+						message: '앱 설정 파일이 이미 존재합니다.',
+					});
+				}
+			}
+
+			// Local Storage 충돌 확인
+			if (selectedItems.localStorage && metadata.items.localStorage) {
+				const localStoragePath = path.join(userDataPath, 'Local Storage');
+				if (fs.existsSync(localStoragePath)) {
+					conflicts.push({
+						type: 'localStorage',
+						id: 'localStorage',
+						name: 'Local Storage',
+						message: 'Local Storage 폴더가 이미 존재합니다.',
+					});
+				}
+			}
+
+			// 명령어 설정 충돌 확인
+			if (selectedItems.cmdSettings && metadata.items.cmdSettings) {
+				const cmdCfgPath = path.join(userDataPath, 'cmd.cfg');
+				if (fs.existsSync(cmdCfgPath)) {
+					conflicts.push({
+						type: 'cmdSettings',
+						id: 'cmdSettings',
+						name: '명령어 설정',
+						message: '명령어 설정 파일이 이미 존재합니다.',
+					});
+				}
+			}
+
+			return { success: true, conflicts };
+		} catch (error: any) {
+			console.error('충돌 확인 오류:', error);
+			return { success: false, error: error.message };
+		}
+	});
+
+	// 백업 삭제
+	ipcMain.handle('backup:delete', async (evt, backupFilePath: string) => {
+		try {
+			if (fs.existsSync(backupFilePath)) {
+				fs.unlinkSync(backupFilePath);
+				return { success: true };
+			}
+			return { success: false, error: '파일을 찾을 수 없습니다.' };
+		} catch (error: any) {
+			console.error('백업 삭제 오류:', error);
+			return { success: false, error: error.message };
+		}
+	});
+
+	// 폴더 열기
+	ipcMain.handle('backup:open-folder', async (evt, folderPath: string) => {
+		try {
+			await shell.openPath(folderPath);
+			return { success: true };
+		} catch (error: any) {
+			console.error('폴더 열기 오류:', error);
+			return { success: false, error: error.message };
+		}
+	});
 };
