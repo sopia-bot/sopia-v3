@@ -64,6 +64,15 @@
 								<v-list-item-title>{{ $t('show-release-note') }}</v-list-item-title>
 							</v-list-item-content>
 						</v-list-item>
+
+						<v-list-item link @click="openDevTools">
+							<v-list-item-icon>
+								<v-icon>mdi-console</v-icon>
+							</v-list-item-icon>
+							<v-list-item-content>
+								<v-list-item-title>개발자도구 열기</v-list-item-title>
+							</v-list-item-content>
+						</v-list-item>
 						
 						<v-list-item link @click="$evt.$emit('donation:open')">
 							<v-list-item-icon>
@@ -246,6 +255,10 @@ export default class TitleBar extends Mixins(GlobalMixins) {
 		
 		// 튜토리얼 실행 조건 체크
 		this.checkAndShowTutorial();
+	}
+
+	private openDevTools() {
+		ipcRenderer.send('open-dev-tools');
 	}
 
 	private checkAndShowTutorial() {
