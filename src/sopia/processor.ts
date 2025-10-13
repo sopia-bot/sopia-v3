@@ -20,6 +20,87 @@ const $path = (type: any, ...args: any) => {
 	return path.resolve(getAppPath(type), ...args);
 };
 
+// Audio Queue System for FIFO playback
+class AudioQueue {
+	private queue: Array<{ audio: string; volume: number }> = [];
+	private isPlaying: boolean = false;
+	private currentAudio: HTMLAudioElement | null = null;
+
+	public enqueue(audioPath: string, volume: number) {
+		this.queue.push({ audio: audioPath, volume });
+		logger.debug('audio-queue', `Enqueued audio: ${audioPath}, queue length: ${this.queue.length}`);
+		
+		if (!this.isPlaying) {
+			this.playNext();
+		}
+	}
+
+	private async playNext() {
+		if (this.queue.length === 0) {
+			this.isPlaying = false;
+			logger.debug('audio-queue', 'Queue empty, stopping playback');
+			return;
+		}
+
+		this.isPlaying = true;
+		const item = this.queue.shift();
+		
+		if (!item) {
+			this.isPlaying = false;
+			return;
+		}
+
+		logger.debug('audio-queue', `Playing audio: ${item.audio}, volume: ${item.volume}`);
+
+		try {
+			this.currentAudio = new Audio(item.audio);
+			this.currentAudio.volume = item.volume / 100;
+
+			// Set up event listeners
+			const onEnded = () => {
+				logger.debug('audio-queue', 'Audio playback ended');
+				this.cleanup();
+				this.playNext();
+			};
+
+			const onError = (error: any) => {
+				logger.err('audio-queue', `Error playing audio: ${error}`);
+				this.cleanup();
+				this.playNext();
+			};
+
+			this.currentAudio.addEventListener('ended', onEnded);
+			this.currentAudio.addEventListener('error', onError);
+
+			await this.currentAudio.play();
+		} catch (error) {
+			logger.err('audio-queue', `Failed to play audio: ${error}`);
+			this.cleanup();
+			this.playNext();
+		}
+	}
+
+	private cleanup() {
+		if (this.currentAudio) {
+			// Remove event listeners
+			this.currentAudio.pause();
+			this.currentAudio.src = '';
+			this.currentAudio.load();
+			this.currentAudio = null;
+			logger.debug('audio-queue', 'Audio cleanup completed');
+		}
+	}
+
+	public clear() {
+		this.queue = [];
+		this.cleanup();
+		this.isPlaying = false;
+		logger.debug('audio-queue', 'Queue cleared');
+	}
+}
+
+const audioQueue = new AudioQueue();
+
 window.reloadScript = () => {
 	Script.clear();
 	if ( fs.existsSync($path('userData', 'sopia/index.js')) ) {
@@ -167,6 +248,13 @@ const processor = async (evt: any, sock: LiveSocket) => {
 						p = comment[0];
 					}
 					res = p.message;
+					
+					// Play audio if configured
+					if ( p.audio && fs.existsSync(p.audio) ) {
+						const volume = p.audioVolume !== undefined ? p.audioVolume : 50;
+						logger.debug('sopia', `Queueing present audio: ${p.audio}, volume: ${volume}`);
+						audioQueue.enqueue(p.audio, volume);
+					}
 					break;
 				case LiveEvent.LIVE_PRESENT_LIKE:
 					let pl = comment.find((c: any) => c.sticker === evt.update_component.like.sticker);
@@ -174,6 +262,13 @@ const processor = async (evt: any, sock: LiveSocket) => {
 						pl = comment[0];
 					}
 					res = pl.message;
+					
+					// Play audio if configured
+					if ( pl.audio && fs.existsSync(pl.audio) ) {
+						const volume = pl.audioVolume !== undefined ? pl.audioVolume : 50;
+						logger.debug('sopia', `Queueing present_like audio: ${pl.audio}, volume: ${volume}`);
+						audioQueue.enqueue(pl.audio, volume);
+					}
 					break;
 				case LiveEvent.LIVE_MESSAGE:
 					const m = comment.find((c: any) => ckCmd(c, evt.update_component.message.value));

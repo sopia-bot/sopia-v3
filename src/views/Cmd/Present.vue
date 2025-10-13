@@ -55,6 +55,111 @@
     </v-dialog>
     <!-- E: Present List Dialog -->
     
+    <!-- S: Audio Setting Dialog -->
+    <v-dialog
+        v-model="audioDialog"
+        max-width="500"
+        width="90%">
+      <v-card class="rounded-lg">
+        <v-card-title class="purple white--text">
+          <v-icon color="white" class="mr-2">mdi-music</v-icon>
+          음악 설정
+        </v-card-title>
+        <v-card-text class="pa-4">
+          <div class="mb-4">
+            <div class="text-subtitle-2 font-weight-medium mb-2">선택된 음악 파일</div>
+            <v-card 
+              outlined 
+              class="pa-3" 
+              :color="currentAudioSetting.audio ? 'blue-grey lighten-5' : 'grey lighten-4'">
+              <div v-if="currentAudioSetting.audio" class="d-flex align-center">
+                <v-icon color="blue-grey darken-2" class="mr-2">mdi-file-music</v-icon>
+                <div class="flex-grow-1" style="min-width: 0;">
+                  <div class="text-body-2 font-weight-medium text-truncate">
+                    {{ getFileName(currentAudioSetting.audio) }}
+                  </div>
+                  <div class="text-caption grey--text text-truncate" :title="currentAudioSetting.audio">
+                    {{ currentAudioSetting.audio }}
+                  </div>
+                </div>
+              </div>
+              <div v-else class="text-center grey--text">
+                선택된 파일이 없습니다
+              </div>
+            </v-card>
+          </div>
+          
+          <v-btn 
+            block 
+            color="indigo" 
+            dark 
+            class="mb-3"
+            @click="selectAudioFile">
+            <v-icon left>mdi-folder-open</v-icon>
+            음악 파일 선택
+          </v-btn>
+          
+          <v-divider class="my-4"></v-divider>
+          
+          <div class="mb-4">
+            <div class="d-flex justify-space-between align-center mb-2">
+              <div class="text-subtitle-2 font-weight-medium">음량</div>
+              <v-chip small color="purple" dark>
+                {{ currentAudioSetting.audioVolume || 50 }}%
+              </v-chip>
+            </div>
+            <v-slider
+              v-model="currentAudioSetting.audioVolume"
+              :min="0"
+              :max="100"
+              :step="1"
+              color="purple"
+              track-color="grey lighten-2"
+              thumb-label="always"
+              hide-details
+              class="mt-2"
+              @input="updatePreviewVolume">
+              <template v-slot:prepend>
+                <v-icon @click="currentAudioSetting.audioVolume = Math.max(0, (currentAudioSetting.audioVolume || 50) - 10)">
+                  mdi-volume-low
+                </v-icon>
+              </template>
+              <template v-slot:append>
+                <v-icon @click="currentAudioSetting.audioVolume = Math.min(100, (currentAudioSetting.audioVolume || 50) + 10)">
+                  mdi-volume-high
+                </v-icon>
+              </template>
+            </v-slider>
+          </div>
+          
+          <div class="d-flex gap-2" v-if="currentAudioSetting.audio">
+            <v-btn 
+              :color="isPreviewPlaying ? 'orange darken-2' : 'green'" 
+              dark 
+              class="flex-grow-1"
+              @click="togglePreviewAudio">
+              <v-icon left>{{ isPreviewPlaying ? 'mdi-stop' : 'mdi-play' }}</v-icon>
+              {{ isPreviewPlaying ? '정지' : '미리듣기' }}
+            </v-btn>
+            <v-btn 
+              color="red darken-2" 
+              dark 
+              class="flex-grow-1"
+              @click="removeAudio">
+              <v-icon left>mdi-delete</v-icon>
+              삭제
+            </v-btn>
+          </div>
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer></v-spacer>
+          <v-btn color="grey" text @click="cancelAudioSetting">취소</v-btn>
+          <v-btn color="purple" dark @click="saveAudioSetting">저장</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    <!-- E: Audio Setting Dialog -->
+    
     <v-card class="elevation-2 rounded-lg" outlined>
       <v-card-title class="pb-2">
         <v-icon color="purple" class="mr-2">mdi-gift</v-icon>
@@ -101,7 +206,7 @@
                   </div>
                 </v-card>
               </v-col>
-              <v-col cols="10" md="7" class="pr-2">
+              <v-col cols="8" md="6" class="pr-2">
                 <v-textarea
                   v-model="presentItem.message"
                   label="선물 받았을 때 메시지"
@@ -115,7 +220,23 @@
                   class="rounded"
                 />
               </v-col>
-              <v-col cols="2" md="1" class="text-center">
+              <v-col cols="4" md="2" class="d-flex align-center justify-center gap-1">
+                <v-tooltip bottom>
+                  <template v-slot:activator="{ on, attrs }">
+                    <v-btn 
+                      icon 
+                      :color="presentItem.audio ? 'green' : 'grey'"
+                      @click="openAudioDialog(idx)"
+                      class="elevation-1 mr-3"
+                      v-bind="attrs"
+                      v-on="on"
+                    >
+                      <v-icon>{{ presentItem.audio ? 'mdi-music-box' : 'mdi-music-box-outline' }}</v-icon>
+                    </v-btn>
+                  </template>
+                  <span>{{ presentItem.audio ? '음악 설정됨' : '음악 추가' }}</span>
+                </v-tooltip>
+                
                 <v-btn 
                   icon 
                   color="red darken-2" 
@@ -153,6 +274,8 @@ export interface PresentStruct {
 	src: string;
 	title: string;
 	message: string;
+	audio?: string;
+	audioVolume?: number;
 }
 
 @Component({
@@ -170,6 +293,16 @@ export default class CmdMessage extends Mixins(GlobalMixins) {
 	public imgs: Record<string, unknown> = {
 		coin: giftCoin,
 	};
+
+	// Audio dialog
+	public audioDialog: boolean = false;
+	public currentAudioIndex: number = -1;
+	public currentAudioSetting: { audio?: string; audioVolume?: number } = {
+		audio: undefined,
+		audioVolume: 50,
+	};
+	public previewAudioPlayer: HTMLAudioElement | null = null;
+	public isPreviewPlaying: boolean = false;
 
 	public async mounted() {
 		this.livePresent = this.cfg.get('live_present') || [{
@@ -272,8 +405,132 @@ export default class CmdMessage extends Mixins(GlobalMixins) {
 		return str;
 	}
 
+	// Audio methods
+	public openAudioDialog(idx: number) {
+		this.currentAudioIndex = idx;
+		const presentItem = this.livePresent[idx];
+		// Assign properties individually to maintain reactivity
+		this.currentAudioSetting.audio = presentItem.audio;
+		this.currentAudioSetting.audioVolume = presentItem.audioVolume !== undefined ? presentItem.audioVolume : 50;
+		this.audioDialog = true;
+	}
+
+	public async selectAudioFile() {
+		const { ipcRenderer } = window.require('electron');
+		const result = await ipcRenderer.invoke('open-dialog', {
+			title: '음악 파일 선택',
+			properties: ['openFile'],
+			filters: [
+				{ name: 'Audio Files', extensions: ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'webm'] },
+				{ name: 'All Files', extensions: ['*'] }
+			]
+		});
+
+		if (!result.canceled && result.filePaths.length > 0) {
+			this.currentAudioSetting.audio = result.filePaths[0];
+		}
+	}
+
+	public getFileName(filePath: string): string {
+		if (!filePath) return '';
+		const path = window.require('path');
+		return path.basename(filePath);
+	}
+
+	public async previewAudio() {
+		if (!this.currentAudioSetting.audio) return;
+
+		// Stop previous preview if playing
+		if (this.previewAudioPlayer) {
+			this.previewAudioPlayer.pause();
+			this.previewAudioPlayer = null;
+			this.isPreviewPlaying = false;
+		}
+
+		try {
+			this.previewAudioPlayer = new Audio(this.currentAudioSetting.audio);
+			this.previewAudioPlayer.volume = (this.currentAudioSetting.audioVolume || 50) / 100;
+			
+			// Clean up after playback
+			this.previewAudioPlayer.addEventListener('ended', () => {
+				if (this.previewAudioPlayer) {
+					this.previewAudioPlayer = null;
+				}
+				this.isPreviewPlaying = false;
+			});
+
+			await this.previewAudioPlayer.play();
+			this.isPreviewPlaying = true;
+
+			this.$swal({
+				icon: 'success',
+				html: '미리듣기 재생 중...',
+				toast: true,
+				position: 'top-end',
+				timer: 2000,
+				showConfirmButton: false,
+			});
+		} catch (error) {
+			this.isPreviewPlaying = false;
+			this.$swal({
+				icon: 'error',
+				html: '오디오 파일을 재생할 수 없습니다.',
+				toast: true,
+				position: 'top-end',
+				timer: 3000,
+				showConfirmButton: false,
+			});
+		}
+	}
+
+	public togglePreviewAudio() {
+		if (this.isPreviewPlaying) {
+			this.stopPreviewAudio();
+		} else {
+			this.previewAudio();
+		}
+	}
+
+	public updatePreviewVolume() {
+		// Update volume in real-time while preview is playing
+		if (this.previewAudioPlayer && this.isPreviewPlaying) {
+			this.previewAudioPlayer.volume = (this.currentAudioSetting.audioVolume || 50) / 100;
+		}
+	}
+
+	public removeAudio() {
+		this.stopPreviewAudio();
+		this.currentAudioSetting.audio = undefined;
+		this.currentAudioSetting.audioVolume = 50;
+	}
+
+	public saveAudioSetting() {
+		if (this.currentAudioIndex >= 0) {
+			const presentItem = this.livePresent[this.currentAudioIndex];
+			presentItem.audio = this.currentAudioSetting.audio;
+      console.log('this.currentAudioSetting.audioVolume', this.currentAudioSetting.audioVolume);
+			presentItem.audioVolume = this.currentAudioSetting.audioVolume || 50;
+		}
+		this.audioDialog = false;
+		this.stopPreviewAudio();
+	}
+
+	public cancelAudioSetting() {
+		this.audioDialog = false;
+		this.stopPreviewAudio();
+	}
+
+	public stopPreviewAudio() {
+		if (this.previewAudioPlayer) {
+			this.previewAudioPlayer.pause();
+			this.previewAudioPlayer = null;
+		}
+		this.isPreviewPlaying = false;
+	}
+
 	public beforeUnmount() {
 		this.$evt.$off('cmd:save');
+		this.stopPreviewAudio();
 	}
 
 }
