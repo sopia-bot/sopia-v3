@@ -99,6 +99,11 @@ export default function createMainWindow(hideWindow: boolean = false) {
             win?.maximize();
         });
 
+        ipcMain.on('app:reload', () => {
+            app.relaunch();
+            app.quit();
+        });
+
         ipcMain.on('open-dev-tools', () => {
             win?.webContents.openDevTools();
         });

@@ -15,7 +15,7 @@ import CfgLite from 'cfg-lite';
 import fs from 'fs';
 import vm from 'vm';
 import pkg from '../../package.json';
-import { registerStpApp } from './stp-protocol';
+import { registerStpApp, unregisterStpApp } from './stp-protocol';
 export const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -559,7 +559,7 @@ export function registerIpcHandler() {
 					displayErrors: true,
 				});
 				let app = context.module.exports?.default ?? context.module.exports;
-				registerStpApp(domain, app as Application);
+				registerStpApp(domain, app as Application, script);
 				return {
 					success: true,
 				};
@@ -573,6 +573,11 @@ export function registerIpcHandler() {
 		} else {
 			console.log('Can not find ', targetFile);
 		}
+	});
+
+	ipcMain.handle('stp:unregister', async (evt, domain: string) => {
+		unregisterStpApp(domain);
+		return true;
 	});
 
 	ipcMain.handle('open-bundle-manager', async (evt) => {

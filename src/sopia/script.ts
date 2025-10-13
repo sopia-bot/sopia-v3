@@ -87,6 +87,7 @@ export class Script {
 			if ( module && typeof module.onAbort === 'function' ) {
 				module.onAbort();
 			}
+			ipcRenderer.invoke('stp:unregister', box.stpFile);
 			(window as any)['bctx'].destroy(name);
 			logger.info('sopia', 'module cache clear', box.file);
 			delete window.require.cache[box.file];

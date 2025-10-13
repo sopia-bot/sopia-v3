@@ -3,6 +3,7 @@ import { Application } from 'express';
 import supertest from "supertest";
 import { AllMethods } from "supertest/types";
 import mimeBodyParser from "./mime-body-parser";
+import vm from "vm";
 
 async function streamToBuffer(stream) {
     const chunks: Buffer[] = [];
@@ -48,14 +49,21 @@ async function requestMockHttp(requestInfo: Request, app: Application): Promise<
 
 const PROTOCOL_SCHEMA = 'stp';
 const hosts: Map<string, Application> = new Map();
+const hostsVm: Map<string, vm.Script> = new Map();
 
-export function registerStpApp(domain: string, expressApp: Application) {
+export function registerStpApp(domain: string, expressApp: Application, script: vm.Script) {
     console.log(`register stp app :: domain=${domain}`);
     if ( hosts.has(domain) ) {
         console.log('detlete app ::',domain);
         hosts.delete(domain);
     }
     hosts.set(domain, expressApp);
+}
+
+export function unregisterStpApp(domain: string) {
+    console.log(`unregister stp app :: domain=${domain}`);
+    hosts.delete(domain);
+    hostsVm.delete(domain);
 }
 
 export function registerSopiaTextProtocol(app: Electron.App) {

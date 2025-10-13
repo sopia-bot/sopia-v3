@@ -12,6 +12,8 @@
 				<v-col cols="12">
 					<h1 class="text-h4 font-weight-bold">백업 및 복원</h1>
 					<p class="text-subtitle-1 grey--text text--darken-1">SOPIA의 설정과 데이터를 안전하게 백업하고 복원할 수 있습니다.</p>
+					<p class="text-subtitle-1 grey--text text--darken-1">일부 공식 번들이 복원되지 않을 수 있습니다. (EBUSY 어쩌구 에러 발생시.) 이건 구조적 결함때문에 발생하는 문제인데, 일단 다른 기능의 백업 / 복원이 시급한 것 같아 이 기능을 급하게 출시했습니다.</p>
+					<p class="text-subtitle-1 red--text text--darken-1">백업 기능은 100% 데이터를 보장하지 않습니다. 다만, 안 하는 것보다는 낫습니다. 백업하지 않고 유실된 데이터에 대한 책임은 문의받지 않습니다.</p>
 				</v-col>
 			</v-row>
 
@@ -540,6 +542,7 @@
 							color="primary"
 							@click="checkConflictsAndRestore"
 							:disabled="!hasSelectedRestoreItems"
+							:loading="restoreDialog.loading"
 						>
 							복원
 						</v-btn>
@@ -584,7 +587,7 @@
 					<v-card-actions>
 						<v-spacer></v-spacer>
 						<v-btn text @click="conflictDialog.show = false">취소</v-btn>
-						<v-btn color="primary" @click="executeRestore">복원 실행</v-btn>
+						<v-btn color="primary" @click="executeRestore" :loading="restoreDialog.loading" :disabled="restoreDialog.loading">복원 실행</v-btn>
 					</v-card-actions>
 				</v-card>
 			</v-dialog>
@@ -670,6 +673,7 @@ export default class Backup extends Mixins(GlobalMixins) {
 			localStorage: false,
 			cmdSettings: false,
 		},
+		loading: false,
 	};
 
 	// 충돌 다이얼로그
@@ -915,6 +919,7 @@ export default class Backup extends Mixins(GlobalMixins) {
 
 	// 복원 실행
 	async executeRestore() {
+		this.restoreDialog.loading = true;
 		const overwrite: Record<string, boolean> = {};
 
 		// 번들 충돌 처리 - 선택된 번들만
@@ -931,6 +936,9 @@ export default class Backup extends Mixins(GlobalMixins) {
 			}
 		});
 
+		window.clearScript();
+		await new Promise(resolve => setTimeout(resolve, 1000));
+		// 번들에서 관리중인거 다 해제
 		const result = await ipcRenderer.invoke('backup:restore', {
 			backupFilePath: this.restoreDialog.backup.filePath,
 			items: {
@@ -942,9 +950,14 @@ export default class Backup extends Mixins(GlobalMixins) {
 
 		this.conflictDialog.show = false;
 		this.closeRestoreDialog();
-
 		if (result.success) {
-			this.$swal({
+			console.log('bundles', this.restoreDialog.selectedBundles);
+			const installResults = await Promise.all(this.restoreDialog.selectedBundles.map(async (bundleId: string) => {
+				return await ipcRenderer.invoke('bun:install', this.$path('userData', 'bundles', bundleId));
+			}));
+			console.log('installResults', installResults);
+			window.reloadScript();
+			await this.$swal({
 				icon: 'success',
 				title: '복원 완료',
 				text: '백업이 성공적으로 복원되었습니다.',
@@ -954,9 +967,10 @@ export default class Backup extends Mixins(GlobalMixins) {
 			this.$swal({
 				icon: 'error',
 				title: '복원 실패',
-				text: result.error || '알 수 없는 오류가 발생했습니다.',
+				html: (result.error || '알 수 없는 오류가 발생했습니다.') + '<br>앱 종료 후 다시 실행한 뒤에 시도해 주세요.',
 			});
 		}
+		this.restoreDialog.loading = false;
 	}
 
 	// 백업 삭제 확인

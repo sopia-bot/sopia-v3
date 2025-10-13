@@ -101,8 +101,11 @@ class AudioQueue {
 
 const audioQueue = new AudioQueue();
 
-window.reloadScript = () => {
+window.clearScript = () => {
 	Script.clear();
+};
+window.reloadScript = () => {
+	window.clearScript();
 	if ( fs.existsSync($path('userData', 'sopia/index.js')) ) {
 		Script.add($path('userData', 'sopia/'));
 	}
@@ -142,6 +145,7 @@ declare global {
 		$sopia: SpoonClient;
 		reloadCmdCfg: () => void;
 		reloadScript: () => void;
+		clearScript: () => void;
 	}
 }
 
