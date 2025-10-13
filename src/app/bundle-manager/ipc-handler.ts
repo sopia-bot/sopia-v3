@@ -124,8 +124,11 @@ export function registerBundleIpc() {
 					return;
 				}
 				const target = path.join(dst, entry.entryName);
+				console.log('target', target, fs.existsSync(target));
 				if ( fs.existsSync(target) ) {
-					if ( ignore.includes(entry.entryName) ) {
+					const isIgnore = ignore.some(i => target.startsWith(i));
+					console.log('isIgnore', isIgnore);
+					if ( isIgnore ) {
 						return;
 					}
 				}

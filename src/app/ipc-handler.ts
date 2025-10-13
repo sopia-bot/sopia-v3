@@ -443,7 +443,8 @@ export function registerIpcHandler() {
 			readDirectory(src, (p: string, isDir: boolean) => {
 				if ( !isDir ) {
 					const fullPath = path.join(src, p);
-					if ( ignore.includes(fullPath) ) {
+					const isIgnore = ignore.some(i => fullPath.startsWith(i));
+					if ( isIgnore ) {
 						return;
 					}
 					zip.addLocalFile(fullPath, path.dirname(p));
@@ -478,8 +479,11 @@ export function registerIpcHandler() {
 
 			zip.getEntries().forEach((entry) => {
 				const target = path.join(dst, entry.entryName);
+				console.log('target', target, fs.existsSync(target));
 				if ( fs.existsSync(target) ) {
-					if ( ignore.includes(target) ) {
+					const isIgnore = ignore.some(i => target.startsWith(i));
+					console.log('isIgnore', isIgnore);
+					if ( isIgnore ) {
 						return;
 					}
 				}
