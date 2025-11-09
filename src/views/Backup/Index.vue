@@ -5,7 +5,7 @@
  * Copyright (c) Raravel. Licensed under the MIT License.
 -->
 <template>
-	<v-main class="custom indigo lighten-5" style="min-height: calc(100vh - var(--titlebar-height));">
+	<v-main class="custom indigo lighten-5" style="min-height: calc(100vh - var(--titlebar-height)); overflow-y: auto; max-height: calc(100vh - var(--titlebar-height));">
 		<v-container fluid class="pa-6">
 			<!-- 헤더 -->
 			<v-row class="mb-4">
