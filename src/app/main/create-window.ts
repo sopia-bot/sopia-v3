@@ -108,6 +108,12 @@ export default function createMainWindow(hideWindow: boolean = false) {
             win?.webContents.openDevTools();
         });
 
+        // 파일 드롭 이벤트 처리
+        win.webContents.on('will-navigate', (event, navigationUrl) => {
+            // 파일 드롭으로 인한 네비게이션 방지
+            event.preventDefault();
+        });
+
         win.webContents.on('devtools-opened', () => {
             const css = `
                 :root {

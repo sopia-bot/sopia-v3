@@ -5,7 +5,24 @@
  * Copyright (c) Raravel. Licensed under the MIT License.
 -->
 <template>
-	<v-main class="custom indigo lighten-5" style="min-height: calc(100vh - var(--titlebar-height)); overflow-y: auto; max-height: calc(100vh - var(--titlebar-height));">
+	<v-main 
+		class="custom indigo lighten-5" 
+		style="min-height: calc(100vh - var(--titlebar-height)); overflow-y: auto; max-height: calc(100vh - var(--titlebar-height));"
+		@drop="handleDrop"
+		@dragover.prevent="handleDragOver"
+		@dragenter.prevent="handleDragEnter"
+		@dragleave.prevent="handleDragLeave"
+		:class="{ 'drag-over': isDragOver }"
+	>
+		<!-- 드래그 오버레이 -->
+		<v-overlay :value="isDragOver" z-index="999" opacity="0.9" style="pointer-events: none;">
+			<div class="text-center">
+				<v-icon size="64" color="primary">mdi-file-import</v-icon>
+				<h2 class="text-h4 mt-4">백업 파일을 여기에 놓으세요</h2>
+				<p class="text-subtitle-1 mt-2">ZIP 파일을 드롭하여 복원할 수 있습니다</p>
+			</div>
+		</v-overlay>
+
 		<v-container fluid class="pa-6">
 			<!-- 헤더 -->
 			<v-row class="mb-4">
@@ -108,6 +125,16 @@
 								>
 									<v-icon left>mdi-plus-circle</v-icon>
 									새 백업 생성
+								</v-btn>
+								<v-btn
+									color="success"
+									large
+									outlined
+									@click="importBackup"
+									class="rounded-lg"
+								>
+									<v-icon left>mdi-import</v-icon>
+									백업 가져오기
 								</v-btn>
 								<v-btn
 									color="secondary"
@@ -683,6 +710,10 @@ export default class Backup extends Mixins(GlobalMixins) {
 		resolutions: {} as Record<string, boolean>,
 	};
 
+	// 드래그 앤 드롭 상태
+	isDragOver = false;
+	dragCounter = 0;
+
 	get diskUsagePercent() {
 		if (this.diskInfo.total === 0) return 0;
 		return (this.diskInfo.used / this.diskInfo.total) * 100;
@@ -717,16 +748,150 @@ export default class Backup extends Mixins(GlobalMixins) {
 		await this.loadBundles();
 		await this.loadBackupList();
 
-
 		// 백업 진행률 이벤트 리스너
 		ipcRenderer.on('backup:progress', (evt: any, progress: number, message: string) => {
 			this.createDialog.progress.value = progress;
 			this.createDialog.progress.message = message;
 		});
+
+		// Document 레벨에서 드래그 앤 드롭 기본 동작 방지
+		this.preventDefaultDragDrop();
 	}
 
 	beforeDestroy() {
 		ipcRenderer.removeAllListeners('backup:progress');
+		// 드래그 앤 드롭 이벤트 리스너 제거
+		this.removeDefaultDragDrop();
+	}
+
+	// Document 레벨 드래그 앤 드롭 처리
+	preventDefaultDragDrop() {
+		// 기본 드래그 앤 드롭 동작 방지
+		document.addEventListener('dragover', this.documentDragOver, false);
+		document.addEventListener('dragenter', this.documentDragEnter, false);
+		document.addEventListener('dragleave', this.documentDragLeave, false);
+		document.addEventListener('drop', this.documentDrop, false);
+	}
+
+	removeDefaultDragDrop() {
+		document.removeEventListener('dragover', this.documentDragOver, false);
+		document.removeEventListener('dragenter', this.documentDragEnter, false);
+		document.removeEventListener('dragleave', this.documentDragLeave, false);
+		document.removeEventListener('drop', this.documentDrop, false);
+	}
+
+	documentDragEnter(e: DragEvent) {
+		e.preventDefault();
+		this.dragCounter++;
+		console.log('document dragEnter:', this.dragCounter);
+		if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
+			const item = e.dataTransfer.items[0];
+			console.log('document drag item:', item.kind, item.type);
+			if (item.kind === 'file') {
+				this.isDragOver = true;
+			}
+		}
+	}
+
+	documentDragOver(e: DragEvent) {
+		e.preventDefault();
+		if (e.dataTransfer) {
+			e.dataTransfer.dropEffect = 'copy';
+		}
+	}
+
+	documentDragLeave(e: DragEvent) {
+		e.preventDefault();
+		this.dragCounter--;
+		console.log('document dragLeave:', this.dragCounter);
+		if (this.dragCounter === 0) {
+			this.isDragOver = false;
+		}
+	}
+
+	async documentDrop(e: DragEvent) {
+		e.preventDefault();
+		this.isDragOver = false;
+		this.dragCounter = 0;
+
+		console.log('document drop event:', e);
+		console.log('document dataTransfer:', e.dataTransfer);
+		console.log('document files:', e.dataTransfer?.files);
+
+		if (!e.dataTransfer?.files || e.dataTransfer.files.length === 0) {
+			console.warn('드롭된 파일이 없습니다');
+			return;
+		}
+
+		const file = e.dataTransfer.files[0];
+		console.log('드롭된 파일:', file);
+		console.log('파일 속성:', Object.keys(file));
+		console.log('파일 name:', file.name);
+		console.log('파일 path:', (file as any).path);
+		
+		// ZIP 파일인지 확인
+		if (!file.name.toLowerCase().endsWith('.zip')) {
+			this.$swal({
+				icon: 'warning',
+				title: '지원하지 않는 파일 형식',
+				text: 'ZIP 파일만 드롭할 수 있습니다.',
+			});
+			return;
+		}
+
+		// 방법 1: Electron의 path 속성 사용 시도
+		const filePath = (file as any).path;
+		
+		if (filePath) {
+			console.log('드롭된 파일 경로 (path 속성):', filePath);
+			await this.loadBackupFromFile(filePath);
+		} else {
+			// 방법 2: FileReader로 파일 내용 읽어서 임시 파일로 저장
+			console.log('path 속성 없음, FileReader 사용');
+			await this.loadBackupFromFileObject(file);
+		}
+	}
+
+	// File 객체로부터 백업 로드 (경로를 가져올 수 없을 때)
+	async loadBackupFromFileObject(file: File) {
+		try {
+			const path = window.require('path');
+			const fs = window.require('fs');
+			const os = window.require('os');
+
+			// 임시 디렉토리에 파일 저장
+			const tempDir = os.tmpdir();
+			const tempFilePath = path.join(tempDir, `sopia-backup-temp-${Date.now()}.zip`);
+
+			console.log('임시 파일 경로:', tempFilePath);
+
+			// FileReader로 파일 읽기
+			const arrayBuffer = await file.arrayBuffer();
+			const buffer = Buffer.from(arrayBuffer);
+
+			// 임시 파일로 저장
+			fs.writeFileSync(tempFilePath, buffer);
+
+			console.log('임시 파일 저장 완료');
+
+			// 백업 로드
+			await this.loadBackupFromFile(tempFilePath);
+
+			// 처리 후 임시 파일 삭제
+			try {
+				fs.unlinkSync(tempFilePath);
+				console.log('임시 파일 삭제 완료');
+			} catch (err) {
+				console.warn('임시 파일 삭제 실패:', err);
+			}
+		} catch (error: any) {
+			console.error('File 객체 처리 오류:', error);
+			this.$swal({
+				icon: 'error',
+				title: '파일 처리 실패',
+				text: error.message || '파일을 처리할 수 없습니다.',
+			});
+		}
 	}
 
 	// 디스크 정보 로드
@@ -1016,6 +1181,160 @@ export default class Backup extends Mixins(GlobalMixins) {
 		await ipcRenderer.invoke('backup:open-folder', backupPath);
 	}
 
+	// 드래그 앤 드롭 핸들러
+	handleDragEnter(event: DragEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+		this.dragCounter++;
+		console.log('dragEnter:', this.dragCounter);
+		if (event.dataTransfer?.items && event.dataTransfer.items.length > 0) {
+			const item = event.dataTransfer.items[0];
+			console.log('drag item:', item.kind, item.type);
+			if (item.kind === 'file') {
+				this.isDragOver = true;
+			}
+		}
+	}
+
+	handleDragOver(event: DragEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+		if (event.dataTransfer) {
+			event.dataTransfer.dropEffect = 'copy';
+		}
+	}
+
+	handleDragLeave(event: DragEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+		this.dragCounter--;
+		console.log('dragLeave:', this.dragCounter);
+		if (this.dragCounter === 0) {
+			this.isDragOver = false;
+		}
+	}
+
+	async handleDrop(event: DragEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+		this.isDragOver = false;
+		this.dragCounter = 0;
+
+		console.log('drop event:', event);
+		console.log('dataTransfer:', event.dataTransfer);
+		console.log('files:', event.dataTransfer?.files);
+
+		if (!event.dataTransfer?.files || event.dataTransfer.files.length === 0) {
+			console.warn('드롭된 파일이 없습니다');
+			return;
+		}
+
+		const file = event.dataTransfer.files[0];
+		console.log('드롭된 파일:', file);
+		console.log('파일 속성:', Object.keys(file));
+		console.log('파일 name:', file.name);
+		console.log('파일 path:', (file as any).path);
+		
+		// ZIP 파일인지 확인
+		if (!file.name.toLowerCase().endsWith('.zip')) {
+			this.$swal({
+				icon: 'warning',
+				title: '지원하지 않는 파일 형식',
+				text: 'ZIP 파일만 드롭할 수 있습니다.',
+			});
+			return;
+		}
+
+		// Electron에서 파일 경로 가져오기
+		// Electron의 File 객체는 path 속성을 가지고 있음
+		const filePath = (file as any).path;
+		
+		if (!filePath) {
+			console.error('파일 경로를 가져올 수 없습니다:', file);
+			console.error('파일 객체 전체:', JSON.stringify(file, null, 2));
+			this.$swal({
+				icon: 'error',
+				title: '파일 경로 오류',
+				text: '파일 경로를 가져올 수 없습니다. 파일 선택 버튼을 사용해주세요.',
+			});
+			return;
+		}
+		
+		console.log('드롭된 파일 경로:', filePath);
+		await this.loadBackupFromFile(filePath);
+	}
+
+	// 백업 파일 로드 (공통 로직)
+	async loadBackupFromFile(filePath: string) {
+		try {
+			// 파일 정보 가져오기
+			const fs = window.require('fs');
+			const stats = fs.statSync(filePath);
+			
+			// 메타데이터 읽기
+			const AdmZip = window.require('adm-zip');
+			const zip = new AdmZip(filePath);
+			const metadataEntry = zip.getEntry('metadata.json');
+			if (!metadataEntry) {
+				this.$swal({
+					icon: 'error',
+					title: '유효하지 않은 백업 파일',
+					text: '메타데이터를 찾을 수 없습니다.',
+				});
+				return;
+			}
+
+			const metadata = JSON.parse(metadataEntry.getData().toString('utf-8'));
+
+			// 백업 객체 생성
+			const backup = {
+				fileName: filePath.split(/[/\\]/).pop() || 'backup.zip',
+				filePath: filePath,
+				size: stats.size,
+				createdAt: stats.birthtime || new Date(),
+				metadata: metadata,
+			};
+
+			// 복원 다이얼로그 열기
+			this.openRestoreDialog(backup);
+		} catch (error: any) {
+			console.error('백업 파일 로드 오류:', error);
+			this.$swal({
+				icon: 'error',
+				title: '백업 파일 로드 실패',
+				text: error.message || '알 수 없는 오류가 발생했습니다.',
+			});
+		}
+	}
+
+	// 백업 가져오기
+	async importBackup() {
+		try {
+			const result = await ipcRenderer.invoke('open-dialog', {
+				title: '백업 파일 선택',
+				filters: [
+					{ name: '백업 파일', extensions: ['zip'] },
+					{ name: '모든 파일', extensions: ['*'] }
+				],
+				properties: ['openFile']
+			});
+
+			if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+				return;
+			}
+
+			const filePath = result.filePaths[0];
+			await this.loadBackupFromFile(filePath);
+		} catch (error: any) {
+			console.error('백업 가져오기 오류:', error);
+			this.$swal({
+				icon: 'error',
+				title: '백업 가져오기 실패',
+				text: error.message || '알 수 없는 오류가 발생했습니다.',
+			});
+		}
+	}
+
 	// 유틸리티 함수
 	formatBytes(bytes: number) {
 		if (bytes === 0) return '0 Bytes';
@@ -1058,5 +1377,21 @@ export default class Backup extends Mixins(GlobalMixins) {
 
 .rounded-lg {
 	border-radius: 12px !important;
+}
+
+.drag-over {
+	position: relative;
+}
+
+.drag-over::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(63, 81, 181, 0.1);
+	pointer-events: none;
+	z-index: 1;
 }
 </style>
