@@ -143,6 +143,11 @@ export default class Cmd extends Mixins(GlobalMixins) {
 			isActive: this.isActive.bind(this),
 		},
 		{
+			href: '/cmd/live_follow/',
+			text: this.$t('page.Follow'),
+			isActive: this.isActive.bind(this),
+		},
+		{
 			href: '/cmd/live_present/',
 			text: this.$t('page.Present'),
 			isActive: this.isActive.bind(this),
@@ -177,6 +182,7 @@ export default class Cmd extends Mixins(GlobalMixins) {
 		const iconMap: { [key: string]: string } = {
 			'/cmd/live_join/': 'mdi-account-plus',
 			'/cmd/live_like/': 'mdi-heart',
+			'/cmd/live_follow/': 'mdi-star',
 			'/cmd/live_present/': 'mdi-gift',
 			'/cmd/live_message/': 'mdi-message-reply'
 		};

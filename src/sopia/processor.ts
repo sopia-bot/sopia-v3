@@ -194,8 +194,10 @@ const ckCmdEvent = (evt: any, sock: LiveSocket) => {
 		 evt.event !== LiveEvent.LIVE_PRESENT &&
 		 evt.event !== LiveEvent.LIVE_PRESENT_LIKE &&
 		 evt.event !== LiveEvent.LIVE_MESSAGE ) {
-		logger.debug('sopia', 'Event is not [JOIN, LIKE, PRESENT, MESSAGE, PRESENT_LIKE]', evt.event);
-		return false;
+		if ( evt.eventName !== 'LiveFollow' ) {
+			logger.debug('sopia', 'Event is not [JOIN, LIKE, PRESENT, MESSAGE, PRESENT_LIKE]', evt.event);
+			return false;
+		}
 	}
 
 	if ( evt.event === LiveEvent.LIVE_JOIN ||
@@ -223,7 +225,15 @@ const processor = async (evt: any, sock: LiveSocket) => {
 	}
 
 	/* S: Cmd */
-	if ( ckCmdEvent(evt, sock) ) {
+	if ( evt.eventName === 'LiveFollow') {
+		window.appCfg.get(`cmd.${evt.event}.use`) === true && fs.existsSync(CMD_PATH)
+		let comment = cfg.get('live_follow');
+		if ( comment ) {
+			comment = comment.replace(/\[\[name\]\]/g, (evt.eventPayload).nickname)
+				.replace(/\n/g, '\\n');
+			sock.message(comment);
+		}
+	} else if ( ckCmdEvent(evt, sock) ) {
 		if ( window.appCfg.get(`cmd.${evt.event}.use`) === true && fs.existsSync(CMD_PATH) ) {
 			let comment = cfg.get(evt.event);
 			const e = evt.data;
@@ -290,7 +300,7 @@ const processor = async (evt: any, sock: LiveSocket) => {
 
 			res = res.replace(/\[\[name\]\]/g, (e.author || e.user).nickname)
 				.replace(/\[\[tag\]\]/g, (e.author || e.user).tag)
-				.replace(/\n/, '\\n');
+				.replace(/\n/g, '\\n');
 
 			if ( evt.event === LiveEvent.LIVE_PRESENT ) {
 				res = res.replace(/\[\[sticker\]\]/g, e.sticker)

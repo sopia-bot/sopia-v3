@@ -63,6 +63,12 @@ export const routes: RouteConfig[] = [
 				icon: 'mdi-heart',
 			},
 			{
+				name: 'Follow',
+				path: '/cmd/live_follow/',
+				component: () => import('@/views/Cmd/Follow.vue'),
+				icon: 'mdi-account-plus',
+			},
+			{
 				name: 'Present',
 				path: '/cmd/live_present/',
 				component: () => import('@/views/Cmd/Present.vue'),

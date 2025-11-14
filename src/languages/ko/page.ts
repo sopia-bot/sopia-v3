@@ -4,6 +4,7 @@ export default {
 	Command: '봇 반응',
 	Join: '입장',
 	Like: '좋아요',
+	Follow: '팬버튼',
 	Present: '스푼 선물',
 	Message: '명령어',
 	Code: '코드 수정',
