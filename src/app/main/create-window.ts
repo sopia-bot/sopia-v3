@@ -43,6 +43,7 @@ export default function createMainWindow(hideWindow: boolean = false) {
     // Keep a global reference of the window object, if you don't, the window will
     // be closed automatically when the JavaScript object is garbage collected.
     let win: BrowserWindow | null;
+    let updateWin: BrowserWindow | null = null;
     let tray: Tray | null = null;
 
     // Scheme must be registered before the app is ready
@@ -70,6 +71,51 @@ export default function createMainWindow(hideWindow: boolean = false) {
         // Insert at end instead
         obj[keyToChange] = value;
     }
+
+    const createUpdateWindow = () => {
+        if (updateWin) {
+            updateWin.focus();
+            return { window: updateWin, isNew: false };
+        }
+
+        updateWin = new BrowserWindow({
+            width: 500,
+            height: 400,
+            resizable: false,
+            maximizable: false,
+            minimizable: false,
+            frame: false,
+            transparent: true,
+            alwaysOnTop: true,
+            webPreferences: {
+                nodeIntegration: true,
+                contextIsolation: false,
+            },
+            icon: path.join(__dirname, '../public/icon_.png'),
+        });
+
+        // 드래그 가능하도록 설정
+        updateWin.setMovable(true);
+
+        if (isDevelopment) {
+            updateWin.loadURL('file://' + path.join(__dirname, '../public/update.html'));
+        } else {
+            updateWin.loadURL('file://' + path.join(__dirname, 'update.html'));
+        }
+
+        updateWin.on('closed', () => {
+            updateWin = null;
+        });
+
+        // 업데이트 창 닫기 이벤트 처리
+        ipcMain.on('close-update-window', () => {
+            if (updateWin) {
+                updateWin.close();
+            }
+        });
+
+        return { window: updateWin, isNew: true };
+    };
 
     const createWindow = () => {
         registerIpcHandler();
@@ -279,11 +325,17 @@ export default function createMainWindow(hideWindow: boolean = false) {
                 }
             });
         } else {
-            autoUpdater.checkForUpdates();
             if (!hideWindow) {
                 win.once('ready-to-show', () => {
                     win?.show();
+                    // 메인 윈도우가 보여진 후 1초 뒤에 업데이트 체크 시작
+                    setTimeout(() => {
+                        autoUpdater.checkForUpdates();
+                    }, 1000);
                 });
+            } else {
+                // hideWindow 모드에서는 바로 업데이트 체크
+                autoUpdater.checkForUpdates();
             }
         }
     };
@@ -397,27 +449,74 @@ export default function createMainWindow(hideWindow: boolean = false) {
     // 업데이트 오류시
     autoUpdater.on('error', function(error) {
         console.error('error', error);
+        if (updateWin) {
+            updateWin.webContents.send('update-error', error);
+        }
     });
 
     // 업데이트 체크
     autoUpdater.on('checking-for-update', async () => {
         console.log('Checking-for-update');
+        const result = createUpdateWindow();
+        if (result && result.window) {
+            if (result.isNew) {
+                // 새 윈도우인 경우: 완전히 로드된 후에 메시지 전송
+                result.window.webContents.once('did-finish-load', () => {
+                    result.window.webContents.send('checking-for-update');
+                });
+            } else {
+                // 기존 윈도우인 경우: 바로 메시지 전송
+                result.window.webContents.send('checking-for-update');
+            }
+        }
     });
 
     // 업데이트할 내용이 있을 때
-    autoUpdater.on('update-available', async () => {
-        console.log('A new update is available');
+    autoUpdater.on('update-available', async (info) => {
+        console.log('A new update is available', info);
+        if (updateWin) {
+            updateWin.webContents.send('update-available', {
+                version: info.version,
+                currentVersion: pkg.version,
+                releaseDate: info.releaseDate,
+                releaseName: info.releaseName,
+                releaseNotes: info.releaseNotes
+            });
+        }
     });
 
     // 업데이트할 내용이 없을 때
-    autoUpdater.on('update-not-available', async () => {
-        console.log('update-not-available');
+    autoUpdater.on('update-not-available', async (info) => {
+        console.log('update-not-available', info);
+        if (updateWin) {
+            updateWin.webContents.send('update-not-available', {
+                version: info.version
+            });
+        }
     });
 
+    // 다운로드 진행률
+    autoUpdater.on('download-progress', (progressObj) => {
+        console.log('Download progress:', progressObj);
+        if (updateWin) {
+            updateWin.webContents.send('download-progress', {
+                percent: progressObj.percent,
+                transferred: progressObj.transferred,
+                total: progressObj.total,
+                bytesPerSecond: progressObj.bytesPerSecond
+            });
+        }
+    });
 
     //다운로드 완료되면 업데이트
     autoUpdater.on('update-downloaded', async (event, releaseNotes, releaseName) => {
         console.log('update-downloaded');
-        autoUpdater.quitAndInstall();
+        if (updateWin) {
+            updateWin.webContents.send('update-downloaded');
+        }
+        // 2초 후 재시작
+        setTimeout(() => {
+            autoUpdater.quitAndInstall();
+        }, 2000);
     });
 };
