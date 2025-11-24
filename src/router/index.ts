@@ -120,13 +120,6 @@ export const routes: RouteConfig[] = [
 		isMenu: false,
 	},
 	{
-		name: 'DJBoard',
-		path: '/dj-board/',
-		component: () => import('@/views/DJBoard/Index.vue'),
-		icon: 'mdi-microphone',
-		isMenu: true,
-	},
-	{
 		name: 'Backup',
 		path: '/backup/',
 		component: () => import('@/views/Backup/Index.vue'),
