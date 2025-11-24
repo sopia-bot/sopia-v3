@@ -63,6 +63,7 @@ declare global {
 		reloadCfg: () => void;
 		appCfg: CfgLite;
 		logout: () => void;
+		$openStickerModal: () => void;
 	}
 }
 
@@ -194,6 +195,8 @@ export default class App extends Mixins(GlobalMixins) {
 
 		window.addEventListener('resize', this.onResize);
 		window.addEventListener('mouseup', this.onMouseUp);
+
+		window.$openStickerModal = this.$openStickerModal;
 		
 		// Electron IPC로 윈도우 이동 이벤트 수신
 		const { ipcRenderer } = window.require('electron');
@@ -410,6 +413,7 @@ export default class App extends Mixins(GlobalMixins) {
 				}
 			});
 
+		const deleteQueue: any[] = [];
 		const bundleInfoList = (await Promise.all(updateRequest) as any[])
 			.filter((res) => res && !res.error)
 			.map((res) => res.data[0])
@@ -417,12 +421,40 @@ export default class App extends Mixins(GlobalMixins) {
 				const pkgPath = path.join(bundleDirectory, bundle.name, 'package.json');
 				const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 				console.log(pkg.name, pkg.version, bundle.version);
+				if ( bundle.deleted === 1 ) {
+					deleteQueue.push(bundle);
+				}
 				return pkg.version !== bundle.version;
 			});
 
 		if ( bundleInfoList.length > 0 ) {
 			this.bundleUpdateList = bundleInfoList;
 			this.bundleUpdateDialogShow = true;
+		}
+
+		if ( deleteQueue.length > 0 ) {
+			const bundleNames = deleteQueue.map((bundle) => bundle.name).join(', ');
+			await this.$swal({
+				title: '번들 삭제',
+				html: `다음 번들이 삭제됩니다:<br><br><strong>${bundleNames}</strong>`,
+				icon: 'warning',
+				confirmButtonText: '확인',
+				allowOutsideClick: false,
+			});
+
+			// 번들 폴더 삭제
+			for (const bundle of deleteQueue) {
+				try {
+					const bundlePath = path.join(bundleDirectory, bundle.name);
+					if (fs.existsSync(bundlePath)) {
+						fs.rmSync(bundlePath, { recursive: true, force: true });
+						console.log(`Deleted bundle: ${bundle.name}`);
+					}
+				} catch (err) {
+					console.error(`Failed to delete bundle: ${bundle.name}`, err);
+				}
+			}
+			location.reload();
 		}
 	}
 
