@@ -125,7 +125,19 @@ export default class StickerModal extends Vue {
         try {
             const stickers = (this as any).$sopia?.sticker?.stickers;
             if (stickers && stickers.categories) {
-                this.categories = stickers.categories.filter((cat: StickerCategory) => cat.is_used);
+                const now = new Date();
+                this.categories = stickers.categories
+                    .filter((cat: StickerCategory) => cat.is_used)
+                    .map((cat: StickerCategory) => ({
+                        ...cat,
+                        stickers: (cat.stickers || []).filter((sticker: any) => {
+                            if (!sticker.start_date || !sticker.end_date) return true;
+                            const start = new Date(sticker.start_date);
+                            const end = new Date(sticker.end_date);
+                            return now >= start && now <= end;
+                        }),
+                    }))
+                    .filter((cat: StickerCategory) => cat.stickers && cat.stickers.length > 0);
             }
         } catch (error) {
             console.error('Failed to load stickers:', error);
