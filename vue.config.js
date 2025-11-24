@@ -44,6 +44,7 @@ module.exports = {
 					"node_modules/rimraf/**/*",
 					"node_modules/@prisma/client/**/*",
 					"node_modules/json-stringify-safe/**/*",
+					"node_modules/adm-zip/**/*"
 				],
 				extraFiles: [
 					{
@@ -79,6 +80,10 @@ module.exports = {
 						to: "resources/node_modules/json-stringify-safe"
 					},
 					{
+						from: "node_modules/adm-zip/",
+						to: "resources/node_modules/adm-zip"
+					},
+					{
 						from: 'bun-binary',
 						to: '.bun',
 					},
@@ -89,7 +94,7 @@ module.exports = {
 					{
 						from: 'public/icon.png',
 						to: 'resources/icon.png',
-					}
+					},
 				],
 				// mac: {
 				// 	target: "dmg",

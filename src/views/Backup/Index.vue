@@ -625,7 +625,7 @@
 <script lang="ts">
 import { Component, Mixins } from 'vue-property-decorator';
 import GlobalMixins from '@/plugins/mixins';
-const { ipcRenderer } = window.require('electron');
+const { ipcRenderer, webUtils } = window.require('electron');
 
 @Component
 export default class Backup extends Mixins(GlobalMixins) {
@@ -840,7 +840,7 @@ export default class Backup extends Mixins(GlobalMixins) {
 		}
 
 		// 방법 1: Electron의 path 속성 사용 시도
-		const filePath = (file as any).path;
+		const filePath = webUtils.getPathForFile(file);
 		
 		if (filePath) {
 			console.log('드롭된 파일 경로 (path 속성):', filePath);
