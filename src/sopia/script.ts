@@ -25,13 +25,13 @@ export class Script {
 	}
 
 	public async add(folder: string) {
-		
+
 
 		let pkg = {} as BundleInfo;
 		let index = '';
 		try {
 			const packageTarget = path.join(folder, 'package.json');
-			if ( fs.existsSync(packageTarget) ) {
+			if (fs.existsSync(packageTarget)) {
 				pkg = JSON.parse(fs.readFileSync(packageTarget, 'utf-8')) as BundleInfo;
 				index = path.join(folder, pkg.main ?? 'index.js');
 				// https://github.com/sopia-bot/sopia-v3/issues/5
@@ -44,17 +44,17 @@ export class Script {
 		}
 
 
-		if ( fs.existsSync(index) ) {
+		if (fs.existsSync(index)) {
 			const name = path.basename(folder);
 			const context = (window as any)['bctx'].new(name);
 			try {
 				const module = window.require(index);
 				let stpTargetFile = '';
 				logger.debug('processor', `require module ${index}`, module);
-				if ( pkg['stp'] ) {
-					if ( pkg['stp']['domain'] && pkg['stp']['file'] ) {
+				if (pkg['stp']) {
+					if (pkg['stp']['domain'] && pkg['stp']['file']) {
 						stpTargetFile = pkg['stp']['file'];
-						if ( ! fs.existsSync(stpTargetFile) ) {
+						if (!fs.existsSync(stpTargetFile)) {
 							stpTargetFile = path.join(folder, pkg['stp']['file']);
 						}
 						stpTargetFile = window.require.resolve(stpTargetFile);
@@ -82,9 +82,9 @@ export class Script {
 	public abort(name: string) {
 		const idx = this.boxs.findIndex((b: any) => b.name === name);
 		const box = this.boxs[idx];
-		if ( box ) {
+		if (box) {
 			const module = box.module;
-			if ( module && typeof module.onAbort === 'function' ) {
+			if (module && typeof module.onAbort === 'function') {
 				module.onAbort();
 			}
 			ipcRenderer.invoke('stp:unregister', box.stpFile);
@@ -97,11 +97,11 @@ export class Script {
 
 	public clear() {
 		let idx = 0;
-		if ( Array.isArray(this.boxs) ) {
-			while ( this.boxs.length ) {
+		if (Array.isArray(this.boxs)) {
+			while (this.boxs.length) {
 				const module = this.boxs[0];
 				this.abort.call(this, module.name);
-				if ( idx++ > 10000 ) {
+				if (idx++ > 10000) {
 					break;
 				}
 			}
@@ -110,9 +110,9 @@ export class Script {
 	}
 
 	public run(event: any, sock: any) {
-		if ( Array.isArray(this.boxs) ) {
-			for ( const { module } of this.boxs ) {
-				if ( typeof module[event.event] === 'function' ) {
+		if (Array.isArray(this.boxs)) {
+			for (const { module } of this.boxs) {
+				if (typeof module[event.event] === 'function') {
 					try {
 						module[event.event](event, sock);
 					} catch (err) {
@@ -120,13 +120,16 @@ export class Script {
 						// ignore error
 					}
 				}
+				if (typeof module['live_event_all'] === 'function') {
+					module['live_event_all'](event, sock);
+				}
 			}
 		}
 	}
 
 	public reload(name: string) {
 		const box = this.boxs.find((b: any) => b.name === name);
-		if ( box ) {
+		if (box) {
 			this.abort(name);
 			this.add(box.dir);
 		}

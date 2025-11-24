@@ -29,7 +29,7 @@ class AudioQueue {
 	public enqueue(audioPath: string, volume: number) {
 		this.queue.push({ audio: audioPath, volume });
 		logger.debug('audio-queue', `Enqueued audio: ${audioPath}, queue length: ${this.queue.length}`);
-		
+
 		if (!this.isPlaying) {
 			this.playNext();
 		}
@@ -44,7 +44,7 @@ class AudioQueue {
 
 		this.isPlaying = true;
 		const item = this.queue.shift();
-		
+
 		if (!item) {
 			this.isPlaying = false;
 			return;
@@ -106,21 +106,21 @@ window.clearScript = () => {
 };
 window.reloadScript = () => {
 	window.clearScript();
-	if ( fs.existsSync($path('userData', 'sopia/index.js')) ) {
+	if (fs.existsSync($path('userData', 'sopia/index.js'))) {
 		Script.add($path('userData', 'sopia/'));
 	}
 	const bundlePath = $path('userData', 'bundles');
 
-	if ( !fs.existsSync(bundlePath) ) {
+	if (!fs.existsSync(bundlePath)) {
 		fs.mkdirSync(bundlePath);
 	}
 
 	const bundles = fs.readdirSync(bundlePath);
-	for ( const bundle of bundles ) {
+	for (const bundle of bundles) {
 		const target = path.join(bundlePath, bundle);
 		const stat = fs.statSync(target);
 		const lstat = fs.lstatSync(target);
-		if ( stat.isDirectory() || lstat.isSymbolicLink() ) {
+		if (stat.isDirectory() || lstat.isSymbolicLink()) {
 			logger.debug('processor', `reload bundle ${bundle}`);
 			Script.add(target);
 		}
@@ -153,7 +153,7 @@ let cfg: CfgLite;
 try {
 	cfg = new CfgLite(CMD_PATH);
 } catch {
-	if ( fs.existsSync(CMD_PATH) ) {
+	if (fs.existsSync(CMD_PATH)) {
 		fs.rmSync(CMD_PATH);
 	}
 	cfg = new CfgLite(CMD_PATH);
@@ -163,9 +163,9 @@ window.reloadCmdCfg = () => {
 	(window as any).cmdCfg = cfg;
 };
 
-const isAdmin = (live: Live, user: User|number) => {
-	if ( typeof user === 'object' ) {
-		if ( user.is_dj ) {
+const isAdmin = (live: Live, user: User | number) => {
+	if (typeof user === 'object') {
+		if (user.is_dj) {
 			return true;
 		}
 		user = user.id;
@@ -177,7 +177,7 @@ const isAdmin = (live: Live, user: User|number) => {
 const DEFAULT_CMD_PREFIX = '!';
 const ckCmd = (cmd: any, msg: string) => {
 	let prefix = window.appCfg.get('cmd.prefix');
-	if ( !prefix ) {
+	if (!prefix) {
 		window.appCfg.set('cmd.prefix', DEFAULT_CMD_PREFIX);
 		window.appCfg.save();
 		logger.info('Prefix save [!]');
@@ -189,21 +189,21 @@ const ckCmd = (cmd: any, msg: string) => {
 };
 
 const ckCmdEvent = (evt: any, sock: LiveSocket) => {
-	if ( evt.event !== LiveEvent.LIVE_JOIN &&
-		 evt.event !== LiveEvent.LIVE_LIKE &&
-		 evt.event !== LiveEvent.LIVE_PRESENT &&
-		 evt.event !== LiveEvent.LIVE_PRESENT_LIKE &&
-		 evt.event !== LiveEvent.LIVE_MESSAGE ) {
-		if ( evt.eventName !== 'LiveFollow' ) {
+	if (evt.event !== LiveEvent.LIVE_JOIN &&
+		evt.event !== LiveEvent.LIVE_LIKE &&
+		evt.event !== LiveEvent.LIVE_PRESENT &&
+		evt.event !== LiveEvent.LIVE_PRESENT_LIKE &&
+		evt.event !== LiveEvent.LIVE_MESSAGE) {
+		if (evt.eventName !== 'LiveFollow') {
 			logger.debug('sopia', 'Event is not [JOIN, LIKE, PRESENT, MESSAGE, PRESENT_LIKE]', evt.event);
 			return false;
 		}
 	}
 
-	if ( evt.event === LiveEvent.LIVE_JOIN ||
-		 evt.event === LiveEvent.LIVE_LIKE ||
-		 evt.event === LiveEvent.LIVE_PRESENT ||
-		 evt.event === LiveEvent.LIVE_PRESENT_LIKE ) {
+	if (evt.event === LiveEvent.LIVE_JOIN ||
+		evt.event === LiveEvent.LIVE_LIKE ||
+		evt.event === LiveEvent.LIVE_PRESENT ||
+		evt.event === LiveEvent.LIVE_PRESENT_LIKE) {
 		return isAdmin(sock.Live as Live, window.$sopia.logonUser);
 	}
 
@@ -217,29 +217,29 @@ const processor = async (evt: any, sock: LiveSocket) => {
 		Script.run(evt, sock);
 	});
 
-	if ( evt.event === LiveEvent.LIVE_JOIN ) {
-		if ( evt.data.author.tag === '5lyrz4' ) {
+	if (evt.event === LiveEvent.LIVE_JOIN) {
+		if (evt.data.author.tag === '5lyrz4') {
 			sock.message(`어서오십시오 ${evt.data.author.nickname}님.\\n현재 버전은 ${pkg.version}입니다.`);
 			return;
 		}
 	}
 
 	/* S: Cmd */
-	if ( evt.eventName === 'LiveFollow') {
+	if (evt.eventName === 'LiveFollow') {
 		window.appCfg.get(`cmd.${evt.event}.use`) === true && fs.existsSync(CMD_PATH)
 		let comment = cfg.get('live_follow');
-		if ( comment ) {
+		if (comment) {
 			comment = comment.replace(/\[\[name\]\]/g, (evt.eventPayload).nickname)
 				.replace(/\n/g, '\\n');
 			sock.message(comment);
 		}
-	} else if ( ckCmdEvent(evt, sock) ) {
-		if ( window.appCfg.get(`cmd.${evt.event}.use`) === true && fs.existsSync(CMD_PATH) ) {
+	} else if (ckCmdEvent(evt, sock)) {
+		if (window.appCfg.get(`cmd.${evt.event}.use`) === true && fs.existsSync(CMD_PATH)) {
 			let comment = cfg.get(evt.event);
 			const e = evt.data;
 
-			if ( !comment ) {
-				if ( evt.event === LiveEvent.LIVE_PRESENT_LIKE ) {
+			if (!comment) {
+				if (evt.event === LiveEvent.LIVE_PRESENT_LIKE) {
 					comment = cfg.get(LiveEvent.LIVE_PRESENT);
 				} else {
 					logger.err('sopia', 'Can not find comment', evt.event);
@@ -251,20 +251,20 @@ const processor = async (evt: any, sock: LiveSocket) => {
 
 			let res = '';
 
-			switch ( evt.event ) {
+			switch (evt.event) {
 				case LiveEvent.LIVE_JOIN:
 				case LiveEvent.LIVE_LIKE:
 					res = comment;
 					break;
 				case LiveEvent.LIVE_PRESENT:
 					let p = comment.find((c: any) => c.sticker === e.sticker);
-					if ( !p ) {
+					if (!p) {
 						p = comment[0];
 					}
 					res = p.message;
-					
+
 					// Play audio if configured
-					if ( p.audio && fs.existsSync(p.audio) ) {
+					if (p.audio && fs.existsSync(p.audio)) {
 						const volume = p.audioVolume !== undefined ? p.audioVolume : 50;
 						logger.debug('sopia', `Queueing present audio: ${p.audio}, volume: ${volume}`);
 						audioQueue.enqueue(p.audio, volume);
@@ -272,13 +272,13 @@ const processor = async (evt: any, sock: LiveSocket) => {
 					break;
 				case LiveEvent.LIVE_PRESENT_LIKE:
 					let pl = comment.find((c: any) => c.sticker === evt.update_component.like.sticker);
-					if ( !pl ) {
+					if (!pl) {
 						pl = comment[0];
 					}
 					res = pl.message;
-					
+
 					// Play audio if configured
-					if ( pl.audio && fs.existsSync(pl.audio) ) {
+					if (pl.audio && fs.existsSync(pl.audio)) {
 						const volume = pl.audioVolume !== undefined ? pl.audioVolume : 50;
 						logger.debug('sopia', `Queueing present_like audio: ${pl.audio}, volume: ${volume}`);
 						audioQueue.enqueue(pl.audio, volume);
@@ -286,9 +286,9 @@ const processor = async (evt: any, sock: LiveSocket) => {
 					break;
 				case LiveEvent.LIVE_MESSAGE:
 					const m = comment.find((c: any) => ckCmd(c, evt.update_component.message.value));
-					if ( m ) {
-						if ( m.permit === 'manager' ) {
-							if ( isAdmin(sock.Live as Live, e.user) ) {
+					if (m) {
+						if (m.permit === 'manager') {
+							if (isAdmin(sock.Live as Live, e.user)) {
 								res = m.message;
 							}
 						} else {
@@ -302,14 +302,14 @@ const processor = async (evt: any, sock: LiveSocket) => {
 				.replace(/\[\[tag\]\]/g, (e.author || e.user).tag)
 				.replace(/\n/g, '\\n');
 
-			if ( evt.event === LiveEvent.LIVE_PRESENT ) {
+			if (evt.event === LiveEvent.LIVE_PRESENT) {
 				res = res.replace(/\[\[sticker\]\]/g, e.sticker)
 					.replace(/\[\[combo\]\]/g, String(e.combo))
 					.replace(/\[\[amount\]\]/g, String(e.amount))
 					.replace(/\[\[count\]\]/g, String(e.amount * e.combo));
 			}
 
-			if ( res ) {
+			if (res) {
 				logger.debug('cmd', `Send message [${res}]`);
 				sock.message(res);
 			}
