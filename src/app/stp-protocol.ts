@@ -25,7 +25,24 @@ async function requestMockHttp(requestInfo: Request, app: Application): Promise<
         const contentType = requestInfo.headers.get('Content-Type') ?? 'application/octet-stream';
         const body = await mimeBodyParser(contentType, await streamToBuffer(requestInfo.body));
         console.log('request stp info :: contentType', contentType, ' body', requestInfo.body, body);
-        req.send(body);
+        
+        // multipart/form-data 처리
+        if ( contentType.includes('multipart/form-data') && typeof body === 'object' && 'fields' in body && 'files' in body ) {
+            // 필드 추가
+            for (const [key, value] of Object.entries(body.fields)) {
+                req.field(key, value as string);
+            }
+            
+            // 파일 추가
+            for (const file of body.files) {
+                req.attach(file.field, file.data, {
+                    filename: file.filename,
+                    contentType: file.mimetype
+                });
+            }
+        } else {
+            req.send(body);
+        }
     }
 
     const serverResponse = await req;
