@@ -328,6 +328,17 @@ export default class App extends Mixins(GlobalMixins) {
 
 		this.$evt.$off('live-join');
 		this.$evt.$on('live-join', async (live: number, isMembership: boolean, isRejoin: boolean = false) => {
+			// 이미 참여 중인 라이브가 있는 경우 안내
+			if (this.currentLive && this.currentLive.id) {
+				await this.$swal({
+					title: '라이브 참여 중',
+					html: '현재 참여 중인 라이브가 있습니다.<br>기존 라이브를 종료한 후 다시 시도해주세요.',
+					icon: 'warning',
+					confirmButtonText: '확인',
+				});
+				return;
+			}
+
 			const joinLive = async () => {
 				let config!: ApiLivesInfo.Request;
 				if ( isMembership ) {
