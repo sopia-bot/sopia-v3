@@ -220,7 +220,8 @@ export default class App extends Mixins(GlobalMixins) {
 			this.$cfg.delete('auth');
 			this.$cfg.save();
 			setTimeout(() => {
-				window.location.reload();
+				this.isLogin = false;
+				this.$assign('/login');
 			}, 100);
 		};
 
@@ -228,6 +229,7 @@ export default class App extends Mixins(GlobalMixins) {
 			const res = await this.$api.req('GET', `/user/${auth.sopia.user_id}`);
 			if ( res.error ) {
 				this.$cfg.delete('auth');
+				this.$cfg.save();
 				this.isLogin = false;
 				this.$assign('/login');
 			} else {
