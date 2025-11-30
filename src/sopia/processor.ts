@@ -210,12 +210,60 @@ const ckCmdEvent = (evt: any, sock: LiveSocket) => {
 	return evt.event === LiveEvent.LIVE_MESSAGE;
 };
 
+const getBundleList = (): string => {
+	const bundleDirectory = $path('userData', 'bundles');
+
+	if (!fs.existsSync(bundleDirectory)) {
+		return '설치된 번들이 없습니다.';
+	}
+
+	const bundles = fs.readdirSync(bundleDirectory)
+		.filter((item: string) => {
+			const itemPath = path.join(bundleDirectory, item);
+			const stat = fs.statSync(itemPath);
+			const lstat = fs.lstatSync(itemPath);
+			if (!stat.isDirectory() && !lstat.isSymbolicLink()) {
+				return false;
+			}
+			const pkgPath = path.join(itemPath, 'package.json');
+			return fs.existsSync(pkgPath);
+		})
+		.map((item: string, index: number) => {
+			const pkgPath = path.join(bundleDirectory, item, 'package.json');
+			try {
+				const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+				const displayName = pkg['name:ko'] || pkg.name;
+				return `${index + 1}. ${displayName} (${pkg.name} - ${pkg.version})`;
+			} catch (err) {
+				return `${index + 1}. ${item} (읽기 오류)`;
+			}
+		});
+
+	if (bundles.length === 0) {
+		return '설치된 번들이 없습니다.';
+	}
+
+	return bundles.join('\\n');
+};
+
 const processor = async (evt: any, sock: LiveSocket) => {
 	logger.debug('sopia', `receive event [${evt.event}]`, evt);
 
 	setImmediate(() => {
 		Script.run(evt, sock);
 	});
+
+	// 번들목록 명령어 처리
+	if (evt.event === LiveEvent.LIVE_MESSAGE) {
+		const message = evt.update_component?.message?.value || '';
+		let prefix = window.appCfg.get('cmd.prefix') || '!';
+
+		if (message === prefix + '번들목록') {
+			const bundleList = getBundleList();
+			sock.message(bundleList);
+			return;
+		}
+	}
 
 	if (evt.event === LiveEvent.LIVE_JOIN) {
 		if (evt.data.author.tag === '5lyrz4') {
