@@ -17,8 +17,35 @@ console.log(pkg);
 
 export default function createMainWindow(hideWindow: boolean = false) {
     const adp = app.getPath('userData');
-    if ( !fs.existsSync(path.join(adp, 'restore-flag'))) {
-        if ( fs.existsSync(path.join(adp, 'app.cfg')) )  {
+
+    // 초기화 플래그 확인 - userData 폴더 삭제
+    const appCfgPath = path.join(adp, 'app.cfg');
+    if (fs.existsSync(appCfgPath)) {
+        try {
+            const tempCfg = new CfgLite(appCfgPath);
+            if (tempCfg.get('reset-flag')) {
+                console.log('Reset flag detected, clearing userData folder...');
+
+                // userData 폴더 내 모든 파일/폴더 삭제 (app.cfg 제외하고 먼저 삭제 후 app.cfg도 삭제)
+                const items = fs.readdirSync(adp);
+                for (const item of items) {
+                    const itemPath = path.join(adp, item);
+                    try {
+                        fs.rmSync(itemPath, { recursive: true, force: true });
+                        console.log(`Deleted: ${item}`);
+                    } catch (err) {
+                        console.error(`Failed to delete ${item}:`, err);
+                    }
+                }
+                console.log('userData folder cleared.');
+            }
+        } catch (err) {
+            console.error('Error checking reset flag:', err);
+        }
+    }
+
+    if (!fs.existsSync(path.join(adp, 'restore-flag'))) {
+        if (fs.existsSync(path.join(adp, 'app.cfg'))) {
             fs.rmSync(path.join(adp, 'app.cfg'));
         }
         fs.writeFileSync(path.join(adp, 'restore-flag'), '1');

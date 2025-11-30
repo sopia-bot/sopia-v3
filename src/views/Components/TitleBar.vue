@@ -84,13 +84,22 @@
 						</v-list-item>
 						
 						<v-divider class="my-1"></v-divider>
-						
+
 						<v-list-item link @click.stop="spoonLogout">
 							<v-list-item-icon>
 								<v-icon color="red">mdi-logout</v-icon>
 							</v-list-item-icon>
 							<v-list-item-content>
 								<v-list-item-title>{{ $t('spoon-logout') }}</v-list-item-title>
+							</v-list-item-content>
+						</v-list-item>
+
+						<v-list-item link @click.stop="resetApp">
+							<v-list-item-icon>
+								<v-icon color="orange darken-1">mdi-refresh</v-icon>
+							</v-list-item-icon>
+							<v-list-item-content>
+								<v-list-item-title>초기화</v-list-item-title>
 							</v-list-item-content>
 						</v-list-item>
 					</v-list>
@@ -326,6 +335,171 @@ export default class TitleBar extends Mixins(GlobalMixins) {
 		this.$cfg.save();
 		this.$store.state.loginDialog = true;
 		*/
+	}
+
+	public async resetApp() {
+		this.avatarMenu = false;
+
+		const result = await this.$swal({
+			title: '앱 초기화',
+			html: `
+				<div class="reset-dialog-content">
+					<div class="reset-warning-banner">
+						<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+							<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+						</svg>
+						<span>이 작업은 되돌릴 수 없습니다</span>
+					</div>
+
+					<p class="reset-description">다음 데이터가 모두 삭제됩니다:</p>
+
+					<div class="reset-items">
+						<div class="reset-item">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+								<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+							</svg>
+							<span>로그인 정보</span>
+						</div>
+						<div class="reset-item">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+								<path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/>
+							</svg>
+							<span>설치된 번들</span>
+						</div>
+						<div class="reset-item">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+								<path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+							</svg>
+							<span>설정 값</span>
+						</div>
+					</div>
+
+					<label class="reset-checkbox-label">
+						<input type="checkbox" id="reset-confirm-checkbox" class="reset-checkbox">
+						<span class="reset-checkbox-custom"></span>
+						<span class="reset-checkbox-text">위 내용을 확인했습니다</span>
+					</label>
+				</div>
+
+				<style>
+					.reset-dialog-content {
+						text-align: left;
+					}
+					.reset-warning-banner {
+						display: flex;
+						align-items: center;
+						gap: 10px;
+						background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+						color: white;
+						padding: 12px 16px;
+						border-radius: 8px;
+						margin-bottom: 20px;
+						font-weight: 500;
+						font-size: 14px;
+					}
+					.reset-description {
+						color: #555;
+						font-size: 14px;
+						margin-bottom: 12px;
+					}
+					.reset-items {
+						background: #f8f9fa;
+						border-radius: 8px;
+						padding: 12px;
+						margin-bottom: 20px;
+					}
+					.reset-item {
+						display: flex;
+						align-items: center;
+						gap: 12px;
+						padding: 10px 8px;
+						color: #333;
+						font-size: 14px;
+						border-bottom: 1px solid #eee;
+					}
+					.reset-item:last-child {
+						border-bottom: none;
+					}
+					.reset-item svg {
+						color: #666;
+						flex-shrink: 0;
+					}
+					.reset-checkbox-label {
+						display: flex;
+						align-items: center;
+						gap: 12px;
+						cursor: pointer;
+						padding: 12px 16px;
+						background: #fff3e0;
+						border: 2px solid #ffb74d;
+						border-radius: 8px;
+						transition: all 0.2s ease;
+					}
+					.reset-checkbox-label:hover {
+						background: #ffe0b2;
+					}
+					.reset-checkbox {
+						display: none;
+					}
+					.reset-checkbox-custom {
+						width: 22px;
+						height: 22px;
+						border: 2px solid #ff9800;
+						border-radius: 4px;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						transition: all 0.2s ease;
+						flex-shrink: 0;
+					}
+					.reset-checkbox:checked + .reset-checkbox-custom {
+						background: #ff9800;
+						border-color: #ff9800;
+					}
+					.reset-checkbox:checked + .reset-checkbox-custom::after {
+						content: '';
+						width: 6px;
+						height: 10px;
+						border: solid white;
+						border-width: 0 2px 2px 0;
+						transform: rotate(45deg);
+						margin-bottom: 2px;
+					}
+					.reset-checkbox-text {
+						font-size: 14px;
+						font-weight: 500;
+						color: #e65100;
+					}
+				</style>
+			`,
+			icon: undefined,
+			showCancelButton: true,
+			confirmButtonText: '초기화 진행',
+			cancelButtonText: '취소',
+			confirmButtonColor: '#d32f2f',
+			cancelButtonColor: '#9e9e9e',
+			reverseButtons: true,
+			customClass: {
+				popup: 'reset-dialog-popup',
+				title: 'reset-dialog-title',
+				confirmButton: 'reset-confirm-btn',
+				cancelButton: 'reset-cancel-btn',
+			},
+			preConfirm: () => {
+				const checkbox = document.getElementById('reset-confirm-checkbox') as HTMLInputElement;
+				if (!checkbox || !checkbox.checked) {
+					this.$swal.showValidationMessage('체크박스를 선택해주세요.');
+					return false;
+				}
+				return true;
+			},
+		});
+
+		if (result.isConfirmed) {
+			this.$cfg.set('reset-flag', true);
+			this.$cfg.save();
+			ipcRenderer.send('app:reload');
+		}
 	}
 
 	public maximize() {
