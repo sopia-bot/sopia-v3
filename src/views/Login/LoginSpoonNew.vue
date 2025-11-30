@@ -122,8 +122,7 @@
 					depressed
 					outlined
 					color="white"
-					
-					@click="loading = false"
+					@click="cancelLogin"
 				>
 					취소
 				</v-btn>
@@ -148,18 +147,50 @@ export default class LoginSpoon extends Mixins(GlobalMixins) {
 
 	public loading = false;
 	public errorMsg = '';
+	private loginResultHandler: ((_event: any, result: any) => void) | null = null;
 
-	public async loginSpoonExtension() {
+	public mounted() {
+		// IPC 리스너 등록
+		this.loginResultHandler = (_event: any, result: any) => {
+			this.handleLoginResult(result);
+		};
+		ipcRenderer.on('ext-login-result', this.loginResultHandler);
+	}
+
+	public beforeDestroy() {
+		// IPC 리스너 제거
+		if (this.loginResultHandler) {
+			ipcRenderer.removeListener('ext-login-result', this.loginResultHandler);
+		}
+		// 로딩 중이었다면 취소 요청
+		if (this.loading) {
+			ipcRenderer.send('ext-login-cancel');
+		}
+	}
+
+	public loginSpoonExtension() {
 		this.loading = true;
 		this.errorMsg = '';
-		
+
+		console.log('send ext-login-open');
+		ipcRenderer.send('ext-login-open');
+	}
+
+	public cancelLogin() {
+		this.loading = false;
+		ipcRenderer.send('ext-login-cancel');
+	}
+
+	private async handleLoginResult(result: any) {
+		console.log('ext-login-result', result);
+
+		if (!result.success) {
+			this.errorMsg = result.error || '로그인 창을 열 수 없습니다. 다시 시도해주세요.';
+			this.loading = false;
+			return;
+		}
+
 		try {
-			const result = await ipcRenderer.invoke('ext-login-open');
-			if (!result.success) {
-				this.errorMsg = '로그인 창을 열 수 없습니다. 다시 시도해주세요.';
-				return;
-			}
-			
 			// 타입 안전성을 위한 검증
 			const rawUserInfo = result.data;
 			console.log('userInfo', rawUserInfo);
@@ -178,14 +209,14 @@ export default class LoginSpoon extends Mixins(GlobalMixins) {
 
 			// 스푼라디오 로그인 토큰으로 인증
 			await this.$sopia.loginToken(rawUserInfo.id, rawUserInfo.token, rawUserInfo.refresh_token);
-			
+
 			// JWT 토큰에서 디바이스 UUID 추출
 			const payload = JSON.parse(Buffer.from(rawUserInfo.token.split('.')[1], 'base64').toString('utf-8'));
 			this.$sopia.deviceUUID = payload.did;
-			
+
 			// 성공적으로 로그인된 사용자 정보 전달
 			this.$emit('logon', this.$sopia.logonUser);
-			
+
 		} catch (error: any) {
 			console.error('Spoon login error:', error);
 			this.errorMsg = error.message || '로그인 중 오류가 발생했습니다. 다시 시도해주세요.';

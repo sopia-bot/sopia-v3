@@ -1,5 +1,5 @@
 import path from 'path';
-import { app, BrowserWindow , ipcMain, IpcMainEvent, dialog, shell, Tray, Menu, nativeImage } from 'electron';
+import { app, BrowserWindow, ipcMain, IpcMainEvent, dialog, shell, Tray, Menu, nativeImage } from 'electron';
 import { ChildProcess, execSync, spawn } from 'child_process';
 import { install as npmInstall, InstallItem, InstallOptions } from 'npkgi';
 import express, { Application } from 'express';
@@ -36,7 +36,7 @@ function createTray() {
 	try {
 		const iconPath = app.isPackaged ? path.join(path.dirname(app.getPath('exe')), './resources/icon.png') : path.join(__dirname, '../public/icon.png');
 		globalTray = new Tray(nativeImage.createFromPath(iconPath));
-		
+
 		const contextMenu = Menu.buildFromTemplate([
 			{
 				label: 'SOPIA 열기',
@@ -59,10 +59,10 @@ function createTray() {
 				}
 			}
 		]);
-		
+
 		globalTray.setContextMenu(contextMenu);
 		globalTray.setToolTip('SOPIA - DJ 보드');
-		
+
 		// 트레이 아이콘 클릭시 윈도우 토글
 		globalTray.on('click', () => {
 			const windows = BrowserWindow.getAllWindows();
@@ -91,19 +91,19 @@ export function registerIpcHandler() {
 		let rtn: any = null;
 		console.log(`cfg-lite: prop=${prop},file=${file},argc=${args.length}, args=${args.join()}`);
 		try {
-			if ( prop === 'new' ) {
+			if (prop === 'new') {
 				const tmp = new CfgLite(file, args[0]);
 				CfgList[key] = tmp;
 				rtn = true;
 			} else {
-				if ( typeof CfgList[key][prop] === 'function' ) {
+				if (typeof CfgList[key][prop] === 'function') {
 					rtn = CfgList[key][prop](...args);
 				} else {
 					rtn = CfgList[key][prop];
 				}
 			}
 			evt.returnValue = rtn;
-		} catch(err: any) {
+		} catch (err: any) {
 			console.log('cfg-lite: Cannot open cfg file.', file, err.message);
 			evt.returnValue = false;
 		}
@@ -151,7 +151,7 @@ export function registerIpcHandler() {
 	});
 
 	ipcMain.on('root-path', (evt: IpcMainEvent) => {
-		if ( app.isPackaged ) {
+		if (app.isPackaged) {
 			evt.returnValue = path.dirname(process.execPath);
 		} else {
 			evt.returnValue = process.cwd();
@@ -175,8 +175,8 @@ export function registerIpcHandler() {
 	});
 
 	function pickProgram(list: string[]) {
-		for ( const item of list ) {
-			if ( fs.existsSync(item) ) {
+		for (const item of list) {
+			if (fs.existsSync(item)) {
 				return item;
 			}
 		}
@@ -187,7 +187,7 @@ export function registerIpcHandler() {
 		try {
 			const chromePath = execSync('reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe" /ve', { encoding: 'utf-8' });
 			const chromePathMatch = chromePath.match(/\s*REG_SZ\s*(.*?)\s*$/i);
-		
+
 			if (chromePathMatch && chromePathMatch[1]) {
 				const chromeInstallPath = chromePathMatch[1];
 				return chromeInstallPath;
@@ -204,9 +204,9 @@ export function registerIpcHandler() {
 		try {
 			const stdbuf = execSync('wmic process where "name like \'%chrome.exe%\'" get processid,workingsetsize');
 			const stdout = stdbuf.toString('utf-8');
-			
+
 			const processes = stdout.trim().split('\n').slice(1); // 헤더 행 제거
-		
+
 			if (processes.length === 0) {
 				console.log('실행 중인 크롬 브라우저 프로세스가 없습니다.');
 			} else {
@@ -226,31 +226,36 @@ export function registerIpcHandler() {
 	}
 
 	function isChromeRunning() {
-		switch ( process.platform ) {
+		switch (process.platform) {
 			case 'win32':
 				const pids = getChromeProcessWindows();
 				return pids.length > 0;
 		}
-		return false;	
+		return false;
 	}
 
 	function checkExtVersion(version: string) {
-		if ( fs.existsSync(getPath('userData', `ext-${version}`)) ) {
+		if (fs.existsSync(getPath('userData', `ext-${version}`))) {
 			return true;
 		}
-		if ( fs.existsSync(getPath('userData', 'login-ext')) ) {
+		if (fs.existsSync(getPath('userData', 'login-ext'))) {
 			fs.rmSync(getPath('userData', 'login-ext'), { recursive: true });
 		}
 		fs.writeFileSync(getPath('userData', `ext-${version}`), '');
 		return true;
 	}
 
-	let expressServer: HttpServer|null = null;
-	ipcMain.handle('ext-login-open', async (evt, url: string) => {
+	let loginServer: HttpServer | null = null;
+	let loginWebContents: Electron.WebContents | null = null;
+
+	// 로그인 창 열기 요청
+	ipcMain.on('ext-login-open', async (evt) => {
+		loginWebContents = evt.sender;
+
 		try {
 			// install extension
 			let executablePath = '';
-			switch ( process.platform ) {
+			switch (process.platform) {
 				case 'darwin':
 					executablePath = pickProgram([
 						'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -264,20 +269,22 @@ export function registerIpcHandler() {
 					]);
 					break;
 			}
-			
-			if ( !executablePath ) {
+
+			if (!executablePath) {
 				dialog.showErrorBox('Error', '크롬 실행 파일을 찾을 수 없습니다.');
 				console.log('Can not find Chrome exe file');
-				return {
+				loginWebContents?.send('ext-login-result', {
 					success: false,
 					status: '101',
-				};
+					error: '크롬 실행 파일을 찾을 수 없습니다.',
+				});
+				return;
 			}
 
 			checkExtVersion(pkg.version);
 
 			const extensionPath = getPath('userData', 'login-ext');
-			if ( !fs.existsSync(extensionPath) ) {
+			if (!fs.existsSync(extensionPath)) {
 				console.log('Downloading Chrome extension');
 				const res = await axios.get('https://sopia-v3.s3.ap-northeast-2.amazonaws.com/sopia-login-ext.zip', {
 					responseType: 'arraybuffer',
@@ -287,56 +294,84 @@ export function registerIpcHandler() {
 				archive.extractAllTo(extensionPath);
 			}
 
-			const callback = new Promise((resolve, reject) => {
-				if ( expressServer ) {
-					expressServer.close();
-					expressServer = null;
-				}
-				let proc: ChildProcess|null = null;
-				const app = express();
-				app.use(cors())
-				app.use(express.json());
-				app.get('/check', (_, res) => {
-					res.json({ success: true })
-				})
-				app.post('/spoon-login', (req, res) => {
-					console.log('body', req.body);
-					res.json({});
-					proc?.kill();
-					resolve(req.body);
-				});
-				expressServer = app.listen(19595, () => {
-					console.log('express listen', 19595);
+			// 기존 서버가 있으면 종료
+			if (loginServer) {
+				loginServer.close();
+				loginServer = null;
+			}
 
-					const url = `https://sopia.dev/extension-loader?redirect=${encodeURIComponent('https://www.spooncast.net/kr')}`;
-					proc = spawn(executablePath, [
-						`${url}`
-					]);
+			let proc: ChildProcess | null = null;
+
+			const expressApp = express();
+			expressApp.use(cors());
+			expressApp.use(express.json());
+
+			expressApp.get('/check', (_, res) => {
+				res.json({ success: true });
+			});
+
+			expressApp.post('/spoon-login', (req, res) => {
+				console.log('body', req.body);
+				res.json({});
+				proc?.kill();
+
+				// 로그인 결과를 renderer로 전송
+				loginWebContents?.send('ext-login-result', {
+					success: true,
+					status: '100',
+					data: req.body,
+				});
+
+				// 서버 종료
+				if (loginServer) {
+					loginServer.close();
+					loginServer = null;
+				}
+			});
+
+			loginServer = expressApp.listen(19595, () => {
+				console.log('express server listen', 19595);
+
+				const url = `https://sopia.dev/extension-loader?redirect=${encodeURIComponent('https://www.spooncast.net/kr')}`;
+				proc = spawn(executablePath, [
+					`${url}`
+				]);
+			});
+
+			// 서버 에러 핸들링
+			loginServer.on('error', (err) => {
+				console.error('Server error:', err);
+				loginWebContents?.send('ext-login-result', {
+					success: false,
+					status: '999',
+					error: err.message,
 				});
 			});
 
-			const userInfo = await callback;
-			expressServer?.close();
-			expressServer = null;
-			return {
-				success: true,
-				status: '100',
-				data: userInfo,
-			};
 		} catch (err: any) {
 			dialog.showErrorBox('Error', '알 수 없는 오류가 발생했습니다.\n' + err.message);
 			console.error(err);
-			return {
+			loginWebContents?.send('ext-login-result', {
 				success: false,
 				status: '999',
-			};
+				error: err.message,
+			});
 		}
+	});
+
+	// 로그인 취소 요청
+	ipcMain.on('ext-login-cancel', () => {
+		if (loginServer) {
+			loginServer.close();
+			loginServer = null;
+		}
+		console.log('Login cancelled');
 	});
 
 	ipcMain.on('open-chrome', (event, url: string) => {
 		// install extension
 		let executablePath = '';
-		switch ( process.platform ) {
+		switch (process.platform) {
 			case 'darwin':
 				executablePath = pickProgram([
 					'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -369,13 +404,13 @@ export function registerIpcHandler() {
 		});
 
 		const postscript = path.join(pkgPath, 'postscript.js');
-		if ( fs.existsSync(postscript) ) {
+		if (fs.existsSync(postscript)) {
 			const scriptText = fs.readFileSync(postscript, 'utf-8');
 			const script = new vm.Script(scriptText);
 			const moduleObj: { exports: any } = { exports: {} };
 			const bundleRequire = createRequire(postscript);
 			const context = {
-				require: function(name) {
+				require: function (name) {
 					try {
 						return bundleRequire(name);
 					} catch {
@@ -402,17 +437,17 @@ export function registerIpcHandler() {
 				script.runInContext(context, {
 					displayErrors: true,
 				});
-			} catch(err) {
+			} catch (err) {
 				console.error(err);
 				return false;
 			}
 		}
-		
+
 		return true;
 	});
 
 	const readDirectory = (dir: string, cb: (...args: any) => any, oriDir?: string) => {
-		if ( !oriDir ) {
+		if (!oriDir) {
 			oriDir = dir;
 			dir = '';
 		}
@@ -424,7 +459,7 @@ export function registerIpcHandler() {
 			const st = path.join(dir, item).replace(/\\/g, '/');
 			const stat = fs.statSync(t);
 			cb(st, stat.isDirectory());
-			if ( stat.isDirectory() ) {
+			if (stat.isDirectory()) {
 				readDirectory(st, cb, oriDir);
 			}
 		});
@@ -435,16 +470,16 @@ export function registerIpcHandler() {
 		try {
 			const pkg = JSON.parse(fs.readFileSync(path.join(src, 'package.json'), 'utf8'));
 			let ignore: string[] = [];
-			if ( pkg.sopia ) {
+			if (pkg.sopia) {
 				ignore = (pkg?.sopia?.['ignore:upload'] || []).map((i: string) => path.join(src, i));
 			}
 
 			const zip = new AdmZip();
 			readDirectory(src, (p: string, isDir: boolean) => {
-				if ( !isDir ) {
+				if (!isDir) {
 					const fullPath = path.join(src, p);
 					const isIgnore = ignore.some(i => fullPath.startsWith(i));
-					if ( isIgnore ) {
+					if (isIgnore) {
 						return;
 					}
 					zip.addLocalFile(fullPath, path.dirname(p));
@@ -462,14 +497,14 @@ export function registerIpcHandler() {
 	ipcMain.on('package:uncompress-buffer', (evt: IpcMainEvent, b64str: string, dst: string) => {
 		console.log('package:uncompress-buffer', dst);
 
-		if ( !fs.existsSync(dst) ) {
+		if (!fs.existsSync(dst)) {
 			fs.mkdirSync(dst);
 		}
 
 		try {
 			const zip = new AdmZip(Buffer.from(b64str, 'base64'));
 			const pkgEntry = zip.getEntry('package.json');
-			if ( !pkgEntry ) {
+			if (!pkgEntry) {
 				return false;
 			}
 
@@ -480,15 +515,15 @@ export function registerIpcHandler() {
 			zip.getEntries().forEach((entry) => {
 				const target = path.join(dst, entry.entryName);
 				console.log('target', target, fs.existsSync(target));
-				if ( fs.existsSync(target) ) {
+				if (fs.existsSync(target)) {
 					const isIgnore = ignore.some(i => target.startsWith(i));
 					console.log('isIgnore', isIgnore);
-					if ( isIgnore ) {
+					if (isIgnore) {
 						return;
 					}
 				}
 				const dirname = path.dirname(target);
-				if ( !fs.existsSync(dirname) ) {
+				if (!fs.existsSync(dirname)) {
 					fs.mkdirSync(dirname, { recursive: true });
 				}
 				zip.extractEntryTo(entry, dirname, false, true);
@@ -519,18 +554,18 @@ export function registerIpcHandler() {
 	});
 
 	ipcMain.handle('stp:regist', async (evt, domain: string, targetFile: string, packageDir: string) => {
-		if ( fs.existsSync(targetFile) ) {
+		if (fs.existsSync(targetFile)) {
 			const scriptText = fs.readFileSync(targetFile, 'utf-8');
 			console.log('targetFile', targetFile);
 			const script = new vm.Script(scriptText);
 			const moduleObj: { exports: any } = { exports: {} };
 			const bundleRequire = createRequire(targetFile);
 			const context = {
-				require: function(name) {
+				require: function (name) {
 					try {
 						console.log('require resolve', bundleRequire.resolve(name));
 						return bundleRequire(name);
-					} catch(err) {
+					} catch (err) {
 						console.error(err);
 						return __non_webpack_require__(name);
 					}
@@ -563,7 +598,7 @@ export function registerIpcHandler() {
 				return {
 					success: true,
 				};
-			} catch(err) {
+			} catch (err) {
 				console.error(err);
 				return {
 					success: false,
@@ -627,7 +662,7 @@ export function registerIpcHandler() {
 	});
 
 	// ==================== 백업 관련 IPC 핸들러 ====================
-	
+
 	// 디스크 정보 조회 (Windows)
 	ipcMain.handle('backup:get-disk-info', async (evt, drive: string = 'C:') => {
 		try {
@@ -680,7 +715,7 @@ export function registerIpcHandler() {
 			const sopiaPath = getPath('userData');
 			const items = fs.readdirSync(sopiaPath);
 			const sizes: Record<string, number> = {};
-			
+
 			for (const item of items) {
 				const itemPath = path.join(sopiaPath, item);
 				const stats = fs.statSync(itemPath);
@@ -690,9 +725,9 @@ export function registerIpcHandler() {
 					sizes[item] = stats.size;
 				}
 			}
-			
+
 			const total = Object.values(sizes).reduce((sum, size) => sum + size, 0);
-			
+
 			return {
 				success: true,
 				total,
@@ -719,7 +754,7 @@ export function registerIpcHandler() {
 			for (const folder of folders) {
 				const bundlePath = path.join(bundlesPath, folder);
 				const pkgPath = path.join(bundlePath, 'package.json');
-				
+
 				if (fs.existsSync(pkgPath)) {
 					try {
 						const pkgContent = fs.readFileSync(pkgPath, 'utf-8');
@@ -890,7 +925,7 @@ export function registerIpcHandler() {
 
 			// 메타데이터 추가
 			zip.addFile('metadata.json', Buffer.from(JSON.stringify(metadata, null, 2), 'utf-8'));
-			
+
 			// ZIP 파일 저장
 			zip.writeZip(backupFilePath);
 			evt.sender.send('backup:progress', 100, '백업 완료!');
@@ -922,12 +957,12 @@ export function registerIpcHandler() {
 				if (file.endsWith('.zip')) {
 					const filePath = path.join(backupDir, file);
 					const stats = fs.statSync(filePath);
-					
+
 					try {
 						const zip = new AdmZip(filePath);
 						const metadataEntry = zip.getEntry('metadata.json');
 						let metadata: any = {};
-						
+
 						if (metadataEntry) {
 							metadata = JSON.parse(metadataEntry.getData().toString('utf-8'));
 						}
@@ -1016,7 +1051,7 @@ export function registerIpcHandler() {
 							continue; // 건너뛰기
 						}
 					}
-					
+
 					// 번들 압축 해제
 					const entries = zip.getEntries();
 					for (const entry of entries) {
