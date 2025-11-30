@@ -11,28 +11,28 @@ const CfgList: Record<string, any> = {};
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
 export function registerBundleIpc() {
-    ipcMain.on('app:quit', (evt: IpcMainEvent) => {
-        app.quit();
-    });
+	ipcMain.on('app:quit', (evt: IpcMainEvent) => {
+		app.quit();
+	});
 
-    ipcMain.on('cfg-lite', (evt: IpcMainEvent, prop: string, file: string, ...args: any) => {
+	ipcMain.on('cfg-lite', (evt: IpcMainEvent, prop: string, file: string, ...args: any) => {
 		const key = file;
 		let rtn: any = null;
 		console.log(`cfg-lite: prop=${prop},file=${file},argc=${args.length}, args=${args.join()}`);
 		try {
-			if ( prop === 'new' ) {
+			if (prop === 'new') {
 				const tmp = new CfgLite(file, args[0]);
 				CfgList[key] = tmp;
 				rtn = true;
 			} else {
-				if ( typeof CfgList[key][prop] === 'function' ) {
+				if (typeof CfgList[key][prop] === 'function') {
 					rtn = CfgList[key][prop](...args);
 				} else {
 					rtn = CfgList[key][prop];
 				}
 			}
 			evt.returnValue = rtn;
-		} catch(err: any) {
+		} catch (err: any) {
 			console.log('cfg-lite: Cannot open cfg file.', file, err.message);
 			evt.returnValue = false;
 		}
@@ -55,7 +55,7 @@ export function registerBundleIpc() {
 	});
 
 	const readDirectory = (dir: string, cb: (...args: any) => any, oriDir?: string) => {
-		if ( !oriDir ) {
+		if (!oriDir) {
 			oriDir = dir;
 			dir = '';
 		}
@@ -67,26 +67,27 @@ export function registerBundleIpc() {
 			const st = path.join(dir, item).replace(/\\/g, '/');
 			const stat = fs.statSync(t);
 			cb(st, stat.isDirectory());
-			if ( stat.isDirectory() ) {
+			if (stat.isDirectory()) {
 				readDirectory(st, cb, oriDir);
 			}
 		});
 	};
-	
+
 	ipcMain.on('package:create', (evt: IpcMainEvent, src: string, dst: string) => {
 		console.log('package:create', src, dst);
 		try {
 			const pkg = JSON.parse(fs.readFileSync(path.join(src, 'package.json'), 'utf8'));
 			let ignore: string[] = [];
-			if ( pkg.sopia ) {
+			if (pkg.sopia) {
 				ignore = (pkg?.sopia?.['ignore:upload'] || []).map((i: string) => path.join(src, i));
 			}
 
 			const zip = new AdmZip();
 			readDirectory(src, (p: string, isDir: boolean) => {
-				if ( !isDir ) {
+				if (!isDir) {
 					const fullPath = path.join(src, p);
-					if ( ignore.includes(fullPath) ) {
+					const isIgnore = ignore.some(i => fullPath.startsWith(i));
+					if (isIgnore) {
 						return;
 					}
 					zip.addLocalFile(fullPath, path.dirname(p));
@@ -104,14 +105,14 @@ export function registerBundleIpc() {
 	ipcMain.handle('package:uncompress-buffer', (evt, b64str: string, dst: string) => {
 		console.log('package:uncompress-buffer', dst);
 
-		if ( !fs.existsSync(dst) ) {
+		if (!fs.existsSync(dst)) {
 			fs.mkdirSync(dst);
 		}
 
 		try {
 			const zip = new AdmZip(Buffer.from(b64str, 'base64'));
 			const pkgEntry = zip.getEntry('package.json');
-			if ( !pkgEntry ) {
+			if (!pkgEntry) {
 				return false;
 			}
 
@@ -120,20 +121,20 @@ export function registerBundleIpc() {
 			console.log(`package:uncompress-buffer: ignoring list ${ignore.join(',')}`);
 
 			zip.getEntries().forEach((entry) => {
-				if ( entry.isDirectory ) {
+				if (entry.isDirectory) {
 					return;
 				}
 				const target = path.join(dst, entry.entryName);
 				console.log('target', target, fs.existsSync(target));
-				if ( fs.existsSync(target) ) {
+				if (fs.existsSync(target)) {
 					const isIgnore = ignore.some(i => target.startsWith(i));
 					console.log('isIgnore', isIgnore);
-					if ( isIgnore ) {
+					if (isIgnore) {
 						return;
 					}
 				}
 				const dirname = path.dirname(target);
-				if ( !fs.existsSync(dirname) ) {
+				if (!fs.existsSync(dirname)) {
 					fs.mkdirSync(dirname, { recursive: true });
 				}
 				zip.extractEntryTo(entry.entryName, dirname, false, true);
@@ -152,13 +153,13 @@ export function registerBundleIpc() {
 		});
 
 		const postscript = path.join(pkgPath, 'postscript.js');
-		if ( fs.existsSync(postscript) ) {
+		if (fs.existsSync(postscript)) {
 			const scriptText = fs.readFileSync(postscript, 'utf-8');
 			const script = new vm.Script(scriptText);
 			const moduleObj: { exports: any } = { exports: {} };
 			const bundleRequire = createRequire(postscript);
 			const context = {
-				require: function(name) {
+				require: function (name) {
 					try {
 						return bundleRequire(name);
 					} catch {
@@ -181,12 +182,12 @@ export function registerBundleIpc() {
 				script.runInContext(context, {
 					displayErrors: true,
 				});
-			} catch(err) {
+			} catch (err) {
 				console.error(err);
 				return false;
 			}
 		}
-		
+
 		return true;
 	});
 }
