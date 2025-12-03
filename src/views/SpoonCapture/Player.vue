@@ -100,7 +100,37 @@
                                         <span class="gift-amount">{{ event.data.data.amount }}스푼</span>
                                         <span v-if="event.data.data.combo > 1" class="gift-combo">X {{ event.data.data.combo }}</span>
                                     </div>
-                                    
+
+                                    <!-- 스푼라디오 타입 -->
+                                    <div v-else-if="spoonMessageType === 'spoon'" class="gift-content spoon-style">
+                                        <div class="spoon-profile-stack">
+                                            <v-avatar size="32" class="spoon-profile-back">
+                                                <v-img :src="liveInfo.authorProfileUrl">
+                                                    <template v-slot:placeholder>
+                                                        <v-icon small color="white">mdi-account</v-icon>
+                                                    </template>
+                                                </v-img>
+                                            </v-avatar>
+                                            <v-avatar size="32" class="spoon-profile-front">
+                                                <v-img :src="event.data.data.author.profile_url">
+                                                    <template v-slot:placeholder>
+                                                        <v-icon small color="white">mdi-account</v-icon>
+                                                    </template>
+                                                </v-img>
+                                            </v-avatar>
+                                        </div>
+                                        <span class="gift-sender">{{ event.data.data.author.nickname }}</span>
+                                        <div
+                                            v-if="getStickerImage(event.data.data.sticker)"
+                                            class="spoon-sticker-image"
+                                            :style="{ backgroundImage: `url(${getStickerImage(event.data.data.sticker)})` }"
+                                        ></div>
+                                        <v-icon v-else small color="#FFD700" class="gift-icon">mdi-gift</v-icon>
+                                        <span class="gift-amount">{{ formatNumber(event.data.data.amount) }}스푼</span>
+                                        <span class="gift-combo">X</span>
+                                        <span class="gift-combo">{{ event.data.data.combo }}</span>
+                                    </div>
+
                                     <!-- 소피아 타입 (현재) -->
                                     <div v-else class="gift-content">
                                         <v-avatar size="24" class="gift-avatar">
@@ -848,7 +878,7 @@ export default class SpoonCapturePlayer extends Mixins(GlobalMixins) {
     private customPlayerWidth = 520;
     private useAspectRatio = false;
     private stickerSortType = 'oldest'; // 'oldest', 'newest', 'price'
-    private spoonMessageType = 'legacy'; // 'legacy', 'sopia'
+    private spoonMessageType = 'spoon'; // 'legacy', 'spoon', 'sopia'
     
     private lottieData: any = null;
     private lottieOptions: any = {};
@@ -946,7 +976,8 @@ export default class SpoonCapturePlayer extends Mixins(GlobalMixins) {
 
     private spoonMessageTypeOptions = [
         { text: '구버전 스푼라디오 타입', value: 'legacy' },
-        { text: '소피아 타입 (현재)', value: 'sopia' }
+        { text: '스푼라디오 타입', value: 'spoon' },
+        { text: '소피아 타입', value: 'sopia' }
     ];
 
     // Computed property for present events
@@ -1803,12 +1834,16 @@ export default class SpoonCapturePlayer extends Mixins(GlobalMixins) {
         const hours = Math.floor(seconds / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
-        
+
         if (hours > 0) {
             return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         } else {
             return `${minutes}:${secs.toString().padStart(2, '0')}`;
         }
+    }
+
+    formatNumber(num: number): string {
+        return num.toLocaleString('ko-KR');
     }
 }
 </script>
@@ -2309,7 +2344,7 @@ export default class SpoonCapturePlayer extends Mixins(GlobalMixins) {
 .gift-sender {
     font-weight: 600;
     color: var(--gift-nickname-color);
-    margin-right: 4px;
+    margin-right: 0px;
 }
 
 .gift-name {
@@ -2376,6 +2411,77 @@ export default class SpoonCapturePlayer extends Mixins(GlobalMixins) {
 .gift-content.legacy-style .gift-icon {
     color: #FFD700 !important;
     margin-right: 6px;
+}
+
+/* 스푼라디오 타입 스타일 */
+.gift-content.spoon-style {
+    background: rgba(255, 255, 255, 1) !important;
+    color: #000000 !important;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    backdrop-filter: none;
+    display: flex;
+    align-items: center;
+    max-width: fit-content;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.spoon-profile-stack {
+    position: relative;
+    width: 52px;
+    height: 32px;
+    flex-shrink: 0;
+}
+
+.spoon-profile-back {
+    position: absolute;
+    left: 23px;
+    top: 0;
+}
+
+.spoon-profile-front {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.gift-content.spoon-style .gift-sender {
+    color: #000000 !important;
+    font-weight: 700;
+    font-size: 14px;
+    margin-left: 10px;
+    margin-right: 3px;
+}
+
+.spoon-sticker-image {
+    width: 20px;
+    height: 30px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    flex-shrink: 0;
+    margin-left: 2px;
+    margin-right: 2px;
+}
+
+.gift-content.spoon-style .gift-amount {
+    color: #FF6B6B !important;
+    font-weight: 900;
+    font-size: 14px;
+    margin-left: 2px;
+    margin-right: 2px;
+}
+
+.gift-content.spoon-style .gift-combo {
+    color: #FF6B6B !important;
+    font-weight: 900;
+    font-size: 14px;
+    margin-right: 2px;
+}
+
+.gift-content.spoon-style .gift-icon {
+    color: #FFD700 !important;
 }
 
 /* 좋아요 메시지 스타일 */
