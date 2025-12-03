@@ -2,6 +2,8 @@ import { app, session, BrowserWindow, ipcMain } from 'electron';
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib';
 import path from 'path';
 import { registerBundleIpc } from './ipc-handler';
+import { spawn } from 'child_process';
+
 export default function createBundleManagerWindow() {
     let win: BrowserWindow | null;
     const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -108,24 +110,31 @@ export default function createBundleManagerWindow() {
         // 프로그램 종료 시 다시 시작하는 코드 추가
         app.on('before-quit', (event) => {
             if ( !isDevelopment ) {
-                event.preventDefault();
-                const { spawn } = require('child_process');
-                const path = require('path');
-                
-                // 현재 실행 파일의 경로
                 const exePath = process.execPath;
-                const exeDir = path.dirname(exePath);
-                const exeFile = path.join(exeDir, 'SOPIAv3.exe');
-                
-                // 새로운 프로세스 시작
-                spawn(exeFile, [], {
-                    detached: true,
-                    stdio: 'ignore'
-                }); 
+                let exeDir = path.dirname(exePath);
+        
+                // macOS에서는 .app/Contents/MacOS/ 경로에서 dist_electron/mac-arm64로 이동
+                if (process.platform === 'darwin') {
+                    exeDir = path.join(exeDir, '../../../');
+                    const child = spawn('open', [
+                        '-a', path.join(exeDir, 'SOPIAv3.app'), // 실행할 앱 경로
+                    ], {
+                        detached: true,
+                        stdio: 'ignore',
+                    });
+                    child.unref();
+                } else if ( process.platform === 'win32' ) {
+                    const exeFile = path.join(exeDir, 'SOPIAv3.exe');
+                    const child = spawn(exeFile, {
+                        detached: true,
+                        stdio: 'ignore',
+                    });
+                    child.unref();
+                }
             }
                 
             // 현재 프로세스 종료
-            app.exit();
+            app.exit(0);
         });
 
         if ( isDevelopment ) {
@@ -138,9 +147,7 @@ export default function createBundleManagerWindow() {
     app.on('window-all-closed', () => {
         // On macOS it is common for applications and their menu bar
         // to stay active until the user quits explicitly with Cmd + Q
-        if (process.platform !== 'darwin') {
-            app.quit();
-        }
+        app.quit();
     });
 
     app.on('activate', () => {

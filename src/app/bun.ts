@@ -1,13 +1,20 @@
 import { app } from 'electron';
 import { spawn, SpawnOptions } from 'child_process';
 import path from 'path';
+import os from 'os';
 
 function getPath(file: string) {
-    if ( app.isPackaged ) {
-        return path.join(path.dirname(process.execPath), `.bun/${file}.exe`);
-    } else {
-        return path.join(process.cwd(), `bun-binary/${file}.exe`);
-    }
+	if (app.isPackaged) {
+		// ✅ 패키지 상태: Resources/.bun
+		const base = path.join(process.resourcesPath, '.bun');
+		const ext = os.platform() === 'win32' ? '.exe' : '';
+		return path.join(base, `${file}${ext}`);
+	} else {
+		// ✅ 개발 상태: 프로젝트 루트의 bun-binary
+		const base = path.join(process.cwd(), 'bun-binary');
+		const ext = os.platform() === 'win32' ? '.exe' : '';
+		return path.join(base, `${file}${ext}`);
+	}
 }
 
 function bunPath() {
@@ -15,7 +22,7 @@ function bunPath() {
 }
 
 function bunxPath() {
-    return getPath('bunx');
+    return getPath('bun');
 }
 
 function running(exec: string, command: ReadonlyArray<string>, options: SpawnOptions = {}) {
@@ -36,5 +43,5 @@ export async function bun(command: ReadonlyArray<string>, options: SpawnOptions 
 }
 
 export async function bunx(command: ReadonlyArray<string>, options: SpawnOptions = {}) {
-    await running(bunxPath(), command, options);
+    await running(bunxPath(), ['x', ...command], options);
 }

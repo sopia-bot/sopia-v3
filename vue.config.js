@@ -3,6 +3,9 @@ const MonacoEditorPlugin = require('monaco-editor-webpack-plugin');
 const webpack = require('webpack');
 const fs = require('fs');
 
+// 환경변수로 빌드 타입 결정 (SOPIAv3 또는 SopiaBundleManager)
+const BUILD_TYPE = process.env.BUILD_TYPE || 'SOPIAv3';
+
 module.exports = {
 	pluginOptions: {
 		electronBuilder: {
@@ -10,30 +13,30 @@ module.exports = {
 				'src/app/**/*',
 			],
 			chainWebpackMainProcess: (config) => {
-				// supertest의 formidable 패키지에서 발생하는 문제 수정
 				config.plugin('gently')
-					.use(new webpack.DefinePlugin({ "global.GENTLY": false }))
+					.use(new webpack.DefinePlugin({ 'global.GENTLY': false }))
 					.end();
 				return config;
 			},
+
 			builderOptions: {
 				afterPack: (context) => {
-					const target = context.targets[0];
-					const filename = target.packager.appInfo.productFilename;
-					let ext = '';
 					if (process.platform === 'win32') {
-						ext = '.exe';
+						const target = context.targets[0];
+						const filename = target.packager.appInfo.productFilename;
+						let ext = '.exe';
+						fs.cpSync(path.join(context.appOutDir, `${filename}${ext}`), path.join(context.appOutDir, `SopiaBundleManager${ext}`), { recursive: true });
 					}
-					fs.cpSync(path.join(context.appOutDir, `${filename}${ext}`), path.join(context.appOutDir, `SopiaBundleManager${ext}`), { recursive: true });
 				},
 				publish: [
 					{
-						"provider": "s3",
-						"bucket": "sopia-v3",
-						"region": "ap-northeast-2",
+						provider: 's3',
+						bucket: 'sopia-v3',
+						region: 'ap-northeast-2',
 					},
 				],
-				productName: 'SOPIAv3',
+				productName: BUILD_TYPE,
+				appId: BUILD_TYPE === 'SopiaBundleManager' ? 'dev.sopia.bundlemanager' : 'dev.sopia.v3',
 				files: [
 					"**/*",
 					"node_modules/axios/**/*",
@@ -44,7 +47,8 @@ module.exports = {
 					"node_modules/rimraf/**/*",
 					"node_modules/@prisma/client/**/*",
 					"node_modules/json-stringify-safe/**/*",
-					"node_modules/adm-zip/**/*"
+					"node_modules/adm-zip/**/*",
+					"build/icudtl.dat"
 				],
 				extraFiles: [
 					{
@@ -96,6 +100,10 @@ module.exports = {
 						to: 'resources/icon.png',
 					},
 				],
+				extraResources: [
+					{ from: 'bun-binary', to: '.bun', filter: ['**/*'] },
+					{ from: "build/icudtl.dat", to: "icudtl.dat" },
+				],
 				// mac: {
 				// 	target: "dmg",
 				// 	arch: [
@@ -115,30 +123,23 @@ module.exports = {
 			},
 		},
 	},
+
 	configureWebpack: {
 		resolve: {
 			alias: {
-				"assets": path.join(__dirname, "src/assets"),
-				"@": path.join(__dirname, "src"),
+				assets: path.join(__dirname, 'src/assets'),
+				'@': path.join(__dirname, 'src'),
 			},
 		},
-		module: {
-			exprContextCritical: false,
-		},
+		module: { exprContextCritical: false },
 		plugins: [
 			new MonacoEditorPlugin({
-				// https://github.com/Microsoft/monaco-editor-webpack-plugin#options
-				// Include a subset of languages support
-				// Some language extensions like typescript are so huge that may impact build performance
-				// e.g. Build full languages support with webpack 4.0 takes over 80 seconds
-				// Languages are loaded on demand at runtime
 				languages: ['javascript', 'css', 'html', 'typescript', 'json', 'markdown'],
 				features: ['!gotoSymbol'],
 			}),
 		],
 	},
-	transpileDependencies: [
-		"vuetify"
-	],
+
+	transpileDependencies: ['vuetify'],
 	runtimeCompiler: true,
-}
+};

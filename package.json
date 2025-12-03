@@ -20,9 +20,10 @@
 		"electron:icon-build": "electron-icon-builder --input=public/icon.png --output=build --flatten",
 		"electron:window:icon-build": "electron-icon-builder.cmd --input=public/icon.png --output=build --flatten",
 		"electron:mac:build": "export PYTHON_PATH=\"$(which python)\"; vue-cli-service electron:build",
-		"postinstall": "electron-builder install-app-deps",
-		"postuninstall": "electron-builder install-app-deps",
-		"rebuild:sqlite": "electron-rebuild -f -w better-sqlite3"
+		"build:dual-dmg": "./build-dual-dmg.sh",
+		"postinstall": "electron-rebuild --force --only better-sqlite3",
+		"rebuild:sqlite": "electron-rebuild --force --only better-sqlite3",
+		"postuninstall": "electron-builder install-app-deps"
 	},
 	"main": "background.js",
 	"dependencies": {
@@ -89,7 +90,7 @@
 		"electron-builder": "^25.1.8",
 		"electron-devtools-installer": "^3.2.1",
 		"electron-icon-builder": "^2.0.1",
-		"electron-rebuild": "^3.2.9",
+		"@electron/rebuild": "^4.0.1",
 		"monaco-editor-webpack-plugin": "^1.9.0",
 		"sass": "~1.32.12",
 		"sass-loader": "^10.2.0",

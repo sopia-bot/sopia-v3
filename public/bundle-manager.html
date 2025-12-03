@@ -7,6 +7,7 @@
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
     <style>
         body {
             font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
@@ -203,7 +204,7 @@
                 transform: rotate(360deg);
             }
         }
-        
+
         /* Prose 스타일 (README.md 렌더링용) */
         .prose {
             color: #374151;
@@ -341,7 +342,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- 경고 문구 -->
             <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8">
                 <div class="flex">
@@ -361,7 +362,7 @@
             <!-- 검색 섹션 -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-8">
                 <div class="relative">
-                    <input type="text" id="searchInput" 
+                    <input type="text" id="searchInput"
                         class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="번들 검색 (한글/영문 이름, 설명)">
                 </div>
@@ -531,7 +532,7 @@
                                     });
                                 });
                             });
-                        
+
                         Promise.all(killPromises)
                             .then(() => resolve())
                             .catch(reject);
@@ -545,22 +546,34 @@
                         }
                         const lines = stdout.split('\n');
                         const killPromises = lines
-                            .filter(line => line.toLowerCase().includes(name.toLowerCase()))
                             .map(line => {
-                                const pid = line.trim().split(/\s+/)[0]; // 첫 번째 컬럼 = PID
+                                const m = line.trim().match(/(\d+)\s+(\S+)\s+(\S+)\s+(.*)/);
+                                if ( !m ) {
+                                    return null;
+                                }
+                                console.log('command', m, name);
+                                return {
+                                    pid: m[1],
+                                    name: m[4]?.trim() || '',
+                                };
+                            })
+                            .filter(line => {
+                                return line?.name === name;
+                            })
+                            .map(line => {
                                 return new Promise((resolveKill, rejectKill) => {
-                                    exec(`kill -9 ${pid}`, (error) => {
+                                    exec(`kill -9 ${line.pid}`, (error) => {
                                         if (error) {
-                                            console.error(`Error killing process ${name} (PID: ${pid}):`, error);
+                                            console.error(`Error killing process ${name} (PID: ${line.pid}):`, error);
                                             rejectKill(error);
                                         } else {
-                                            console.log(`Killed process ${name} (PID: ${pid})`);
+                                            console.log(`Killed process ${name} (PID: ${line.pid})`);
                                             resolveKill();
                                         }
                                     });
                                 });
                             });
-                        
+
                         Promise.all(killPromises)
                             .then(() => resolve())
                             .catch(reject);
@@ -571,8 +584,11 @@
 
         async function killSopia() {
             try {
-                await killProcessByName('SOPIAv3.exe');
-                await killProcessByName('SOPIAv3');
+                if (process.platform === 'win32') {
+                    await killProcessByName('SOPIAv3.exe');
+                } else if (process.platform === 'darwin') {
+                    await killProcessByName('Sopia');
+                }
             } catch (error) {
                 console.error('Error killing SOPIA:', error);
             }
@@ -583,7 +599,7 @@
                 this.evtName = 'cfg-lite';
                 this.cfgFile = cfgFile;
                 this.privKey = privKey;
-                
+
                 const ret = ipcRenderer.sendSync(this.evtName, 'new', this.cfgFile, this.privKey);
                 if (!ret) {
                     throw new Error(`Cannot open config file ${this.cfgFile},${this.privKey}`);
@@ -625,7 +641,7 @@
         }
         const appCfgPath = path.join(getAppPath('userData'), 'app.cfg');
         window.appCfg = new CfgLite(appCfgPath);
-    
+
         // 샘플 데이터
         let modules = [
             {
@@ -669,7 +685,7 @@
             const snackbar = document.getElementById('snackbar');
             snackbar.textContent = message;
             snackbar.style.display = 'block';
-            
+
             setTimeout(() => {
                 snackbar.style.display = 'none';
             }, 3000);
@@ -679,13 +695,13 @@
         function removeBundleFromOrder(bundleName) {
             const bundleOrder = window.appCfg.get('bundle-tab-order') || [];
             const updatedOrder = bundleOrder.filter(item => item.name !== bundleName);
-            
+
             // order 값들을 재정렬
             const reorderedList = updatedOrder.map((item, index) => ({
                 order: index,
                 name: item.name
             }));
-            
+
             window.appCfg.set('bundle-tab-order', reorderedList);
             window.appCfg.save();
         }
@@ -693,7 +709,7 @@
         function addBundleToOrder(bundleName) {
             const bundleOrder = window.appCfg.get('bundle-tab-order') || [];
             const maxOrder = bundleOrder.length > 0 ? Math.max(...bundleOrder.map(item => item.order)) : -1;
-            
+
             // 이미 존재하는지 확인
             const existingIndex = bundleOrder.findIndex(item => item.name === bundleName);
             if (existingIndex === -1) {
@@ -702,7 +718,7 @@
                     order: maxOrder + 1,
                     name: bundleName
                 });
-                
+
                 window.appCfg.set('bundle-tab-order', bundleOrder);
                 window.appCfg.save();
             }
@@ -711,7 +727,7 @@
         async function deleteBundle(name, event, killFlag = false, reloadFlag = true, showFlag = true) {
             event.stopPropagation();
             const button = event.target;
-            
+
             if (showFlag) {
                 pendingUninstall = { name, event, killFlag, reloadFlag };
                 showConfirmModal();
@@ -721,7 +737,7 @@
             const operationId = `delete-${name}-${Date.now()}`;
             activeOperations.add(operationId);
             button.classList.add('button-loading');
-            
+
             if (killFlag) {
                 await (async () => killSopia())();
             }
@@ -729,7 +745,7 @@
             fs.rm(path.join(bundleRootPath, name), { recursive: true, force: true }, () => {
                 // bundleOrder에서 삭제된 번들 제거
                 removeBundleFromOrder(name);
-                
+
                 if (reloadFlag) {
                     showSnackbar('번들이 삭제되었습니다.');
                     setTimeout(() => {
@@ -789,13 +805,13 @@
             event.stopPropagation();
             const button = event.target;
             const operationId = `download-${name}-${Date.now()}`;
-            
+
             activeOperations.add(operationId);
             button.classList.add('button-loading');
-            
+
             console.log('downloadBundle', name);
             const pkg = modules.find(module => module.name === name);
-            
+
             if (killFlag) {
                 killSopia();
             }
@@ -813,10 +829,10 @@
                     if (pkg.dependencies) {
                         await ipcRenderer.invoke('bun:install', bundlePath);
                     }
-                    
+
                     // bundleOrder에 새로 설치된 번들 추가
                     addBundleToOrder(name);
-                    
+
                     showSnackbar('번들이 설치되었습니다.');
                     setTimeout(() => {
                         reloadModules();
@@ -844,8 +860,8 @@
                             <div class="truncate">
                                 <div class="flex items-center">
                                     <div class="text-sm font-medium text-gray-900 truncate">${module["name:ko"] || module['name'] || ''}</div>
-                                    ${module.isLocalLink ? 
-                                        '<span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">로컬</span>' : 
+                                    ${module.isLocalLink ?
+                                        '<span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">로컬</span>' :
                                         ''}
                                 </div>
                                 <div class="text-sm text-gray-500 truncate">${module["description:ko"] || module['description'] || ''}</div>
@@ -853,22 +869,22 @@
                         </div>
                     </td>
                     <td class="w-24 px-6 py-4">
-                        ${module.is_official ? 
-                            '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Official</span>' : 
+                        ${module.is_official ?
+                            '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Official</span>' :
                             ''}
                     </td>
                     <td class="w-24 px-6 py-4 text-center">
                         <span class="text-sm font-medium text-gray-900">${module.weekly_downloads ? module.weekly_downloads.toLocaleString() : '0'}</span>
                     </td>
                     <td class="w-32 px-6 py-4 text-sm text-right" onclick="event.stopPropagation()">
-                        ${module.isUsed ? 
+                        ${module.isUsed ?
                             (module.isLocalLink ?
                                 '<button onclick="unlinkLocalBundle(\'' + module.name + '\', event)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-orange-400 rounded-md hover:bg-orange-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400 transition-colors duration-200">링크 해제</button>' :
-                                (module.version === module.installedVersion ? 
+                                (module.version === module.installedVersion ?
                                     '<button onclick="deleteBundle(\'' + module.name + '\', event, true, true, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-red-400 rounded-md hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-colors duration-200">삭제</button>' :
                                     '<div class="flex justify-end space-x-2"><button onclick="deleteBundle(\'' + module.name + '\', event, true, true, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-red-400 rounded-md hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-colors duration-200">삭제</button><button onclick="downloadBundle(\'' + module.name + '\', event, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-green-400 rounded-md hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 transition-colors duration-200">업데이트</button></div>'
                                 )
-                            ) : 
+                            ) :
                             '<button onclick="downloadBundle(\'' + module.name + '\', event, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-blue-400 rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 transition-colors duration-200">설치</button>'}
                     </td>
                 </tr>
@@ -884,7 +900,7 @@
         function filterByTab(filter) {
             currentFilter = filter;
             let filteredModules = [...modules];
-            
+
             switch(filter) {
                 case 'installed':
                     filteredModules = modules.filter(module => module.isUsed);
@@ -898,7 +914,7 @@
             }
 
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            filteredModules = filteredModules.filter(module => 
+            filteredModules = filteredModules.filter(module =>
                 (module['name:ko'] && module["name:ko"].toLowerCase().includes(searchTerm)) ||
                 module.name?.toLowerCase().includes(searchTerm) ||
                 (module['description:ko'] && module["description:ko"]?.toLowerCase().includes(searchTerm)) ||
@@ -955,7 +971,7 @@
                     </td>
                 </tr>
             `;
-            
+
             fetch(BASE_URL + '/bundle/', {
                 headers: {
                     'Authorization': 'Bearer ' + window.appCfg.get('auth.sopia.token') || '',
@@ -970,7 +986,7 @@
                             try {
                                 const bundlePath = path.join(bundleRootPath, item);
                                 const pkg = JSON.parse(fs.readFileSync(path.join(bundlePath, 'package.json'), 'utf8'));
-                                
+
                                 // 심볼릭 링크인지 확인
                                 const stats = fs.lstatSync(bundlePath);
                                 const isLocalLink = stats.isSymbolicLink() || (os.platform() === 'win32' && stats.isDirectory() && fs.readlinkSync && (() => {
@@ -981,7 +997,7 @@
                                         return false;
                                     }
                                 })());
-                                
+
                                 const localBundle = serverBundles.find((b) => b.name === pkg.name);
                                 if ( localBundle ) {
                                     localBundle.isUsed = true;
@@ -1010,7 +1026,7 @@
                                         }
                                     })());
                                 } catch {}
-                                
+
                                 serverBundles.push({
                                     name: item,
                                     description: '번들 파일이 손상되었습니다.',
@@ -1022,7 +1038,7 @@
                             }
                         });
                         modules = serverBundles;
-                        
+
                         // 최초 진입시 설치된 번들이 없으면 all 탭으로 변경
                         if (currentFilter === 'installed') {
                             const installedModules = modules.filter(module => module.isUsed);
@@ -1039,7 +1055,7 @@
                                 });
                             }
                         }
-                        
+
                         filterByTab(currentFilter);
                     } else {
                         // 오류 발생 시 오류 메시지 표시
@@ -1106,18 +1122,18 @@
 
         async function uploadBundle() {
             if (uploadFlag) return;
-            
+
             uploadFlag = true;
             const uploadBtn = document.getElementById('uploadBtn');
             uploadBtn.classList.add('button-loading');
-            
+
             try {
                 const result = await ipcRenderer.invoke('open-dialog', {
                     properties: ['openDirectory'],
                     title: 'Upload Bundle',
                     defaultPath: bundleRootPath,
                 });
-                
+
                 if (result.canceled) {
                     console.log('Canceled folder select for bundle upload.');
                     return;
@@ -1125,7 +1141,7 @@
 
                 const target = result.filePaths[0];
                 const packageFile = path.join(target, 'package.json');
-                
+
                 if (!await checkFile(packageFile)) return;
 
                 const pkg = JSON.parse(fs.readFileSync(packageFile, 'utf8'));
@@ -1174,17 +1190,17 @@
                     });
 
                     const result = await response.json();
-                    
+
                     if (!response.ok) {
                         throw new Error(result.msg || 'Upload failed');
                     }
 
                     fs.unlinkSync(zipFile);
                     showSnackbar('번들 업로드가 완료되었습니다.', 'success');
-                    
+
                     // 업로드 후 번들 목록 새로고침
                     reloadModules();
-                    
+
                 } catch (err) {
                     console.error('Package upload error', err);
                     showSnackbar('업로드 중 오류가 발생했습니다: ' + err.message, 'error');
@@ -1206,18 +1222,18 @@
         // 로컬 번들 가져오기 함수
         async function importLocalBundle() {
             if (importFlag) return;
-            
+
             importFlag = true;
             const importBtn = document.getElementById('importBtn');
             importBtn.classList.add('button-loading');
-            
+
             try {
                 const result = await ipcRenderer.invoke('open-dialog', {
                     properties: ['openDirectory'],
                     title: '로컬 번들 폴더 선택',
                     defaultPath: bundleRootPath,
                 });
-                
+
                 if (result.canceled) {
                     console.log('Canceled folder select for local bundle import.');
                     return;
@@ -1225,7 +1241,7 @@
 
                 const sourceFolder = result.filePaths[0];
                 const packageFile = path.join(sourceFolder, 'package.json');
-                
+
                 if (!await checkFile(packageFile)) return;
 
                 const pkg = JSON.parse(fs.readFileSync(packageFile, 'utf8'));
@@ -1235,7 +1251,7 @@
                 if (!await checkPackageProperty(pkg, 'version')) return;
 
                 const targetPath = path.join(bundleRootPath, pkg.name);
-                
+
                 // 이미 존재하는 번들인지 확인
                 if (fs.existsSync(targetPath)) {
                     showSnackbar('이미 존재하는 번들입니다.', 'error');
@@ -1269,14 +1285,14 @@
 
                 // bundleOrder에 새로 가져온 번들 추가
                 addBundleToOrder(pkg.name);
-                
+
                 showSnackbar('로컬 번들이 성공적으로 가져와졌습니다.', 'success');
-                
+
                 // 번들 목록 새로고침
                 setTimeout(() => {
                     reloadModules();
                 }, 500);
-                
+
             } catch (error) {
                 console.error('Import local bundle error:', error);
                 showSnackbar('로컬 번들 가져오기 중 오류가 발생했습니다.', 'error');
@@ -1290,14 +1306,14 @@
         async function unlinkLocalBundle(name, event) {
             event.stopPropagation();
             const button = event.target;
-            
+
             const operationId = `unlink-${name}-${Date.now()}`;
             activeOperations.add(operationId);
             button.classList.add('button-loading');
-            
+
             try {
                 const bundlePath = path.join(bundleRootPath, name);
-                
+
                 // 심볼릭 링크인지 확인
                 const stats = fs.lstatSync(bundlePath);
                 if (stats.isSymbolicLink() || (os.platform() === 'win32' && stats.isDirectory())) {
@@ -1305,10 +1321,10 @@
                     try {
                         fs.unlinkSync(bundlePath);
                         console.log('Unlinked local bundle:', bundlePath);
-                        
+
                         // bundleOrder에서 제거
                         removeBundleFromOrder(name);
-                        
+
                         showSnackbar('로컬 번들 링크가 해제되었습니다.', 'success');
                         setTimeout(() => {
                             reloadModules();
@@ -1333,7 +1349,7 @@
             const snackbar = document.getElementById('snackbar');
             snackbar.textContent = message;
             snackbar.style.display = 'block';
-            
+
             if (type === 'error') {
                 snackbar.style.backgroundColor = '#ef4444';
             } else if (type === 'success') {
@@ -1341,7 +1357,7 @@
             } else {
                 snackbar.style.backgroundColor = '#1f2937';
             }
-            
+
             setTimeout(() => {
                 snackbar.style.display = 'none';
             }, 3000);
@@ -1351,7 +1367,7 @@
             // URL 쿼리 스트링에서 searchText 파라미터 확인
             const urlParams = new URLSearchParams(window.location.search);
             const searchText = urlParams.get('searchText');
-            
+
             if (searchText) {
                 // 검색어가 있으면 전체 보기로 필터 변경
                 currentFilter = 'all';
@@ -1364,11 +1380,11 @@
                         btn.classList.add('text-gray-600', 'bg-white', 'border-gray-200');
                     }
                 });
-                
+
                 // 검색어 입력
                 document.getElementById('searchInput').value = searchText;
             }
-            
+
             reloadModules();
         });
 
@@ -1423,7 +1439,7 @@
                 }
 
                 const data = await response.json();
-                
+
                 if (data.msg !== 'success' || !data.data || !data.data[0]) {
                     throw new Error('README.md를 찾을 수 없습니다.');
                 }

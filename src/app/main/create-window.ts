@@ -145,7 +145,6 @@ export default function createMainWindow(hideWindow: boolean = false) {
     };
 
     const createWindow = () => {
-        registerIpcHandler();
         // Create the browser window.
         win = new BrowserWindow({
             ...windowState,
@@ -389,6 +388,9 @@ export default function createMainWindow(hideWindow: boolean = false) {
     // initialization and is ready to create browser windows.
     // Some APIs can only be used after this event occurs.
     app.on('ready', async () => {
+        // Register IPC handlers once at app startup
+        registerIpcHandler();
+        
         session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
             details.requestHeaders['Accept-Encoding'] = 'gzip, deflate, br';
             callback({ cancel: false, requestHeaders: details.requestHeaders });

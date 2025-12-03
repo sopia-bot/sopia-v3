@@ -19,6 +19,9 @@ import { registerStpApp, unregisterStpApp } from './stp-protocol';
 export const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
+
+let isIpcHandlerRegistered = false;
+
 type PathType = 'home' | 'appData' | 'userData' | 'temp' | 'exe' | 'module' | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos' | 'recent' | 'logs' | 'crashDumps' | 'sessionData';
 const CfgList: Record<string, any> = {};
 const getPath = (type: PathType, ...args: string[]) => path.resolve(app.getPath(type), ...args);
@@ -86,6 +89,14 @@ function createTray() {
 }
 
 export function registerIpcHandler() {
+	if (isIpcHandlerRegistered) {
+		console.log('IPC handlers already registered, skipping...');
+		return;
+	}
+	
+	isIpcHandlerRegistered = true;
+	console.log('Registering IPC handlers...');
+	
 	ipcMain.on('cfg-lite', (evt: IpcMainEvent, prop: string, file: string, ...args: any) => {
 		const key = file;
 		let rtn: any = null;
@@ -617,12 +628,28 @@ export function registerIpcHandler() {
 
 	ipcMain.handle('open-bundle-manager', async (evt) => {
 		const exePath = process.execPath;
-		const exeDir = path.dirname(exePath);
-		const exeFile = path.join(exeDir, 'SopiaBundleManager.exe');
-		spawn(exeFile, ['--mode', 'bundle-manager'], {
-			detached: true,
-			stdio: 'ignore',
-		});
+		let exeDir = path.dirname(exePath);
+		
+
+		// macOS에서는 .app/Contents/MacOS/ 경로에서 dist_electron/mac-arm64로 이동
+		if (process.platform === 'darwin') {
+			exeDir = path.join(exeDir, '../../../');
+			spawn('open', [
+				'-a', path.join(exeDir, 'SopiaBundleManager.app'), // 실행할 앱 경로
+				'--args', // 앱에 인자 전달
+				'--mode', 'bundle-manager',
+			], {
+				detached: true,
+				stdio: 'ignore',
+			});
+		} else if ( process.platform === 'win32' ) {
+			const exeFile = path.join(exeDir, 'SopiaBundleManager.exe');
+			spawn(exeFile, ['--mode', 'bundle-manager'], {
+				detached: true,
+				stdio: 'ignore',
+			});
+		}
+		
 		return true;
 	});
 
