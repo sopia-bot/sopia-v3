@@ -5,17 +5,17 @@
  * Copyright (c) Tree Some. Licensed under the MIT License.
 -->
 <template>
-	<v-tooltip bottom>
+	<v-tooltip bottom open-delay="500">
 		<template v-slot:activator="{ on, attrs }">
 			<v-btn
 				icon
-				color="indigo lighten-1"
-				class="mx-1"
+				x-small
+				class="toolbar-btn"
 				v-bind="attrs"
 				v-on="on"
 				@click="btn.func"
 				>
-				<v-icon>{{ btn.icon }}</v-icon>
+				<v-icon size="16">{{ btn.icon }}</v-icon>
 			</v-btn>
 		</template>
 		<span>{{ btn.name }}</span>
@@ -37,3 +37,20 @@ export default class ToolButton extends Mixins(GlobalMixins) {
 	@Prop(Object) public btn!: ToolButtonInterface;
 }
 </script>
+<style scoped>
+.toolbar-btn {
+	width: 22px !important;
+	height: 22px !important;
+	margin: 0 1px;
+	border-radius: 4px;
+	color: #616161;
+	transition: background-color 0.1s, color 0.1s;
+}
+.toolbar-btn:hover {
+	background-color: rgba(97, 97, 97, 0.1);
+	color: #424242;
+}
+.toolbar-btn .v-icon {
+	color: inherit;
+}
+</style>

@@ -6,13 +6,19 @@
  */
 
 export default {
+	'explorer': {
+		'title': '탐색기',
+	},
 	'menu': {
 		'new-file': '새 파일',
 		'new-folder': '새 폴더',
 		'rename': '이름 변경',
 		'unlink': '제거',
+		'delete-file': '파일 삭제',
+		'delete-folder': '폴더 삭제',
 		'refresh': '새로고침',
 		'save': '저장 (Ctrl + S)',
+		'open-in-explorer': '파일 탐색기로 열기',
 	},
 	'msg': {
 		'save-success': '저장에 성공했습니다.',

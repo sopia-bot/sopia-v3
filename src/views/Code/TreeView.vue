@@ -31,11 +31,13 @@
 			>
 				<span class="tree-text" slot-scope="{ node }">
 					<!-- S:Folder -->
-					<template v-if="node.hasChildren()">
+					<template v-if="node.data.isFolder">
 						<div
+							class="tree-item tree-folder"
 							:ref="node.data.value"
 							@contextmenu.stop="$emit('contextmenu', $event, node)">
-							{{ node.text }}
+							<i class="tree-item-icon mdi" :class="node.expanded() ? 'mdi-folder-open' : 'mdi-folder'"></i>
+							<span class="tree-item-name">{{ node.text }}</span>
 						</div>
 					</template>
 					<!-- E:Folder -->
@@ -43,10 +45,11 @@
 					<!-- S:File -->
 					<template v-else>
 						<div
+							class="tree-item tree-file"
 							:ref="node.data.value"
 							@contextmenu.stop="$emit('contextmenu', $event, node)">
-							<i :class="node.data.icon"></i>
-							{{ node.text }}
+							<i class="tree-item-icon" :class="node.data.icon"></i>
+							<span class="tree-item-name">{{ node.text }}</span>
 						</div>
 					</template>
 					<!-- E:File -->
@@ -77,7 +80,6 @@ export default class TreeView extends Mixins(GlobalMixins) {
 	public treeRenderer: boolean = true;
 	public folderKey: number = 0;
 	public folderTree: any = [];
-	public oriFolderTree: any = [];
 	public selectPath: string = '';
 	public ignorePath: string[] = [
 		'extensions',
@@ -124,6 +126,7 @@ export default class TreeView extends Mixins(GlobalMixins) {
 	public treeOptions = {
 		dnd: true,
 		multiple: true,
+		fetchData: (node: any) => this.fetchChildren(node),
 	};
 	/* E:For Tree */
 
@@ -198,18 +201,25 @@ export default class TreeView extends Mixins(GlobalMixins) {
 				state: { selected: true }
 			});
 
-			for ( let i=0;i < selectedNodes.length;i++ ) {
+			if (selectedNodes.length === 0) {
+				this.$logger.err('code', 'No selected file.');
+				this.$swal({
+					icon: 'error',
+					title: this.$t('error'),
+					html: this.$t('code.msg.no-selected'),
+				});
+				return;
+			}
+
+			for (let i = 0; i < selectedNodes.length; i++) {
 				const node = selectedNodes[i];
-				if ( node ) {
-					const res = rimraf.sync(node.data.value);
+				if (node) {
+					const nodePath = node.data.value;
+					rimraf.sync(nodePath);
+					// 트리에서 노드만 제거 (전체 리로드 없음)
+					this.removeNode(nodePath);
+					// Index.vue에 삭제 알림 (열린 탭 정리용)
 					this.$evt.$emit('code:tree-rerender');
-				} else {
-					this.$logger.err('code', 'No selected file.');
-					this.$swal({
-						icon: 'error',
-						title: this.$t('error'),
-						html: this.$t('code.msg.no-selected'),
-					});
 				}
 			}
 		});
@@ -326,7 +336,9 @@ export default class TreeView extends Mixins(GlobalMixins) {
 			this.$logger.err('code', `No such file or directory. [${this.nbdir}]`);
 		}
 
-		switch ( this.nbtype ) {
+		const isFolder = this.nbtype === 'DIR';
+
+		switch (this.nbtype) {
 			case 'FILE':
 				fs.writeFileSync(target, '');
 				break;
@@ -342,22 +354,24 @@ export default class TreeView extends Mixins(GlobalMixins) {
 		this.nbnew = false;
 		this.namebox = false;
 		this.newName = '';
-		this.treeReload(() => {
-			const findNode = (this.$refs['tree'] as any).find({
-				data: {
-					value: target,
-				}
-			})[0];
-			if ( findNode ) {
-				let parent = findNode.parent;
-				while ( parent ) {
-					console.log(parent);
-					parent.expand();
-					parent = parent.parent;
-				}
-				findNode.select(true);
+
+		// 부분 업데이트 적용
+		if (this.nbtype === 'RENAME') {
+			// 이름 변경: 노드의 속성만 업데이트
+			const renamedNode = this.renameNode(oldTarget, target);
+			if (renamedNode) {
+				renamedNode.select(true);
+				// Index.vue에 변경 알림 (열린 탭 업데이트용)
+				this.$evt.$emit('code:tree-rerender', target, !renamedNode.data.isFolder);
 			}
-		});
+		} else {
+			// 파일/폴더 생성: 노드만 추가
+			this.addNode(this.nbdir, target, isFolder).then((addedNode) => {
+				if (addedNode) {
+					addedNode.select(true);
+				}
+			});
+		}
 	}
 
 	public checkFolder(): Promise<void> {
@@ -390,9 +404,6 @@ export default class TreeView extends Mixins(GlobalMixins) {
 	}
 
 	public async treeReload(cb: (...args: any) => any = () => {/* empty */}) {
-		let treeRef = this.$refs.tree as any;
-		let tree = treeRef.tree;
-		this.oriFolderTree = tree.model;
 		this.treeRenderer = false;
 		this.folderTree = await this.buildFolderTree(this.$path('userData', this.targetFolder));
 		await this.$nextTick();
@@ -400,9 +411,13 @@ export default class TreeView extends Mixins(GlobalMixins) {
 		this.$forceUpdate();
 		this.folderKey += 1;
 
-		await this.$nextTick()
-		treeRef = this.$refs.tree as any;
-		tree = treeRef.tree;
+		await this.$nextTick();
+		const treeRef = this.$refs.tree as any;
+		if (!treeRef) {
+			cb(null);
+			return;
+		}
+		const tree = treeRef.tree;
 		treeRef.$off('node:selected');
 		treeRef.$on('node:selected', (node: any) => {
 			const file = node.data.value;
@@ -410,9 +425,9 @@ export default class TreeView extends Mixins(GlobalMixins) {
 			this.$emit('selected', node);
 		});
 
-		if ( this.selectPath ) {
+		if (this.selectPath) {
 			const node = this.selectedNode;
-			if ( node ) {
+			if (node) {
 				node.select(true);
 			}
 		}
@@ -462,85 +477,203 @@ export default class TreeView extends Mixins(GlobalMixins) {
 		return false;
 	}
 
-	public async readdir(PATH: string, DIR: string = '', ORI: any, sf?: any[]) {
-		try {
-			DIR = DIR || '';
-			const target = path.join(DIR, PATH);
-
-			if ( fs.existsSync(target) ) {
-				const fll = await readdir(target);
-				const arr: any = [];
-
-				if ( Array.isArray(fll) ) {
-					const fl = fll.sort((a, b) => {
-						const statsA = fs.statSync(path.join(target, a));
-						const statsB = fs.statSync(path.join(target, b));
-						if ( statsA.isDirectory() ) {
-							return -1;
-						} else if ( statsB.isDirectory() ) {
-							return 1;
-						}
-						return a > b ? 1 : -1;
-					});
-
-					for ( const f of fl ) {
-						const fullPath = path.join(target, f);
-
-						if ( this.isIgnorePath(fullPath) ) {
-							continue;
-						}
-
-						const stats = await stat(fullPath);
-						const obj: any = { data: {} };
-						const oriObjIdx = Array.isArray(ORI) ? ORI.findIndex((oo) => {
-							if ( oo.data['value'] === fullPath ) { return true; }
-							//if ( oo.data['value'] === this.cm.rename.value ) { return true; }
-						}) : -1;
-						const oriObj = oriObjIdx >= 0 ? ORI[oriObjIdx] : {};
-
-						obj['text'] = f;
-						obj.data['value'] = fullPath;
-						obj.data['idChange'] = false;
-
-						if ( stats.isDirectory() ) {
-							let expanded = false;
-							if ( sf && sf.length > 0 ) {
-								const p = sf.shift();
-								expanded = (p === f);
-							} else {
-								expanded = (oriObj['states'] && oriObj['states'].expanded);
-							}
-							obj['state'] = {
-								expanded,
-							};
-							obj.data['isFolder'] = true;
-							obj['children'] = await this.readdir(fullPath, '', oriObj && oriObj.children );
-
-						} else {
-							obj['state'] = oriObj['state'] || {};
-							obj.data['isFolder'] = false;
-							obj.data['icon'] = this.iconFinder(path.extname(f));
-							obj['state']['dropable'] = false;
-						}
-						arr.push(obj);
-					}
-				}
-				return arr;
-			} else {
-				this.checkFolder();
-				return [];
-			}
-		} catch(err) {
-			logger.err('code', `readdir error`, err);
-		}
-		return [];
+	public async buildFolderTree(src: string, selectedFile: string = '') {
+		return await this.readSingleLevel(src);
 	}
 
-	public async buildFolderTree(src: string, selectedFile: string = '') {
-		const ori = this.oriFolderTree;
+	/**
+	 * 단일 레벨만 읽어서 트리 데이터를 반환합니다.
+	 * 폴더인 경우 isBatch: true를 설정하여 lazy loading을 활성화합니다.
+	 */
+	public async readSingleLevel(targetPath: string): Promise<any[]> {
+		try {
+			if (!fs.existsSync(targetPath)) {
+				await this.checkFolder();
+				return [];
+			}
 
-		const sfs = selectedFile ? selectedFile.split('/') : [];
-		return await this.readdir(src, '', ori, sfs);
+			const files = await readdir(targetPath);
+			const arr: any[] = [];
+
+			if (!Array.isArray(files)) {
+				return [];
+			}
+
+			// 폴더 우선 정렬
+			const sorted = files.sort((a: string, b: string) => {
+				const statsA = fs.statSync(path.join(targetPath, a));
+				const statsB = fs.statSync(path.join(targetPath, b));
+				if (statsA.isDirectory() && !statsB.isDirectory()) return -1;
+				if (!statsA.isDirectory() && statsB.isDirectory()) return 1;
+				return a.localeCompare(b);
+			});
+
+			for (const fileName of sorted) {
+				const fullPath = path.join(targetPath, fileName);
+
+				if (this.isIgnorePath(fullPath)) {
+					continue;
+				}
+
+				const stats = await stat(fullPath);
+				const isFolder = stats.isDirectory();
+
+				const node: any = {
+					text: fileName,
+					data: {
+						value: fullPath,
+						isFolder,
+						icon: isFolder ? '' : this.iconFinder(path.extname(fileName)),
+					},
+					state: {
+						dropable: isFolder,
+					},
+				};
+
+				if (isFolder) {
+					// isBatch: true로 설정하면 확장 시 fetchData가 호출됨
+					node.isBatch = true;
+					node.children = [];
+				}
+
+				arr.push(node);
+			}
+
+			return arr;
+		} catch (err) {
+			logger.err('code', `readSingleLevel error`, err);
+			return [];
+		}
+	}
+
+	/**
+	 * 폴더 확장 시 호출되는 fetchData 콜백
+	 * 해당 폴더의 하위 항목을 로드합니다.
+	 */
+	public async fetchChildren(node: any): Promise<any[]> {
+		const folderPath = node.data.value;
+		return await this.readSingleLevel(folderPath);
+	}
+
+	/**
+	 * 특정 폴더의 내용만 새로고침합니다.
+	 * 전체 트리를 리로드하지 않고 해당 폴더의 자식들만 업데이트합니다.
+	 */
+	public async refreshFolder(folderPath: string, cb?: (node?: any) => void): Promise<void> {
+		const treeRef = this.$refs.tree as any;
+		if (!treeRef) {
+			if (cb) cb();
+			return;
+		}
+
+		// 폴더 노드 찾기
+		const nodes = treeRef.find({ data: { value: folderPath } });
+		const folderNode = nodes.length > 0 ? nodes[0] : null;
+
+		if (folderNode) {
+			// 기존 자식 노드들 제거
+			while (folderNode.children.length > 0) {
+				folderNode.children[0].remove();
+			}
+
+			// 새로운 자식 노드들 로드
+			const children = await this.readSingleLevel(folderPath);
+			for (const child of children) {
+				folderNode.append(child);
+			}
+
+			// 폴더가 확장 상태 유지
+			if (!folderNode.expanded()) {
+				folderNode.expand();
+			}
+
+			if (cb) cb(folderNode);
+		} else {
+			// 루트 폴더인 경우 전체 리로드
+			await this.treeReload(() => {
+				if (cb) cb();
+			});
+		}
+	}
+
+	/**
+	 * 노드를 트리에 추가합니다.
+	 */
+	public async addNode(parentPath: string, newNodePath: string, isFolder: boolean): Promise<any> {
+		const treeRef = this.$refs.tree as any;
+		if (!treeRef) return null;
+
+		const fileName = path.basename(newNodePath);
+		const newNode: any = {
+			text: fileName,
+			data: {
+				value: newNodePath,
+				isFolder,
+				icon: isFolder ? '' : this.iconFinder(path.extname(fileName)),
+			},
+			state: {
+				dropable: isFolder,
+			},
+		};
+
+		if (isFolder) {
+			newNode.isBatch = true;
+			newNode.children = [];
+		}
+
+		// 부모 노드 찾기
+		const parentNodes = treeRef.find({ data: { value: parentPath } });
+		if (parentNodes.length > 0) {
+			const parentNode = parentNodes[0];
+			parentNode.append(newNode);
+			if (!parentNode.expanded()) {
+				parentNode.expand();
+			}
+			// 새로 추가된 노드 찾아서 반환
+			const addedNodes = treeRef.find({ data: { value: newNodePath } });
+			return addedNodes.length > 0 ? addedNodes[0] : null;
+		} else {
+			// 루트에 추가
+			treeRef.append(newNode);
+			const addedNodes = treeRef.find({ data: { value: newNodePath } });
+			return addedNodes.length > 0 ? addedNodes[0] : null;
+		}
+	}
+
+	/**
+	 * 노드를 트리에서 제거합니다.
+	 */
+	public removeNode(nodePath: string): boolean {
+		const treeRef = this.$refs.tree as any;
+		if (!treeRef) return false;
+
+		const nodes = treeRef.find({ data: { value: nodePath } });
+		if (nodes.length > 0) {
+			nodes[0].remove();
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * 노드 이름을 변경합니다.
+	 */
+	public renameNode(oldPath: string, newPath: string): any {
+		const treeRef = this.$refs.tree as any;
+		if (!treeRef) return null;
+
+		const nodes = treeRef.find({ data: { value: oldPath } });
+		if (nodes.length > 0) {
+			const node = nodes[0];
+			const newName = path.basename(newPath);
+			node.text = newName;
+			node.data.value = newPath;
+			if (!node.data.isFolder) {
+				node.data.icon = this.iconFinder(path.extname(newName));
+			}
+			return node;
+		}
+		return null;
 	}
 
 	public async moveNode(targetNode, distNode) {
@@ -549,13 +682,20 @@ export default class TreeView extends Mixins(GlobalMixins) {
 				selected: true,
 			},
 		});
-		let distDir = distNode.data.isFolder ? distNode.data.value : path.dirname(distNode.data.value);
-		
-		for ( let i=0;i < targetNodeList.length;i++ ) {
-			const targetNode = targetNodeList[i];
-			const distTarget = path.join(distDir, targetNode.text);
-			
-			if ( fs.existsSync(distTarget) ) {
+		const distDir = distNode.data.isFolder ? distNode.data.value : path.dirname(distNode.data.value);
+
+		// 이동할 노드들의 원래 경로 저장 (복원용)
+		const originalPaths: Array<{ node: any; oldPath: string }> = [];
+		for (const node of targetNodeList) {
+			originalPaths.push({ node, oldPath: node.data.value });
+		}
+
+		for (let i = 0; i < targetNodeList.length; i++) {
+			const node = targetNodeList[i];
+			const oldPath = originalPaths[i].oldPath;
+			const distTarget = path.join(distDir, node.text);
+
+			if (fs.existsSync(distTarget)) {
 				const res = await this.$swal({
 					title: this.$t('confirm'),
 					html: this.$t('code.msg.override-sure'),
@@ -564,15 +704,23 @@ export default class TreeView extends Mixins(GlobalMixins) {
 					showCancelButton: true,
 					cancelButtonText: this.$t('no'),
 				});
-				if ( !res.isConfirmed ) {
-					this.treeReload();
+				if (!res.isConfirmed) {
+					// 취소: 소스 폴더만 새로고침하여 노드 복원
+					const sourceDir = path.dirname(oldPath);
+					await this.refreshFolder(sourceDir);
 					return;
 				}
 				await rimraf(distTarget);
 			}
 
-			await fs.rename(targetNode.data.value, distTarget);
-			this.$evt.$emit('code:tree-rerender', distTarget, !targetNode.data.isFolder);
+			// 파일 시스템에서 이동
+			fs.renameSync(oldPath, distTarget);
+
+			// 노드의 경로 업데이트 (LiquorTree가 이미 노드를 이동시켰으므로 data만 업데이트)
+			node.data.value = distTarget;
+
+			// Index.vue에 이동 알림 (열린 탭 업데이트용)
+			this.$evt.$emit('code:tree-rerender', distTarget, !node.data.isFolder);
 		}
 	}
 
@@ -590,80 +738,151 @@ export default class TreeView extends Mixins(GlobalMixins) {
 
 }
 </script>
-<style scope>
+<style>
+/* Tree Container */
+.wrapper {
+	background-color: #f5f5f5;
+	padding-top: 4px;
+}
+
+/* Tree Arrow (Chevron) */
+.custom .tree-arrow {
+	width: 18px;
+	height: 22px;
+	margin-left: 0 !important;
+	margin-right: 0;
+}
+
 .custom .tree-arrow.has-child:after {
-	border: 1.5px solid #263238;
-	position: absolute;
+	border: 1.5px solid #757575;
 	border-left: 0;
 	border-top: 0;
-	left: 9px;
+	left: 7px;
 	top: 50%;
-	height: 9px;
-	width: 9px;
+	height: 6px;
+	width: 6px;
 	transform: rotate(-45deg) translateY(-50%) translateX(0);
-	transition: transform .25s;
-	transform-origin: center;
+	transition: transform 0.15s ease;
 }
 
+.custom .tree-arrow.has-child.expanded:after {
+	transform: rotate(45deg) translateY(-50%) translateX(0);
+}
+
+/* Tree Node */
 .custom .tree-anchor {
 	margin: 0;
-	padding-left: 0;
 	padding: 0;
 }
-.custom .tree-anchor .tree-text {
-	color: #263238;
-	font-size: 10pt;
-}
-.custom ul.tree-children {
-	padding-left: 12px;
-}
+
 .custom .tree-node .tree-content {
-	padding-left: 12px !important;
-	padding-top: 0;
-	padding-bottom: 0;
-}
-.custom .tree-node.selected>.tree-content .tree-text {
-}
-
-.custom .tree-node:not(.selected)>.tree-content:hover {
-	background: #ECEFF1;
+	padding: 0 8px 0 0 !important;
+	padding-left: 0 !important;
+	height: 22px;
+	display: flex;
+	align-items: center;
 }
 
-.custom .tree-node.selected>.tree-content {
-	background: #CFD8DC;
-}
-
-.custom .tree-arrow {
-	margin-left: 0px;
-}
-
-.custom .mdi-language-javascript {
-	color: #e8ba00;
-}
-
-.custom .mdi-vuejs {
-	color: #41B883;
-}
-
-.custom .mdi-code-json {
-	color: #a86200;
-}
-
-.custom .mdi-language-typescript {
-	color: #007ACD;
-}
-
-.custom .mdi-language-html5 {
-	color: #E75212;
-}
-
-.custom.v-dialog {
-	position: fixed !important;
-	background: rgba(32, 38, 104, 0.85) !important;
-	height: 73px;
+/* Tree Item (File/Folder) */
+.tree-item {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+	white-space: nowrap;
 	overflow: hidden;
 }
 
+.tree-item-icon {
+	font-size: 16px;
+	flex-shrink: 0;
+	width: 16px;
+	text-align: center;
+}
+
+/* Folder Icon Colors */
+.tree-item-icon.mdi-folder,
+.tree-item-icon.mdi-folder-open {
+	color: #90a4ae;
+}
+
+/* File Icon Colors */
+.custom .mdi-language-javascript {
+	color: #f7df1e;
+}
+
+.custom .mdi-vuejs {
+	color: #41b883;
+}
+
+.custom .mdi-code-json {
+	color: #f5a623;
+}
+
+.custom .mdi-language-typescript {
+	color: #3178c6;
+}
+
+.custom .mdi-language-html5 {
+	color: #e44d26;
+}
+
+.custom .mdi-language-markdown {
+	color: #083fa1;
+}
+
+.custom .mdi-file-document {
+	color: #90a4ae;
+}
+
+.tree-item-name {
+	font-size: 13px;
+	color: #37474f;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+
+/* Tree Indentation */
+.custom ul.tree-children {
+	padding-left: 0;
+	margin-left: 16px;
+	border-left: 1px solid #e0e0e0;
+}
+
+/* Hover & Selection States */
+.custom .tree-node:not(.selected) > .tree-content:hover {
+	background-color: rgba(0, 0, 0, 0.04);
+}
+
+.custom .tree-node.selected > .tree-content {
+	background-color: #e3f2fd;
+}
+
+.custom .tree-node.selected > .tree-content .tree-item-name {
+	color: #1565c0;
+}
+
+/* Drag & Drop States */
+.custom .tree-node.dragging {
+	opacity: 0.5;
+}
+
+.custom .tree-node.drag-over > .tree-content {
+	background-color: #bbdefb;
+	outline: 1px dashed #1976d2;
+}
+
+/* Name Input Dialog */
+.custom.v-dialog {
+	position: fixed !important;
+	background: rgba(33, 33, 33, 0.9) !important;
+	height: 73px;
+	overflow: hidden;
+	border-radius: 6px;
+}
+
+/* Loading State */
 .loading-container {
 	display: flex;
 	justify-content: center;
@@ -680,7 +899,7 @@ export default class TreeView extends Mixins(GlobalMixins) {
 }
 
 .loading-text {
-	color: #263238;
+	color: #616161;
 	font-size: 12px;
 	font-weight: 500;
 }
