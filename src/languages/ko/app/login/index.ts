@@ -16,6 +16,7 @@ export default {
 		fail_chk_pw: '비밀번호 확인이 다릅니다.',
 		exists_user_id: '이미 있는 아이디입니다.',
 		policy: '{{ app.login.policy-agree-0 }} {{ app.login.policy-agree-1 }} {{ app.login.policy-agree-2 }}에 동의하셔야 가입 가능합니다.',
+		unknown: '알 수 없는 로그인 오류입니다. 아이디와 비밀번호를 다시 확인해 주세요.',
 	},
 	'phone': '전화번호',
 	'email': '이메일',
