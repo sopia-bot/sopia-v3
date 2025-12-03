@@ -49,7 +49,7 @@
 									<div
 										v-for="(event, idx) of liveEvents"
 										:key="idx">
-										<chat-message :evt="event" :isSpecial="isSpecialUser(event)" :shineColor="getChatColor(event)"></chat-message>
+										<chat-message :evt="event" :isSpecial="isSpecialUser(event)" :shineColor="getChatColor(event)" :managerIds="managerIds"></chat-message>
 									</div>
 								</v-col>
 							</v-row>
@@ -77,6 +77,14 @@
 				{{ live.title }}
 			</v-btn>
 		</div>
+
+		<!-- 프로필 모달 -->
+		<profile-modal
+			v-model="profileModalOpen"
+			:user="selectedUser"
+			:managerIds="managerIds"
+			@block-user="handleBlockFromModal"
+		/>
 	</div>
 </template>
 <script lang="ts">
@@ -84,6 +92,7 @@ import { Component, Prop, Mixins } from 'vue-property-decorator';
 import GlobalMixins from '@/plugins/mixins';
 import { Live, LiveInfo, LiveEvent, LiveType, User, HttpRequest, LiveSocket, LiveSocketStruct, LiveEventStruct } from '@sopia-bot/core';
 import ChatMessage from '@/views/Live/ChatMessage.vue';
+import ProfileModal from '@/views/Live/ProfileModal.vue';
 import SopiaProcesser from '@/sopia/processor';
 import PlayerBar from './PlayerBar.vue';
 import PlayerFooter from './PlayerFooter.vue';
@@ -109,6 +118,7 @@ const IgnoreEvent = [
 @Component({
 	components: {
 		ChatMessage,
+		ProfileModal,
 		PlayerBar,
 		PlayerFooter,
 		Lottie,
@@ -144,6 +154,10 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 	public stmt: Statement;
 
 	public player: Player = new Player();
+
+	// 프로필 모달 관련
+	public profileModalOpen: boolean = false;
+	public selectedUser: User | null = null;
 
 	public get scrollHeight() {
 		if ( this.footMenuOpen ) {
@@ -345,6 +359,11 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 					});
 				}
 			});
+			this.$evt.$off('live-profile-modal');
+			this.$evt.$on('live-profile-modal', (user: User) => {
+				this.openProfileModal(user);
+			});
+
 			this.$evt.$off('live-block');
 			this.$evt.$on('live-block', async (id: number) => {
 				this.$swal({
@@ -533,6 +552,17 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 	public screenChange(fullScreen: boolean) {
 		this.fullScreen = fullScreen;
 		this.$emit('screen:change', this.fullScreen);
+	}
+
+	public openProfileModal(user: User) {
+		this.selectedUser = user;
+		this.profileModalOpen = true;
+	}
+
+	public handleBlockFromModal(user: User) {
+		if (user?.id) {
+			this.$evt.$emit('live-block', user.id);
+		}
 	}
 }
 </script>

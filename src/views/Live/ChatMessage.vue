@@ -10,14 +10,20 @@
 			<v-list-item>
 				<v-list-item-avatar
 					style="cursor: pointer;"
-					@click="$assign('/user/' + evt.data.user.id)">
+					@click="openProfileModal">
 					<v-img :src="profileURL"></v-img>
 				</v-list-item-avatar>
 
 				<v-list-item-content>
-					<span
-						class="white--text"
-						v-text="author.nickname"></span>
+					<div class="d-flex align-center flex-wrap">
+						<span class="white--text" v-text="author.nickname"></span>
+						<div class="user-badges ml-2">
+							<span v-if="isVip" class="badge vip-badge">VIP</span>
+							<span v-if="isDj" class="badge dj-badge">DJ</span>
+							<span v-if="isSubscribed" class="badge sub-badge">구독</span>
+							<span v-if="isManager" class="badge manager-badge">매니저</span>
+						</div>
+					</div>
 				</v-list-item-content>
 
 				<v-list-item-action>
@@ -103,6 +109,10 @@ export default class ChatMessage extends Mixins(GlobalMixins) {
 		type: String,
 		default: '',
 	}) public shineColor?: string;
+	@Prop({
+		type: Array,
+		default: () => [],
+	}) public managerIds!: number[];
 	public LiveEvent = EventList;
 
 	public defaultProfileUrl = require('assets/default-profile.png');
@@ -115,12 +125,32 @@ export default class ChatMessage extends Mixins(GlobalMixins) {
 		return this.evt.data.user?.profile_url || this.defaultProfileUrl;
 	}
 
+	get isManager(): boolean {
+		return this.managerIds.includes(this.author?.id);
+	}
+
+	get isVip(): boolean {
+		return this.author?.is_vip || false;
+	}
+
+	get isDj(): boolean {
+		return this.author?.is_dj || false;
+	}
+
+	get isSubscribed(): boolean {
+		return (this.author as any)?.subscribed_to_dj || false;
+	}
+
 	public mounted() {
 		console.log('isSpecial', this.isSpecial, this.shineColor);
 	}
 
 	public blockUser(id: number) {
 		this.$evt.$emit('live-block', id);
+	}
+
+	public openProfileModal() {
+		this.$evt.$emit('live-profile-modal', this.author);
 	}
 
 	public escapeHtml(unsafe) {
@@ -204,5 +234,45 @@ export default class ChatMessage extends Mixins(GlobalMixins) {
 	100% {
 		background-position: 0% 50%;
 	}
+}
+
+/* 사용자 배지 스타일 */
+.user-badges {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	flex-wrap: wrap;
+}
+
+.badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px 6px;
+	border-radius: 4px;
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.vip-badge {
+	background: linear-gradient(135deg, #FFD700, #FFA500);
+	color: #000;
+}
+
+.dj-badge {
+	background: linear-gradient(135deg, #9C27B0, #673AB7);
+	color: #fff;
+}
+
+.sub-badge {
+	background: linear-gradient(135deg, #2196F3, #03A9F4);
+	color: #fff;
+}
+
+.manager-badge {
+	background: linear-gradient(135deg, #4CAF50, #8BC34A);
+	color: #fff;
 }
 </style>
