@@ -165,6 +165,24 @@
 						</template>
 						<span>스티커 추가</span>
 					</v-tooltip>
+
+					<v-tooltip right>
+						<template v-slot:activator="{ on, attrs }">
+							<v-btn
+								block
+								small
+								outlined
+								class="mt-2"
+								v-bind="attrs"
+								v-on="on"
+								@click="handleReceivedSpoonClick"
+							>
+								<v-icon left>mdi-gift</v-icon>
+								받은 스푼
+							</v-btn>
+						</template>
+						<span>받은 스푼 선물 추가</span>
+					</v-tooltip>
 				</div>
 			</v-card-text>
 		</v-card>
@@ -258,6 +276,10 @@ export default class LeftToolbar extends Mixins(GlobalMixins) {
 		} catch (error) {
 			console.error('스티커 선택 실패:', error);
 		}
+	}
+
+	handleReceivedSpoonClick(): void {
+		this.$emit('open-received-spoon');
 	}
 }
 </script>

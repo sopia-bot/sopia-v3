@@ -19,6 +19,7 @@
 				@add-sticker="handleAddSticker"
 				@canvas-size-changed="handleCanvasSizeChanged"
 				@set-background-image="handleSetBackgroundImage"
+				@open-received-spoon="handleOpenReceivedSpoon"
 				:selected-tool="selectedTool"
 				:canvas-width="canvasWidth"
 				:canvas-height="canvasHeight"
@@ -62,6 +63,12 @@
 			:sticker="selectedSticker"
 			@select="handleStickerImageSelected"
 		/>
+
+		<!-- 받은 스푼 모달 -->
+		<ReceivedSpoonModal
+			v-model="showReceivedSpoonModal"
+			@select="handleReceivedSpoonSelected"
+		/>
 	</div>
 </template>
 
@@ -74,6 +81,7 @@ import CanvasStage from './CanvasStage.vue';
 import RightInspector from './RightInspector.vue';
 import BottomStatus from './BottomStatus.vue';
 import StickerImageModal from './StickerImageModal.vue';
+import ReceivedSpoonModal from './ReceivedSpoonModal.vue';
 import { EditorItem, ShapeItem, TextItem, ImageItem, HistoryCommand, EditorState } from './types';
 
 @Component({
@@ -84,6 +92,7 @@ import { EditorItem, ShapeItem, TextItem, ImageItem, HistoryCommand, EditorState
 		RightInspector,
 		BottomStatus,
 		StickerImageModal,
+		ReceivedSpoonModal,
 	},
 })
 export default class Editor extends Mixins(GlobalMixins) {
@@ -108,6 +117,9 @@ export default class Editor extends Mixins(GlobalMixins) {
 	// 스티커 모달 상태
 	showStickerModal = false;
 	selectedSticker: any = null;
+
+	// 받은 스푼 모달 상태
+	showReceivedSpoonModal = false;
 
 	get selectedItem(): EditorItem | null {
 		return this.items.find(item => item.id === this.selectedItemId) || null;
@@ -642,6 +654,31 @@ export default class Editor extends Mixins(GlobalMixins) {
 		// 스티커 선택 모달을 열어 이미지를 선택하도록 함
 		this.selectedSticker = sticker;
 		this.showStickerModal = true;
+	}
+
+	// 받은 스푼 모달 열기
+	handleOpenReceivedSpoon(): void {
+		this.showReceivedSpoonModal = true;
+	}
+
+	// 받은 스푼 선택 완료 핸들러
+	handleReceivedSpoonSelected(data: { src: string; width: number; height: number; name: string }): void {
+		try {
+			const imageData = {
+				id: `received_spoon_${Date.now()}`,
+				src: data.src,
+				name: data.name,
+				x: 100,
+				y: 100,
+				width: data.width,
+				height: data.height
+			};
+
+			this.addImageItem(imageData);
+			console.log('받은 스푼 이미지 추가됨:', data.name);
+		} catch (error) {
+			console.error('받은 스푼 이미지 추가 실패:', error);
+		}
 	}
 
 	// 스티커 이미지 선택 완료 핸들러
