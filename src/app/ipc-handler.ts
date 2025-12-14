@@ -93,10 +93,10 @@ export function registerIpcHandler() {
 		console.log('IPC handlers already registered, skipping...');
 		return;
 	}
-	
+
 	isIpcHandlerRegistered = true;
 	console.log('Registering IPC handlers...');
-	
+
 	ipcMain.on('cfg-lite', (evt: IpcMainEvent, prop: string, file: string, ...args: any) => {
 		const key = file;
 		let rtn: any = null;
@@ -629,7 +629,7 @@ export function registerIpcHandler() {
 	ipcMain.handle('open-bundle-manager', async (evt) => {
 		const exePath = process.execPath;
 		let exeDir = path.dirname(exePath);
-		
+
 
 		// macOS에서는 .app/Contents/MacOS/ 경로에서 dist_electron/mac-arm64로 이동
 		if (process.platform === 'darwin') {
@@ -642,14 +642,14 @@ export function registerIpcHandler() {
 				detached: true,
 				stdio: 'ignore',
 			});
-		} else if ( process.platform === 'win32' ) {
+		} else if (process.platform === 'win32') {
 			const exeFile = path.join(exeDir, 'SopiaBundleManager.exe');
 			spawn(exeFile, ['--mode', 'bundle-manager'], {
 				detached: true,
 				stdio: 'ignore',
 			});
 		}
-		
+
 		return true;
 	});
 
@@ -807,6 +807,7 @@ export function registerIpcHandler() {
 	});
 
 	// 백업 생성
+	// 백업 생성
 	ipcMain.handle('backup:create', async (evt, options: {
 		name: string;
 		description: string;
@@ -821,148 +822,13 @@ export function registerIpcHandler() {
 		onProgress?: (progress: number, message: string) => void;
 	}) => {
 		try {
-			const backupDir = getPath('userData', 'backup');
-			if (!fs.existsSync(backupDir)) {
-				fs.mkdirSync(backupDir, { recursive: true });
-			}
-
-			const now = new Date();
-			const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`;
-			const backupFileName = `sopia-v3-backup-${timestamp}.zip`;
-			const backupFilePath = path.join(backupDir, backupFileName);
-
-			const zip = new AdmZip();
-			const metadata: any = {
-				name: options.name,
-				description: options.description,
-				createdAt: now.toISOString(),
-				version: pkg.version,
-				items: {},
-				files: [],
-			};
-
-			const userDataPath = getPath('userData');
-			let progress = 0;
-			const totalSteps = Object.values(options.items).filter(Boolean).length;
-			let currentStep = 0;
-
-			// 번들 백업
-			if (options.items.bundles && options.items.bundles.length > 0) {
-				metadata.items.bundles = options.items.bundles;
-				for (const bundleId of options.items.bundles) {
-					const bundlePath = path.join(userDataPath, 'bundles', bundleId);
-					if (fs.existsSync(bundlePath)) {
-						readDirectory(bundlePath, (p: string, isDir: boolean) => {
-							if (!isDir && !p.includes('node_modules')) {
-								const fullPath = path.join(bundlePath, p);
-								const zipPath = path.join('bundles', bundleId, p);
-								zip.addLocalFile(fullPath, path.dirname(zipPath));
-								metadata.files.push(zipPath);
-							}
-						});
-					}
+			const { createBackup } = require('./backup-service');
+			return await createBackup({
+				...options,
+				onProgress: (progress: number, message: string) => {
+					evt.sender.send('backup:progress', progress, message);
 				}
-				currentStep++;
-				progress = (currentStep / totalSteps) * 100;
-				evt.sender.send('backup:progress', progress, '번들 백업 중...');
-			}
-
-			// 소피아 코드 백업
-			if (options.items.sopiaCode) {
-				metadata.items.sopiaCode = true;
-				const sopiaPath = path.join(userDataPath, 'sopia');
-				if (fs.existsSync(sopiaPath)) {
-					readDirectory(sopiaPath, (p: string, isDir: boolean) => {
-						if (!isDir) {
-							const fullPath = path.join(sopiaPath, p);
-							const zipPath = path.join('sopia', p);
-							zip.addLocalFile(fullPath, path.dirname(zipPath));
-							metadata.files.push(zipPath);
-						}
-					});
-				}
-				currentStep++;
-				progress = (currentStep / totalSteps) * 100;
-				evt.sender.send('backup:progress', progress, '소피아 코드 백업 중...');
-			}
-
-			// 방송 기록 백업
-			if (options.items.history) {
-				metadata.items.history = true;
-				const historyPath = path.join(userDataPath, 'historydb');
-				if (fs.existsSync(historyPath)) {
-					readDirectory(historyPath, (p: string, isDir: boolean) => {
-						if (!isDir) {
-							const fullPath = path.join(historyPath, p);
-							const zipPath = path.join('historydb', p);
-							zip.addLocalFile(fullPath, path.dirname(zipPath));
-							metadata.files.push(zipPath);
-						}
-					});
-				}
-				currentStep++;
-				progress = (currentStep / totalSteps) * 100;
-				evt.sender.send('backup:progress', progress, '방송 기록 백업 중...');
-			}
-
-			// 앱 설정 백업
-			if (options.items.appSettings) {
-				metadata.items.appSettings = true;
-				const appCfgPath = path.join(userDataPath, 'app.cfg');
-				if (fs.existsSync(appCfgPath)) {
-					zip.addLocalFile(appCfgPath, '');
-					metadata.files.push('app.cfg');
-				}
-				currentStep++;
-				progress = (currentStep / totalSteps) * 100;
-				evt.sender.send('backup:progress', progress, '앱 설정 백업 중...');
-			}
-
-			// Local Storage 백업
-			if (options.items.localStorage) {
-				metadata.items.localStorage = true;
-				const localStoragePath = path.join(userDataPath, 'Local Storage');
-				if (fs.existsSync(localStoragePath)) {
-					readDirectory(localStoragePath, (p: string, isDir: boolean) => {
-						if (!isDir) {
-							const fullPath = path.join(localStoragePath, p);
-							const zipPath = path.join('Local Storage', p);
-							zip.addLocalFile(fullPath, path.dirname(zipPath));
-							metadata.files.push(zipPath);
-						}
-					});
-				}
-				currentStep++;
-				progress = (currentStep / totalSteps) * 100;
-				evt.sender.send('backup:progress', progress, 'Local Storage 백업 중...');
-			}
-
-			// 명령어 설정 백업
-			if (options.items.cmdSettings) {
-				metadata.items.cmdSettings = true;
-				const cmdCfgPath = path.join(userDataPath, 'cmd.cfg');
-				if (fs.existsSync(cmdCfgPath)) {
-					zip.addLocalFile(cmdCfgPath, '');
-					metadata.files.push('cmd.cfg');
-				}
-				currentStep++;
-				progress = (currentStep / totalSteps) * 100;
-				evt.sender.send('backup:progress', progress, '명령어 설정 백업 중...');
-			}
-
-			// 메타데이터 추가
-			zip.addFile('metadata.json', Buffer.from(JSON.stringify(metadata, null, 2), 'utf-8'));
-
-			// ZIP 파일 저장
-			zip.writeZip(backupFilePath);
-			evt.sender.send('backup:progress', 100, '백업 완료!');
-
-			return {
-				success: true,
-				filePath: backupFilePath,
-				fileName: backupFileName,
-				metadata,
-			};
+			});
 		} catch (error: any) {
 			console.error('백업 생성 오류:', error);
 			return { success: false, error: error.message };
@@ -972,45 +838,8 @@ export function registerIpcHandler() {
 	// 백업 목록 조회
 	ipcMain.handle('backup:list', async (evt) => {
 		try {
-			const backupDir = getPath('userData', 'backup');
-			if (!fs.existsSync(backupDir)) {
-				return { success: true, backups: [] };
-			}
-
-			const files = fs.readdirSync(backupDir);
-			const backups: any[] = [];
-
-			for (const file of files) {
-				if (file.endsWith('.zip')) {
-					const filePath = path.join(backupDir, file);
-					const stats = fs.statSync(filePath);
-
-					try {
-						const zip = new AdmZip(filePath);
-						const metadataEntry = zip.getEntry('metadata.json');
-						let metadata: any = {};
-
-						if (metadataEntry) {
-							metadata = JSON.parse(metadataEntry.getData().toString('utf-8'));
-						}
-
-						backups.push({
-							fileName: file,
-							filePath,
-							size: stats.size,
-							createdAt: stats.birthtime,
-							metadata,
-						});
-					} catch (error) {
-						console.error(`백업 파일 읽기 오류 (${file}):`, error);
-					}
-				}
-			}
-
-			// 최신순 정렬
-			backups.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-			return { success: true, backups };
+			const { listBackups } = require('./backup-service');
+			return await listBackups();
 		} catch (error: any) {
 			console.error('백업 목록 조회 오류:', error);
 			return { success: false, error: error.message };
@@ -1041,7 +870,20 @@ export function registerIpcHandler() {
 		}
 	});
 
-	// 백업 복원
+	// ... (previous code)
+
+	// 백업 복원 요청 (재시작)
+	ipcMain.handle('backup:request-restore', async (evt, options: any) => {
+		try {
+			const { requestRestore } = require('./backup-service');
+			return await requestRestore(options);
+		} catch (error: any) {
+			console.error('복원 요청 오류:', error);
+			return { success: false, error: error.message };
+		}
+	});
+
+	// 백업 복원 (Legacy or Direct)
 	ipcMain.handle('backup:restore', async (evt, options: {
 		backupFilePath: string;
 		items: {
@@ -1054,155 +896,16 @@ export function registerIpcHandler() {
 		};
 		overwrite: Record<string, boolean>; // 각 항목별 덮어쓰기 여부
 	}) => {
+		// Direct restore using service (if needed without restart, though recommended to use request-restore)
 		try {
-			const zip = new AdmZip(options.backupFilePath);
-			const userDataPath = getPath('userData');
-			const conflicts: string[] = [];
-
-			// 충돌 확인
-			const metadataEntry = zip.getEntry('metadata.json');
-			if (!metadataEntry) {
-				return { success: false, error: '메타데이터를 찾을 수 없습니다.' };
-			}
-
-			const metadata = JSON.parse(metadataEntry.getData().toString('utf-8'));
-
-			// 번들 복원 - 선택된 번들만
-			if (options.items.bundles && options.items.bundles.length > 0) {
-				for (const bundleId of options.items.bundles) {
-					const bundlePath = path.join(userDataPath, 'bundles', bundleId);
-					if (fs.existsSync(bundlePath)) {
-						if (options.overwrite[`bundle_${bundleId}`]) {
-							fs.rmSync(bundlePath, { recursive: true, force: true });
-						} else {
-							continue; // 건너뛰기
-						}
-					}
-
-					// 번들 압축 해제
-					const entries = zip.getEntries();
-					for (const entry of entries) {
-						if (entry.entryName.startsWith(`bundles/${bundleId}/`)) {
-							const targetPath = path.join(userDataPath, entry.entryName);
-							const dirname = path.dirname(targetPath);
-							if (!fs.existsSync(dirname)) {
-								fs.mkdirSync(dirname, { recursive: true });
-							}
-							if (!entry.isDirectory) {
-								zip.extractEntryTo(entry, dirname, false, true);
-							}
-						}
-					}
-				}
-			}
-
-			// 소피아 코드 복원
-			if (options.items.sopiaCode && metadata.items.sopiaCode) {
-				const sopiaPath = path.join(userDataPath, 'sopia');
-				if (fs.existsSync(sopiaPath) && !options.overwrite.sopiaCode) {
-					// 건너뛰기
-				} else {
-					if (fs.existsSync(sopiaPath)) {
-						fs.rmSync(sopiaPath, { recursive: true, force: true });
-					}
-					const entries = zip.getEntries();
-					for (const entry of entries) {
-						if (entry.entryName.startsWith('sopia/')) {
-							const targetPath = path.join(userDataPath, entry.entryName);
-							const dirname = path.dirname(targetPath);
-							if (!fs.existsSync(dirname)) {
-								fs.mkdirSync(dirname, { recursive: true });
-							}
-							if (!entry.isDirectory) {
-								zip.extractEntryTo(entry, dirname, false, true);
-							}
-						}
-					}
-				}
-			}
-
-			// 방송 기록 복원
-			if (options.items.history && metadata.items.history) {
-				const historyPath = path.join(userDataPath, 'historydb');
-				if (fs.existsSync(historyPath) && !options.overwrite.history) {
-					// 건너뛰기
-				} else {
-					if (fs.existsSync(historyPath)) {
-						fs.rmSync(historyPath, { recursive: true, force: true });
-					}
-					const entries = zip.getEntries();
-					for (const entry of entries) {
-						if (entry.entryName.startsWith('historydb/')) {
-							const targetPath = path.join(userDataPath, entry.entryName);
-							const dirname = path.dirname(targetPath);
-							if (!fs.existsSync(dirname)) {
-								fs.mkdirSync(dirname, { recursive: true });
-							}
-							if (!entry.isDirectory) {
-								zip.extractEntryTo(entry, dirname, false, true);
-							}
-						}
-					}
-				}
-			}
-
-			// 앱 설정 복원
-			if (options.items.appSettings && metadata.items.appSettings) {
-				const appCfgPath = path.join(userDataPath, 'app.cfg');
-				if (fs.existsSync(appCfgPath) && !options.overwrite.appSettings) {
-					// 건너뛰기
-				} else {
-					const entry = zip.getEntry('app.cfg');
-					if (entry) {
-						zip.extractEntryTo(entry, userDataPath, false, true);
-					}
-				}
-			}
-
-			// Local Storage 복원
-			if (options.items.localStorage && metadata.items.localStorage) {
-				const localStoragePath = path.join(userDataPath, 'Local Storage');
-				if (fs.existsSync(localStoragePath) && !options.overwrite.localStorage) {
-					// 건너뛰기
-				} else {
-					if (fs.existsSync(localStoragePath)) {
-						fs.rmSync(localStoragePath, { recursive: true, force: true });
-					}
-					const entries = zip.getEntries();
-					for (const entry of entries) {
-						if (entry.entryName.startsWith('Local Storage/')) {
-							const targetPath = path.join(userDataPath, entry.entryName);
-							const dirname = path.dirname(targetPath);
-							if (!fs.existsSync(dirname)) {
-								fs.mkdirSync(dirname, { recursive: true });
-							}
-							if (!entry.isDirectory) {
-								zip.extractEntryTo(entry, dirname, false, true);
-							}
-						}
-					}
-				}
-			}
-
-			// 명령어 설정 복원
-			if (options.items.cmdSettings && metadata.items.cmdSettings) {
-				const cmdCfgPath = path.join(userDataPath, 'cmd.cfg');
-				if (fs.existsSync(cmdCfgPath) && !options.overwrite.cmdSettings) {
-					// 건너뛰기
-				} else {
-					const entry = zip.getEntry('cmd.cfg');
-					if (entry) {
-						zip.extractEntryTo(entry, userDataPath, false, true);
-					}
-				}
-			}
-
-			return { success: true };
+			const { restoreBackup } = require('./backup-service');
+			return await restoreBackup(options);
 		} catch (error: any) {
-			console.error('백업 복원 오류:', error);
+			console.error('복원 오류:', error);
 			return { success: false, error: error.message };
 		}
 	});
+
 
 	// 백업 충돌 확인
 	ipcMain.handle('backup:check-conflicts', async (evt, backupFilePath: string, selectedItems: any) => {

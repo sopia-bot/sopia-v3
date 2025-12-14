@@ -12,6 +12,7 @@ import { registerBundleProtocol } from '../bundle-protocol';
 import { registerSopiaTextProtocol } from '../stp-protocol';
 import pkg from '../../../package.json';
 import CfgLite from 'cfg-lite';
+import { checkAndRunDailyBackup, processPendingRestore } from '../backup-service';
 console.log(pkg);
 
 
@@ -55,11 +56,11 @@ export default function createMainWindow(hideWindow: boolean = false) {
     const appCfg = new CfgLite(path.join(adp, 'app.cfg'));
     const windowState = appCfg.get('window-state') || { width: 800, height: 600, x: undefined, y: undefined };
 
-    if ( windowState.x < 0 ) {
+    if (windowState.x < 0) {
         delete windowState.x;
     }
 
-    if ( windowState.y < 0 ) {
+    if (windowState.y < 0) {
         delete windowState.y;
     }
 
@@ -82,9 +83,9 @@ export default function createMainWindow(hideWindow: boolean = false) {
 
 
     // https://pratikpc.medium.com/bypassing-cors-with-electron-ab7eaf331605
-    function UpsertKeyValue(obj: Record<string, string|string[]>|undefined, keyToChange: string, value: string[]) {
+    function UpsertKeyValue(obj: Record<string, string | string[]> | undefined, keyToChange: string, value: string[]) {
         const keyToChangeLower = keyToChange.toLowerCase();
-        if ( !obj ) {
+        if (!obj) {
             return;
         }
         for (const key of Object.keys(obj)) {
@@ -240,9 +241,9 @@ export default function createMainWindow(hideWindow: boolean = false) {
         win.webContents.session.webRequest.onBeforeSendHeaders(
             (details, callback) => {
                 const { url, resourceType, requestHeaders } = details;
-                if ( !!url.match(/^wss:\/\/.{2}-ssm.spooncast.net\//) ) {
+                if (!!url.match(/^wss:\/\/.{2}-ssm.spooncast.net\//)) {
                     requestHeaders['Origin'] = 'https://www.spooncast.net';
-                } else if ( !!url.match(/googlevideo\.com\/videoplayback/) ) {
+                } else if (!!url.match(/googlevideo\.com\/videoplayback/)) {
                     requestHeaders['Origin'] = 'https://www.youtube.com';
                 }
                 UpsertKeyValue(requestHeaders, 'Access-Control-Allow-Origin', ['*']);
@@ -256,7 +257,7 @@ export default function createMainWindow(hideWindow: boolean = false) {
             const { url, responseHeaders } = details;
             UpsertKeyValue(responseHeaders, 'Access-Control-Allow-Origin', ['*']);
             UpsertKeyValue(responseHeaders, 'Access-Control-Allow-Headers', ['*']);
-            if ( !!url.match(/googlevideo\.com\/videoplayback/) ) {
+            if (!!url.match(/googlevideo\.com\/videoplayback/)) {
                 UpsertKeyValue(responseHeaders, 'Access-Control-Allow-Origin', ['https://www.youtube.com']);
             }
             callback({
@@ -291,10 +292,10 @@ export default function createMainWindow(hideWindow: boolean = false) {
                 if (moveTimeout) {
                     clearTimeout(moveTimeout);
                 }
-                
+
                 // 이동 중임을 알림
                 win.webContents.send('window-moving');
-                
+
                 // 300ms 후에 이동 완료로 간주
                 moveTimeout = setTimeout(() => {
                     if (win) {
@@ -330,7 +331,7 @@ export default function createMainWindow(hideWindow: boolean = false) {
                         path: process.execPath,
                         arguments: ['--mode', 'autolaunch']
                     });
-                    
+
                     const isEnabled = await autoLauncher.isEnabled();
                     if (isEnabled) {
                         win.webContents.send('auto-launch-enabled');
@@ -344,7 +345,7 @@ export default function createMainWindow(hideWindow: boolean = false) {
             }
         }, 10000); // 10초마다 실행
 
-        if ( isDevelopment ) {
+        if (isDevelopment) {
             win.once('ready-to-show', () => {
                 if (!hideWindow) {
                     win?.show();
@@ -388,9 +389,12 @@ export default function createMainWindow(hideWindow: boolean = false) {
     // initialization and is ready to create browser windows.
     // Some APIs can only be used after this event occurs.
     app.on('ready', async () => {
+        // Check for pending restore operations
+        await processPendingRestore();
+
         // Register IPC handlers once at app startup
         registerIpcHandler();
-        
+
         session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
             details.requestHeaders['Accept-Encoding'] = 'gzip, deflate, br';
             callback({ cancel: false, requestHeaders: details.requestHeaders });
@@ -404,18 +408,23 @@ export default function createMainWindow(hideWindow: boolean = false) {
             console.error('Vue Devtools failed to install:', e.toString());
         }
         createWindow();
-        
+
         // autolaunch 모드인 경우 트레이 설정
         if (hideWindow) {
             createTray();
         }
+
+        // 자동 백업 실행 (5초 후)
+        setTimeout(() => {
+            checkAndRunDailyBackup();
+        }, 5000);
     });
 
     // 트레이 생성 함수
     const createTray = () => {
         const iconPath = path.join(__dirname, '../public/icon.png');
         tray = new Tray(nativeImage.createFromPath(iconPath));
-        
+
         const contextMenu = Menu.buildFromTemplate([
             {
                 label: 'SOPIA 열기',
@@ -438,10 +447,10 @@ export default function createMainWindow(hideWindow: boolean = false) {
                 }
             }
         ]);
-        
+
         tray.setContextMenu(contextMenu);
         tray.setToolTip('SOPIA - DJ 보드');
-        
+
         // 트레이 아이콘 클릭시 윈도우 토글
         tray.on('click', () => {
             if (win) {
@@ -476,7 +485,7 @@ export default function createMainWindow(hideWindow: boolean = false) {
     }
 
     // 업데이트 오류시
-    autoUpdater.on('error', function(error) {
+    autoUpdater.on('error', function (error) {
         console.error('error', error);
         if (updateWin) {
             updateWin.webContents.send('update-error', error);

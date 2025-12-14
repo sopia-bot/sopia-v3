@@ -1102,9 +1102,24 @@ export default class Backup extends Mixins(GlobalMixins) {
 		});
 
 		window.clearScript();
+		
+        // Show restarting message immediately as connection might be lost
+        this.$swal({
+            title: '복원 준비 중...',
+            text: '복원을 위해 앱이 재시작됩니다. 잠시만 기다려주세요.',
+            icon: 'info',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false, 
+            willOpen: () => {
+                this.$swal.showLoading();
+            }
+        });
+
 		await new Promise(resolve => setTimeout(resolve, 1000));
-		// 번들에서 관리중인거 다 해제
-		const result = await ipcRenderer.invoke('backup:restore', {
+		
+        // Request restore and restart
+		const result = await ipcRenderer.invoke('backup:request-restore', {
 			backupFilePath: this.restoreDialog.backup.filePath,
 			items: {
 				bundles: this.restoreDialog.selectedBundles,
@@ -1113,29 +1128,16 @@ export default class Backup extends Mixins(GlobalMixins) {
 			overwrite,
 		});
 
-		this.conflictDialog.show = false;
-		this.closeRestoreDialog();
-		if (result.success) {
-			console.log('bundles', this.restoreDialog.selectedBundles);
-			const installResults = await Promise.all(this.restoreDialog.selectedBundles.map(async (bundleId: string) => {
-				return await ipcRenderer.invoke('bun:install', this.$path('userData', 'bundles', bundleId));
-			}));
-			console.log('installResults', installResults);
-			window.reloadScript();
-			await this.$swal({
-				icon: 'success',
-				title: '복원 완료',
-				text: '백업이 성공적으로 복원되었습니다.',
-				timer: 2000,
-			});
-		} else {
+		if (!result.success) {
+            // If we are here, it means restart failed or error occurred
 			this.$swal({
 				icon: 'error',
-				title: '복원 실패',
-				html: (result.error || '알 수 없는 오류가 발생했습니다.') + '<br>앱 종료 후 다시 실행한 뒤에 시도해 주세요.',
+				title: '복원 요청 실패',
+				text: result.error || '알 수 없는 오류가 발생했습니다.',
 			});
+            this.restoreDialog.loading = false;
 		}
-		this.restoreDialog.loading = false;
+        // If success, app will exit, so no need to enable loading or close dialogs
 	}
 
 	// 백업 삭제 확인
