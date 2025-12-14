@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>번들 관리자</title>
-    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link rel="stylesheet" as="style" crossorigin
+        href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
@@ -16,12 +18,15 @@
             padding-top: 40px;
             overflow-y: hidden;
         }
+
         .module-row {
             transition: background-color 0.2s ease;
         }
+
         .module-row:hover {
             background-color: #f8fafc;
         }
+
         .title-bar {
             -webkit-app-region: drag;
             -webkit-user-select: none;
@@ -39,9 +44,11 @@
             padding: 0 12px;
             border-bottom: 1px solid #d1d5db;
         }
+
         .title-bar .no-drag {
             -webkit-app-region: no-drag;
         }
+
         .close-button {
             width: 28px;
             height: 28px;
@@ -55,14 +62,17 @@
             cursor: pointer;
             transition: background-color 0.2s;
         }
+
         .close-button:hover {
             background-color: #dc2626;
         }
+
         .content {
             padding: 2rem;
             height: calc(100vh - 40px);
             overflow-y: auto;
         }
+
         .custom-checkbox {
             position: relative;
             width: 18px;
@@ -76,10 +86,12 @@
             background-color: white;
             transition: all 0.2s ease;
         }
+
         .custom-checkbox:checked {
             background-color: #3b82f6;
             border-color: #3b82f6;
         }
+
         .custom-checkbox:checked::after {
             content: '';
             position: absolute;
@@ -91,13 +103,16 @@
             border-width: 0 2px 2px 0;
             transform: rotate(45deg);
         }
+
         .custom-checkbox:hover {
             border-color: #3b82f6;
         }
+
         .custom-checkbox:focus {
             outline: none;
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
         }
+
         .modal {
             display: none;
             position: fixed;
@@ -110,6 +125,7 @@
             justify-content: center;
             align-items: center;
         }
+
         .modal-content {
             background-color: white;
             padding: 2rem;
@@ -118,41 +134,50 @@
             max-width: 400px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
+
         .modal-title {
             font-size: 1.25rem;
             font-weight: 600;
             color: #1f2937;
             margin-bottom: 1rem;
         }
+
         .modal-message {
             color: #4b5563;
             margin-bottom: 1.5rem;
         }
+
         .modal-buttons {
             display: flex;
             justify-content: flex-end;
             gap: 0.75rem;
         }
+
         .modal-button {
             padding: 0.5rem 1rem;
             border-radius: 0.375rem;
             font-weight: 500;
             transition: all 0.2s;
         }
+
         .modal-button-cancel {
             background-color: #f3f4f6;
             color: #4b5563;
         }
+
         .modal-button-cancel:hover {
             background-color: #e5e7eb;
         }
+
         .modal-button-confirm {
             background-color: #ef4444;
             color: white;
         }
+
         .modal-button-confirm:hover {
             background-color: #dc2626;
         }
+
         .snackbar {
             position: fixed;
             bottom: 24px;
@@ -168,21 +193,25 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             animation: slideUp 0.3s ease-out;
         }
+
         @keyframes slideUp {
             from {
                 transform: translate(-50%, 100%);
                 opacity: 0;
             }
+
             to {
                 transform: translate(-50%, 0);
                 opacity: 1;
             }
         }
+
         .button-loading {
             position: relative;
             color: transparent !important;
             pointer-events: none;
         }
+
         .button-loading::after {
             content: '';
             position: absolute;
@@ -196,10 +225,12 @@
             border-radius: 50%;
             animation: button-loading-spinner 0.8s linear infinite;
         }
+
         @keyframes button-loading-spinner {
             from {
                 transform: rotate(0deg);
             }
+
             to {
                 transform: rotate(360deg);
             }
@@ -210,29 +241,52 @@
             color: #374151;
             line-height: 1.75;
         }
-        .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+
+        .prose h1,
+        .prose h2,
+        .prose h3,
+        .prose h4,
+        .prose h5,
+        .prose h6 {
             color: #111827;
             font-weight: 600;
             margin-top: 1.5em;
             margin-bottom: 0.5em;
         }
-        .prose h1 { font-size: 1.875rem; }
-        .prose h2 { font-size: 1.5rem; }
-        .prose h3 { font-size: 1.25rem; }
-        .prose h4 { font-size: 1.125rem; }
+
+        .prose h1 {
+            font-size: 1.875rem;
+        }
+
+        .prose h2 {
+            font-size: 1.5rem;
+        }
+
+        .prose h3 {
+            font-size: 1.25rem;
+        }
+
+        .prose h4 {
+            font-size: 1.125rem;
+        }
+
         .prose p {
             margin-top: 1em;
             margin-bottom: 1em;
         }
-        .prose ul, .prose ol {
+
+        .prose ul,
+        .prose ol {
             margin-top: 1em;
             margin-bottom: 1em;
             padding-left: 1.5em;
         }
+
         .prose li {
             margin-top: 0.5em;
             margin-bottom: 0.5em;
         }
+
         .prose code {
             background-color: #f3f4f6;
             padding: 0.125rem 0.25rem;
@@ -240,6 +294,7 @@
             font-size: 0.875em;
             font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
         }
+
         .prose pre {
             background-color: #1f2937;
             color: #f9fafb;
@@ -249,11 +304,13 @@
             margin-top: 1em;
             margin-bottom: 1em;
         }
+
         .prose pre code {
             background-color: transparent;
             padding: 0;
             color: inherit;
         }
+
         .prose blockquote {
             border-left: 4px solid #d1d5db;
             padding-left: 1rem;
@@ -262,50 +319,62 @@
             font-style: italic;
             color: #6b7280;
         }
+
         .prose a {
             color: #3b82f6;
             text-decoration: underline;
         }
+
         .prose a:hover {
             color: #1d4ed8;
         }
+
         .prose table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 1em;
             margin-bottom: 1em;
         }
-        .prose th, .prose td {
+
+        .prose th,
+        .prose td {
             border: 1px solid #d1d5db;
             padding: 0.5rem;
             text-align: left;
         }
+
         .prose th {
             background-color: #f9fafb;
             font-weight: 600;
         }
+
         .prose img {
             max-width: 100%;
             height: auto;
             margin: 1em 0;
             border-radius: 0.5rem;
         }
+
         .prose hr {
             border: none;
             border-top: 1px solid #e5e7eb;
             margin: 2em 0;
         }
+
         .prose strong {
             font-weight: 600;
             color: #111827;
         }
+
         .prose em {
             font-style: italic;
         }
+
         .prose del {
             text-decoration: line-through;
             color: #6b7280;
         }
+
         .prose mark {
             background-color: #fef3c7;
             padding: 0.125rem 0.25rem;
@@ -313,6 +382,7 @@
         }
     </style>
 </head>
+
 <body class="bg-gray-100 min-h-screen">
     <div class="title-bar">
         <div class="text-base font-medium text-gray-700">번들 관리자</div>
@@ -328,8 +398,11 @@
             <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
                 <div class="flex">
                     <div class="flex-shrink-0">
-                        <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                            fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                clip-rule="evenodd" />
                         </svg>
                     </div>
                     <div class="ml-3">
@@ -347,8 +420,11 @@
             <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8">
                 <div class="flex">
                     <div class="flex-shrink-0">
-                        <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                            fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                clip-rule="evenodd" />
                         </svg>
                     </div>
                     <div class="ml-3">
@@ -372,32 +448,47 @@
             <div class="bg-white rounded-lg shadow-md p-4 mb-8">
                 <div class="flex justify-between items-center">
                     <div class="flex space-x-4">
-                        <button class="tab-button active px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors duration-200 border border-blue-200" data-filter="installed">
+                        <button
+                            class="tab-button active px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors duration-200 border border-blue-200"
+                            data-filter="installed">
                             설치된 번들만 보기
                         </button>
-                        <button class="tab-button px-4 py-2 text-sm font-medium text-gray-600 bg-white rounded-md hover:bg-gray-50 transition-colors duration-200 border border-gray-200" data-filter="official">
+                        <button
+                            class="tab-button px-4 py-2 text-sm font-medium text-gray-600 bg-white rounded-md hover:bg-gray-50 transition-colors duration-200 border border-gray-200"
+                            data-filter="official">
                             Official 번들만 보기
                         </button>
-                        <button class="tab-button px-4 py-2 text-sm font-medium text-gray-600 bg-white rounded-md hover:bg-gray-50 transition-colors duration-200 border border-gray-200" data-filter="all">
+                        <button
+                            class="tab-button px-4 py-2 text-sm font-medium text-gray-600 bg-white rounded-md hover:bg-gray-50 transition-colors duration-200 border border-gray-200"
+                            data-filter="all">
                             전체 번들 보기
                         </button>
                     </div>
                     <div class="flex space-x-2">
-                        <button id="uploadBtn" onclick="uploadBundle()" class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors duration-200">
+                        <button id="uploadBtn" onclick="uploadBundle()"
+                            class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors duration-200">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                                </path>
                             </svg>
                             <span>번들 업로드</span>
                         </button>
-                        <button id="importBtn" onclick="importLocalBundle()" class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors duration-200">
+                        <button id="importBtn" onclick="importLocalBundle()"
+                            class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors duration-200">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                </path>
                             </svg>
                             <span>번들 가져오기</span>
                         </button>
-                        <button onclick="openBundleFolder()" class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white rounded-md hover:bg-gray-50 transition-colors duration-200 border border-gray-200">
+                        <button onclick="openBundleFolder()"
+                            class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white rounded-md hover:bg-gray-50 transition-colors duration-200 border border-gray-200">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z">
+                                </path>
                             </svg>
                             <span>번들 폴더 열기</span>
                         </button>
@@ -411,10 +502,17 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="w-1/2 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">번들 정보</th>
-                                <th class="w-24 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
-                                <th class="w-24 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">주간 다운로드</th>
-                                <th class="w-32 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style="padding-right: 60px;">작업</th>
+                                <th
+                                    class="w-1/2 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    번들 정보</th>
+                                <th
+                                    class="w-24 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    상태</th>
+                                <th
+                                    class="w-24 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    주간 다운로드</th>
+                                <th class="w-32 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                    style="padding-right: 60px;">작업</th>
                             </tr>
                         </thead>
                         <tbody id="moduleList" class="bg-white divide-y divide-gray-200">
@@ -458,7 +556,8 @@
 
     <!-- README 모달 -->
     <div id="readmeModal" class="modal">
-        <div class="modal-content" style="max-width: 800px; width: 90%; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;">
+        <div class="modal-content"
+            style="max-width: 800px; width: 90%; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;">
             <div class="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
                 <div>
                     <h2 class="text-xl font-semibold text-gray-900" id="readmeModalTitle">번들 정보</h2>
@@ -466,7 +565,8 @@
                 </div>
                 <button onclick="closeReadmeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
                     </svg>
                 </button>
             </div>
@@ -486,7 +586,7 @@
 
     <script>
 
-        const {ipcRenderer} = require('electron');
+        const { ipcRenderer } = require('electron');
         const path = require('path');
         const fs = require('fs');
         const getAppPath = (type) => ipcRenderer.sendSync('app:get-path', type);
@@ -505,6 +605,28 @@
             smartLists: true,
             smartypants: false
         });
+
+        function isProcessRunning(name) {
+            return new Promise((resolve, reject) => {
+                if (os.platform() === 'win32') {
+                    exec('tasklist', (error, stdout) => {
+                        if (error) {
+                            resolve(false);
+                            return;
+                        }
+                        resolve(stdout.toLowerCase().includes(name.toLowerCase()));
+                    });
+                } else {
+                    exec('ps -A', (error, stdout) => {
+                        if (error) {
+                            resolve(false);
+                            return;
+                        }
+                        resolve(stdout.includes(name));
+                    });
+                }
+            });
+        }
 
         function killProcessByName(name) {
             return new Promise((resolve, reject) => {
@@ -548,7 +670,7 @@
                         const killPromises = lines
                             .map(line => {
                                 const m = line.trim().match(/(\d+)\s+(\S+)\s+(\S+)\s+(.*)/);
-                                if ( !m ) {
+                                if (!m) {
                                     return null;
                                 }
                                 console.log('command', m, name);
@@ -773,11 +895,17 @@
         });
 
         // 창 닫기 처리 함수
-        function handleWindowClose() {
+        async function handleWindowClose() {
             if (activeOperations.size > 0) {
                 showCloseConfirmModal();
             } else {
-                window.close();
+                const procName = process.platform === 'win32' ? 'SOPIAv3.exe' : 'Sopia';
+                const isRunning = await isProcessRunning(procName);
+                if (isRunning) {
+                    ipcRenderer.send('app:quit-silent');
+                } else {
+                    window.close();
+                }
             }
         }
 
@@ -789,9 +917,15 @@
             document.getElementById('closeConfirmModal').style.display = 'none';
         }
 
-        function forceCloseWindow() {
+        async function forceCloseWindow() {
             closeCloseConfirmModal();
-            window.close();
+            const procName = process.platform === 'win32' ? 'SOPIAv3.exe' : 'Sopia';
+            const isRunning = await isProcessRunning(procName);
+            if (isRunning) {
+                ipcRenderer.send('app:quit-silent');
+            } else {
+                window.close();
+            }
         }
 
         // 닫기 확인 모달 외부 클릭 시 닫기
@@ -820,34 +954,34 @@
                     'Authorization': 'Bearer ' + window.appCfg.get('auth.sopia.token') || '',
                 },
             }).then(res => res.json())
-            .then(async (data) => {
-                if (data.msg === 'success') {
-                    const b64str = data.data[0];
-                    const bundlePath = path.join(bundleRootPath, name);
-                    await ipcRenderer.invoke('package:uncompress-buffer', b64str, bundlePath);
+                .then(async (data) => {
+                    if (data.msg === 'success') {
+                        const b64str = data.data[0];
+                        const bundlePath = path.join(bundleRootPath, name);
+                        await ipcRenderer.invoke('package:uncompress-buffer', b64str, bundlePath);
 
-                    if (pkg.dependencies) {
-                        await ipcRenderer.invoke('bun:install', bundlePath);
+                        if (pkg.dependencies) {
+                            await ipcRenderer.invoke('bun:install', bundlePath);
+                        }
+
+                        // bundleOrder에 새로 설치된 번들 추가
+                        addBundleToOrder(name);
+
+                        showSnackbar('번들이 설치되었습니다.');
+                        setTimeout(() => {
+                            reloadModules();
+                        }, 500);
+                    } else {
+                        showSnackbar('번들 설치에 실패했습니다.');
                     }
-
-                    // bundleOrder에 새로 설치된 번들 추가
-                    addBundleToOrder(name);
-
-                    showSnackbar('번들이 설치되었습니다.');
-                    setTimeout(() => {
-                        reloadModules();
-                    }, 500);
-                } else {
-                    showSnackbar('번들 설치에 실패했습니다.');
-                }
-            })
-            .catch(error => {
-                showSnackbar('번들 설치 중 오류가 발생했습니다.');
-            })
-            .finally(() => {
-                activeOperations.delete(operationId);
-                button.classList.remove('button-loading');
-            });
+                })
+                .catch(error => {
+                    showSnackbar('번들 설치 중 오류가 발생했습니다.');
+                })
+                .finally(() => {
+                    activeOperations.delete(operationId);
+                    button.classList.remove('button-loading');
+                });
         }
 
         // 번들 리스트 렌더링 함수
@@ -861,8 +995,8 @@
                                 <div class="flex items-center">
                                     <div class="text-sm font-medium text-gray-900 truncate">${module["name:ko"] || module['name'] || ''}</div>
                                     ${module.isLocalLink ?
-                                        '<span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">로컬</span>' :
-                                        ''}
+                    '<span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">로컬</span>' :
+                    ''}
                                 </div>
                                 <div class="text-sm text-gray-500 truncate">${module["description:ko"] || module['description'] || ''}</div>
                             </div>
@@ -870,22 +1004,22 @@
                     </td>
                     <td class="w-24 px-6 py-4">
                         ${module.is_official ?
-                            '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Official</span>' :
-                            ''}
+                    '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Official</span>' :
+                    ''}
                     </td>
                     <td class="w-24 px-6 py-4 text-center">
                         <span class="text-sm font-medium text-gray-900">${module.weekly_downloads ? module.weekly_downloads.toLocaleString() : '0'}</span>
                     </td>
                     <td class="w-32 px-6 py-4 text-sm text-right" onclick="event.stopPropagation()">
                         ${module.isUsed ?
-                            (module.isLocalLink ?
-                                '<button onclick="unlinkLocalBundle(\'' + module.name + '\', event)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-orange-400 rounded-md hover:bg-orange-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400 transition-colors duration-200">링크 해제</button>' :
-                                (module.version === module.installedVersion ?
-                                    '<button onclick="deleteBundle(\'' + module.name + '\', event, true, true, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-red-400 rounded-md hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-colors duration-200">삭제</button>' :
-                                    '<div class="flex justify-end space-x-2"><button onclick="deleteBundle(\'' + module.name + '\', event, true, true, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-red-400 rounded-md hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-colors duration-200">삭제</button><button onclick="downloadBundle(\'' + module.name + '\', event, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-green-400 rounded-md hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 transition-colors duration-200">업데이트</button></div>'
-                                )
-                            ) :
-                            '<button onclick="downloadBundle(\'' + module.name + '\', event, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-blue-400 rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 transition-colors duration-200">설치</button>'}
+                    (module.isLocalLink ?
+                        '<button onclick="unlinkLocalBundle(\'' + module.name + '\', event)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-orange-400 rounded-md hover:bg-orange-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400 transition-colors duration-200">링크 해제</button>' :
+                        (module.version === module.installedVersion ?
+                            '<button onclick="deleteBundle(\'' + module.name + '\', event, true, true, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-red-400 rounded-md hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-colors duration-200">삭제</button>' :
+                            '<div class="flex justify-end space-x-2"><button onclick="deleteBundle(\'' + module.name + '\', event, true, true, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-red-400 rounded-md hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-colors duration-200">삭제</button><button onclick="downloadBundle(\'' + module.name + '\', event, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-green-400 rounded-md hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 transition-colors duration-200">업데이트</button></div>'
+                        )
+                    ) :
+                    '<button onclick="downloadBundle(\'' + module.name + '\', event, true)" class="w-24 px-4 py-2 text-sm font-medium text-white bg-blue-400 rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 transition-colors duration-200">설치</button>'}
                     </td>
                 </tr>
             `).join('');
@@ -901,7 +1035,7 @@
             currentFilter = filter;
             let filteredModules = [...modules];
 
-            switch(filter) {
+            switch (filter) {
                 case 'installed':
                     filteredModules = modules.filter(module => module.isUsed);
                     break;
@@ -979,7 +1113,7 @@
             })
                 .then(res => res.json())
                 .then(data => {
-                    if ( data.msg === 'success' ) {
+                    if (data.msg === 'success') {
                         const serverBundles = data.data;
                         const items = fs.readdirSync(bundleRootPath);
                         items.forEach(item => {
@@ -999,7 +1133,7 @@
                                 })());
 
                                 const localBundle = serverBundles.find((b) => b.name === pkg.name);
-                                if ( localBundle ) {
+                                if (localBundle) {
                                     localBundle.isUsed = true;
                                     localBundle.installedVersion = pkg.version;
                                     localBundle.isLocalLink = isLocalLink;
@@ -1011,7 +1145,7 @@
                                         isLocalLink: isLocalLink
                                     });
                                 }
-                            } catch(err) {
+                            } catch (err) {
                                 console.error(err);
                                 const bundlePath = path.join(bundleRootPath, item);
                                 let isLocalLink = false;
@@ -1025,7 +1159,7 @@
                                             return false;
                                         }
                                     })());
-                                } catch {}
+                                } catch { }
 
                                 serverBundles.push({
                                     name: item,
@@ -1487,4 +1621,5 @@
 
     </script>
 </body>
+
 </html>

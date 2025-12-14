@@ -7,6 +7,7 @@ import { spawn } from 'child_process';
 export default function createBundleManagerWindow() {
     let win: BrowserWindow | null;
     const isDevelopment = process.env.NODE_ENV !== 'production';
+    let shouldLaunchSopia = true;
 
     const createWindow = () => {
         registerBundleIpc();
@@ -92,6 +93,11 @@ export default function createBundleManagerWindow() {
             `);
         });
 
+        ipcMain.on('app:quit-silent', () => {
+            shouldLaunchSopia = false;
+            app.quit();
+        });
+
         if (process.env.WEBPACK_DEV_SERVER_URL) {
             // Load the url of the dev server if in development mode
             win.loadFile(path.join(__dirname, '../public/bundle-manager.html'));
@@ -109,10 +115,10 @@ export default function createBundleManagerWindow() {
 
         // 프로그램 종료 시 다시 시작하는 코드 추가
         app.on('before-quit', (event) => {
-            if ( !isDevelopment ) {
+            if (!isDevelopment && shouldLaunchSopia) {
                 const exePath = process.execPath;
                 let exeDir = path.dirname(exePath);
-        
+
                 // macOS에서는 .app/Contents/MacOS/ 경로에서 dist_electron/mac-arm64로 이동
                 if (process.platform === 'darwin') {
                     exeDir = path.join(exeDir, '../../../');
@@ -123,7 +129,7 @@ export default function createBundleManagerWindow() {
                         stdio: 'ignore',
                     });
                     child.unref();
-                } else if ( process.platform === 'win32' ) {
+                } else if (process.platform === 'win32') {
                     const exeFile = path.join(exeDir, 'SOPIAv3.exe');
                     const child = spawn(exeFile, {
                         detached: true,
@@ -132,12 +138,12 @@ export default function createBundleManagerWindow() {
                     child.unref();
                 }
             }
-                
+
             // 현재 프로세스 종료
             app.exit(0);
         });
 
-        if ( isDevelopment ) {
+        if (isDevelopment) {
             win.once('ready-to-show', () => {
                 win?.show();
             });
