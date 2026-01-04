@@ -133,7 +133,10 @@ export default class StickerModal extends Vue {
                         stickers: (cat.stickers || []).filter((sticker: any) => {
                             if (!sticker.start_date || !sticker.end_date) return true;
                             const start = new Date(sticker.start_date);
+                            // UTC 시간을 한국 시간으로 변환
+                            start.setHours(start.getHours() + 9);
                             const end = new Date(sticker.end_date);
+                            end.setHours(end.getHours() + 9);
                             return now >= start && now <= end;
                         }),
                     }))
