@@ -265,7 +265,7 @@
                     <div class="font-weight-medium text-truncate">
                       {{ presentItem.type === 'amount' ? presentItem.minAmount + '개 이상' : substr(presentItem.title) }}
                     </div>
-                    <div class="text-caption grey--text">
+                    <div class="text-caption grey--text" style="word-break: break-all;">
                       {{ presentItem.type === 'amount' ? '개수 조건' : presentItem.sticker }}
                     </div>
                   </div>
@@ -486,8 +486,8 @@ export default class CmdMessage extends Mixins(GlobalMixins) {
 
 	public substr(str: string) {
 		if ( str ) {
-			if ( str.length > 5 ) {
-				return str.substr(0, 5) + '...';
+			if ( str.length > 10 ) {
+				return str.substr(0, 10) + '...';
 			}
 		}
 		return str;
