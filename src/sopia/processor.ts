@@ -305,10 +305,33 @@ const processor = async (evt: any, sock: LiveSocket) => {
 					res = comment;
 					break;
 				case LiveEvent.LIVE_PRESENT:
-					let p = comment.find((c: any) => c.sticker === e.sticker);
+					const totalAmount = e.combo * e.amount;
+
+					// Priority 1: Find exact sticker match (excluding default and amount entries)
+					let p = comment.find((c: any) =>
+						c.sticker === e.sticker &&
+						c.type !== 'amount' &&
+						c.sticker !== 'default'
+					);
+
+					// Priority 2: Find highest matching amount threshold
+					if (!p) {
+						const amountMatches = comment
+							.filter((c: any) => c.type === 'amount' && c.minAmount !== undefined)
+							.filter((c: any) => totalAmount >= c.minAmount)
+							.sort((a: any, b: any) => b.minAmount - a.minAmount);
+
+						if (amountMatches.length > 0) {
+							p = amountMatches[0];
+							logger.debug('sopia', `Matched amount threshold: ${p.minAmount}, totalAmount: ${totalAmount}`);
+						}
+					}
+
+					// Priority 3: Fall back to default (index 0)
 					if (!p) {
 						p = comment[0];
 					}
+
 					res = p.message;
 
 					// Play audio if configured
@@ -319,10 +342,34 @@ const processor = async (evt: any, sock: LiveSocket) => {
 					}
 					break;
 				case LiveEvent.LIVE_PRESENT_LIKE:
-					let pl = comment.find((c: any) => c.sticker === evt.update_component.like.sticker);
+					const likeData = evt.update_component.like;
+					const totalAmountLike = likeData.combo * likeData.amount;
+
+					// Priority 1: Find exact sticker match (excluding default and amount entries)
+					let pl = comment.find((c: any) =>
+						c.sticker === likeData.sticker &&
+						c.type !== 'amount' &&
+						c.sticker !== 'default'
+					);
+
+					// Priority 2: Find highest matching amount threshold
+					if (!pl) {
+						const amountMatchesLike = comment
+							.filter((c: any) => c.type === 'amount' && c.minAmount !== undefined)
+							.filter((c: any) => totalAmountLike >= c.minAmount)
+							.sort((a: any, b: any) => b.minAmount - a.minAmount);
+
+						if (amountMatchesLike.length > 0) {
+							pl = amountMatchesLike[0];
+							logger.debug('sopia', `Matched amount threshold (like): ${pl.minAmount}, totalAmount: ${totalAmountLike}`);
+						}
+					}
+
+					// Priority 3: Fall back to default (index 0)
 					if (!pl) {
 						pl = comment[0];
 					}
+
 					res = pl.message;
 
 					// Play audio if configured

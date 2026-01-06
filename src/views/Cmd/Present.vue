@@ -159,24 +159,82 @@
       </v-card>
     </v-dialog>
     <!-- E: Audio Setting Dialog -->
-    
+
+    <!-- S: Amount Threshold Dialog -->
+    <v-dialog
+        v-model="amountDialog"
+        max-width="400"
+        width="90%">
+      <v-card class="rounded-lg">
+        <v-card-title class="orange white--text">
+          <v-icon color="white" class="mr-2">mdi-counter</v-icon>
+          개수 조건 설정
+        </v-card-title>
+        <v-card-text class="pa-4">
+          <div class="mb-4">
+            <div class="text-subtitle-2 font-weight-medium mb-2">최소 개수 (combo × amount)</div>
+            <v-text-field
+              v-model.number="newAmountThreshold"
+              type="number"
+              min="1"
+              outlined
+              dense
+              :error-messages="amountErrorMessage"
+              hint="예: 10 = 10개 이상일 때 반응"
+              persistent-hint
+              suffix="개 이상"
+            />
+          </div>
+          <v-alert type="info" dense text class="mb-0">
+            <div class="text-caption">
+              선물의 콤보 × 수량이 설정한 개수 이상일 때 이 설정이 적용됩니다.
+              <br/>특정 스티커 설정이 있으면 스티커 설정이 우선합니다.
+            </div>
+          </v-alert>
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer></v-spacer>
+          <v-btn color="grey" text @click="amountDialog = false">취소</v-btn>
+          <v-btn color="orange" dark @click="addAmountEntry" :disabled="!isValidAmountThreshold">추가</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    <!-- E: Amount Threshold Dialog -->
+
     <v-card class="elevation-2 rounded-lg" outlined>
       <v-card-title class="pb-2">
         <v-icon color="purple" class="mr-2">mdi-gift</v-icon>
         <span class="text-h6 font-weight-medium">선물 메시지 설정</span>
       </v-card-title>
       <v-card-text class="pt-2">
-        <v-btn 
-          block 
-          rounded 
-          color="indigo" 
-          dark 
-          class="mb-4 elevation-2"
-          @click="addPresentNew"
-        >
-          <v-icon left>mdi-plus</v-icon>
-          새 선물 추가
-        </v-btn>
+        <v-row class="mb-4">
+          <v-col cols="6">
+            <v-btn
+              block
+              rounded
+              color="indigo"
+              dark
+              class="elevation-2"
+              @click="addPresentNew"
+            >
+              <v-icon left>mdi-plus</v-icon>
+              새 선물 추가
+            </v-btn>
+          </v-col>
+          <v-col cols="6">
+            <v-btn
+              block
+              rounded
+              color="orange"
+              dark
+              class="elevation-2"
+              @click="openAmountDialog"
+            >
+              <v-icon left>mdi-counter</v-icon>
+              개수 조건 추가
+            </v-btn>
+          </v-col>
+        </v-row>
         
         <v-card 
           v-for="(presentItem, idx) in livePresent" 
@@ -187,21 +245,28 @@
           <v-card-text class="pb-2">
             <v-row align="center" no-gutters>
               <v-col cols="12" md="4" class="pr-md-3 mb-2 mb-md-0">
-                <v-card 
-                  class="d-flex align-center pa-2 rounded" 
-                  color="grey lighten-4"
+                <v-card
+                  class="d-flex align-center pa-2 rounded"
+                  :color="presentItem.type === 'amount' ? 'orange lighten-5' : 'grey lighten-4'"
                   flat
                 >
-                  <v-avatar size="40" class="mr-2" v-if="presentItem.src">
-                    <v-img :src="presentItem.src" :alt="presentItem.title"/>
-                  </v-avatar>
+                  <template v-if="presentItem.type === 'amount'">
+                    <v-avatar size="40" class="mr-2" color="orange">
+                      <v-icon color="white">mdi-counter</v-icon>
+                    </v-avatar>
+                  </template>
+                  <template v-else-if="presentItem.src">
+                    <v-avatar size="40" class="mr-2">
+                      <v-img :src="presentItem.src" :alt="presentItem.title"/>
+                    </v-avatar>
+                  </template>
                   <v-icon v-else size="40" color="grey" class="mr-2">mdi-gift</v-icon>
                   <div>
                     <div class="font-weight-medium text-truncate">
-                      {{ substr(presentItem.title) }}
+                      {{ presentItem.type === 'amount' ? presentItem.minAmount + '개 이상' : substr(presentItem.title) }}
                     </div>
                     <div class="text-caption grey--text">
-                      {{ presentItem.sticker }}
+                      {{ presentItem.type === 'amount' ? '개수 조건' : presentItem.sticker }}
                     </div>
                   </div>
                 </v-card>
@@ -276,6 +341,8 @@ export interface PresentStruct {
 	message: string;
 	audio?: string;
 	audioVolume?: number;
+	type?: 'sticker' | 'amount';
+	minAmount?: number;
 }
 
 @Component({
@@ -303,6 +370,27 @@ export default class CmdMessage extends Mixins(GlobalMixins) {
 	};
 	public previewAudioPlayer: HTMLAudioElement | null = null;
 	public isPreviewPlaying: boolean = false;
+
+	// Amount threshold dialog
+	public amountDialog: boolean = false;
+	public newAmountThreshold: number = 10;
+
+	get amountErrorMessage(): string {
+		if (this.newAmountThreshold < 1) {
+			return '1 이상의 값을 입력하세요.';
+		}
+		const exists = this.livePresent.some(
+			(p: PresentStruct) => p.type === 'amount' && p.minAmount === this.newAmountThreshold
+		);
+		if (exists) {
+			return '이미 존재하는 개수 조건입니다.';
+		}
+		return '';
+	}
+
+	get isValidAmountThreshold(): boolean {
+		return this.newAmountThreshold >= 1 && !this.amountErrorMessage;
+	}
 
 	public async mounted() {
 		this.livePresent = this.cfg.get('live_present') || [{
@@ -403,6 +491,29 @@ export default class CmdMessage extends Mixins(GlobalMixins) {
 			}
 		}
 		return str;
+	}
+
+	// Amount threshold methods
+	public openAmountDialog() {
+		this.newAmountThreshold = 10;
+		this.amountDialog = true;
+	}
+
+	public addAmountEntry() {
+		if (!this.isValidAmountThreshold) return;
+
+		const entry: PresentStruct = {
+			sticker: `amount_${this.newAmountThreshold}`,
+			src: '',
+			title: `${this.newAmountThreshold}개 이상`,
+			message: '',
+			type: 'amount',
+			minAmount: this.newAmountThreshold,
+		};
+
+		// Insert at index 1 (after default)
+		this.livePresent.splice(1, 0, entry);
+		this.amountDialog = false;
 	}
 
 	// Audio methods
