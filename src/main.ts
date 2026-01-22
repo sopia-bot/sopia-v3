@@ -125,7 +125,10 @@ Vue.config.errorHandler = function(err: any, vm: any, info) {
 };
 
 window.$sopia.init()
-	.then(() => {
+	.catch((err) => {
+		console.warn('SpoonClient init failed (service may be shutdown):', err.message);
+	})
+	.finally(() => {
 		new Vue({
 			router,
 			store,

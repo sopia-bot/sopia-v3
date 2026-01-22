@@ -118,7 +118,7 @@ module.exports = {
 				nsis: {
 					oneClick: true,
 					deleteAppDataOnUninstall: false,
-					include: 'build/installer.nsh'
+					// include: 'build/installer.nsh'
 				}
 			},
 		},

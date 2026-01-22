@@ -29,6 +29,100 @@
 							</v-btn>
 						</div>
 
+						<!-- 검색 필터 -->
+						<div class="search-filters">
+							<!-- 날짜 검색 -->
+							<div class="filter-row">
+								<v-menu
+									v-model="startDateMenu"
+									:close-on-content-click="false"
+									transition="scale-transition"
+									offset-y
+									min-width="auto"
+								>
+									<template v-slot:activator="{ on, attrs }">
+										<v-text-field
+											v-model="startDate"
+											label="시작일"
+											prepend-inner-icon="mdi-calendar"
+											readonly
+											dense
+											outlined
+											hide-details
+											clearable
+											class="date-input"
+											v-bind="attrs"
+											v-on="on"
+											@click:clear="onClearStartDate"
+										></v-text-field>
+									</template>
+									<v-date-picker
+										v-model="startDate"
+										@input="onStartDateSelected"
+										locale="ko"
+										:day-format="(date) => new Date(date).getDate()"
+									></v-date-picker>
+								</v-menu>
+
+								<span class="date-separator">~</span>
+
+								<v-menu
+									v-model="endDateMenu"
+									:close-on-content-click="false"
+									transition="scale-transition"
+									offset-y
+									min-width="auto"
+								>
+									<template v-slot:activator="{ on, attrs }">
+										<v-text-field
+											v-model="endDate"
+											label="종료일"
+											prepend-inner-icon="mdi-calendar"
+											readonly
+											dense
+											outlined
+											hide-details
+											clearable
+											class="date-input"
+											v-bind="attrs"
+											v-on="on"
+											@click:clear="onClearEndDate"
+										></v-text-field>
+									</template>
+									<v-date-picker
+										v-model="endDate"
+										@input="onEndDateSelected"
+										locale="ko"
+										:day-format="(date) => new Date(date).getDate()"
+									></v-date-picker>
+								</v-menu>
+							</div>
+
+							<!-- 방송 제목 검색 -->
+							<div class="filter-row">
+								<v-text-field
+									v-model="searchTitle"
+									label="방송 제목 검색"
+									prepend-inner-icon="mdi-magnify"
+									dense
+									outlined
+									hide-details
+									clearable
+									class="title-input"
+									@keyup.enter="applyFilter"
+								></v-text-field>
+								<v-btn
+									small
+									color="primary"
+									@click="applyFilter"
+									:loading="isLoading"
+									class="search-btn"
+								>
+									검색
+								</v-btn>
+							</div>
+						</div>
+
 						<vue-scroll
 							ref="giftScroll"
 							:ops="scrollOptions"
@@ -263,6 +357,13 @@ export default class ReceivedSpoonModal extends Mixins(GlobalMixins) {
 	selectedGift: GiftEvent | null = null;
 	selectedType = 'spoon';
 
+	// 검색 필터
+	startDate = '';
+	endDate = '';
+	startDateMenu = false;
+	endDateMenu = false;
+	searchTitle = '';
+
 	// 로딩 상태
 	isLoading = false;
 	isLoadingMore = false;
@@ -315,9 +416,40 @@ export default class ReceivedSpoonModal extends Mixins(GlobalMixins) {
 		this.currentFileIndex = 0;
 		this.hasMore = true;
 		this.allDbFiles = [];
+		// 검색 필터 초기화하지 않음 (유지)
 
 		await this.loadDbFileList();
 		await this.loadMoreGifts();
+	}
+
+	async applyFilter(): Promise<void> {
+		this.giftEvents = [];
+		this.selectedGift = null;
+		this.currentFileIndex = 0;
+		this.hasMore = true;
+
+		await this.loadDbFileList();
+		await this.loadMoreGifts();
+	}
+
+	onStartDateSelected(): void {
+		this.startDateMenu = false;
+		this.applyFilter();
+	}
+
+	onEndDateSelected(): void {
+		this.endDateMenu = false;
+		this.applyFilter();
+	}
+
+	onClearStartDate(): void {
+		this.startDate = '';
+		this.applyFilter();
+	}
+
+	onClearEndDate(): void {
+		this.endDate = '';
+		this.applyFilter();
 	}
 
 	async loadDbFileList(): Promise<void> {
@@ -350,6 +482,9 @@ export default class ReceivedSpoonModal extends Mixins(GlobalMixins) {
 	async loadMoreGifts(): Promise<void> {
 		if (this.isLoadingMore || !this.hasMore) return;
 
+		const isFiltering = !!(this.startDate || this.endDate || this.searchTitle?.trim());
+		const minResults = isFiltering ? 10 : 0; // 필터링 시 최소 10개 결과 확보
+
 		if (this.giftEvents.length === 0) {
 			this.isLoading = true;
 		} else {
@@ -358,72 +493,105 @@ export default class ReceivedSpoonModal extends Mixins(GlobalMixins) {
 
 		try {
 			const historyPath = this.$path('userData', 'historydb');
-			const endIndex = Math.min(this.currentFileIndex + this.pageSize, this.allDbFiles.length);
-			const filesToProcess = this.allDbFiles.slice(this.currentFileIndex, endIndex);
 
-			for (const dbFile of filesToProcess) {
-				try {
-					const liveId = parseInt(dbFile.replace('.db', ''));
-					const dbPath = path.join(historyPath, dbFile);
+			// 필터링 시 결과가 충분할 때까지 반복
+			do {
+				const endIndex = Math.min(this.currentFileIndex + this.pageSize, this.allDbFiles.length);
+				const filesToProcess = this.allDbFiles.slice(this.currentFileIndex, endIndex);
 
-					const db = new Database(dbPath, { readonly: true });
+				for (const dbFile of filesToProcess) {
+					try {
+						const liveId = parseInt(dbFile.replace('.db', ''));
+						const dbPath = path.join(historyPath, dbFile);
 
-					// DJ 정보 가져오기 (live_update에서)
-					let djProfileUrl = '';
-					let liveTitle = '';
-					const liveUpdateStmt = db.prepare(`
-						SELECT data_json FROM live_history_tbl
-						WHERE live_event = 'live_update'
-						ORDER BY idx ASC
-						LIMIT 1
-					`);
-					const liveUpdateRow = liveUpdateStmt.get();
-					if (liveUpdateRow && liveUpdateRow.data_json) {
-						try {
-							const liveData = JSON.parse(liveUpdateRow.data_json);
-							if (liveData.data && liveData.data.live) {
-								djProfileUrl = liveData.data.live.author?.profile_url || '';
-								liveTitle = liveData.data.live.title || '';
+						const db = new Database(dbPath, { readonly: true });
+
+						// DJ 정보 가져오기 (live_update에서)
+						let djProfileUrl = '';
+						let liveTitle = '';
+						const liveUpdateStmt = db.prepare(`
+							SELECT data_json FROM live_history_tbl
+							WHERE live_event = 'live_update'
+							ORDER BY idx ASC
+							LIMIT 1
+						`);
+						const liveUpdateRow = liveUpdateStmt.get();
+						if (liveUpdateRow && liveUpdateRow.data_json) {
+							try {
+								const liveData = JSON.parse(liveUpdateRow.data_json);
+								if (liveData.data && liveData.data.live) {
+									djProfileUrl = liveData.data.live.author?.profile_url || '';
+									liveTitle = liveData.data.live.title || '';
+								}
+							} catch (e) {
+								console.error('live_update 파싱 오류:', e);
 							}
-						} catch (e) {
-							console.error('live_update 파싱 오류:', e);
 						}
-					}
 
-					// 선물 이벤트 가져오기
-					const giftStmt = db.prepare(`
-						SELECT idx, live_id, live_event, live_title, data_json, saved_date
-						FROM live_history_tbl
-						WHERE live_event IN ('live_present', 'live_present_like')
-						ORDER BY idx DESC
-					`);
+						// 선물 이벤트 가져오기
+						const giftStmt = db.prepare(`
+							SELECT idx, live_id, live_event, live_title, data_json, saved_date
+							FROM live_history_tbl
+							WHERE live_event IN ('live_present', 'live_present_like')
+							ORDER BY idx DESC
+						`);
 
-					const rows = giftStmt.all();
-					db.close();
+						const rows = giftStmt.all();
+						db.close();
 
-					for (const row of rows) {
-						try {
-							const data = JSON.parse(row.data_json);
-							this.giftEvents.push({
-								idx: row.idx,
-								liveId: liveId,
-								liveTitle: liveTitle || row.live_title || '제목 없음',
-								liveEvent: row.live_event,
-								data: data,
-								savedDate: row.saved_date,
-								djProfileUrl: djProfileUrl,
-							});
-						} catch (e) {
-							console.error('선물 데이터 파싱 오류:', e);
+						for (const row of rows) {
+							try {
+								const data = JSON.parse(row.data_json);
+								const giftLiveTitle = liveTitle || row.live_title || '제목 없음';
+								const giftSavedDate = row.saved_date;
+
+								// 날짜 필터 적용 (UTC → KST 변환 후 비교)
+								if (this.startDate || this.endDate) {
+									// giftSavedDate는 UTC로 저장됨 (예: "2025-11-30 23:00:00.123")
+									// KST로 변환 (+9시간)
+									let savedDateStr = '';
+									if (giftSavedDate) {
+										const utcDate = new Date(giftSavedDate.replace(' ', 'T') + 'Z'); // UTC로 파싱
+										const kstDate = new Date(utcDate.getTime() + 9 * 60 * 60 * 1000); // +9시간
+										savedDateStr = kstDate.toISOString().substring(0, 10); // "YYYY-MM-DD"
+									}
+
+									if (this.startDate && savedDateStr < this.startDate) continue;
+									if (this.endDate && savedDateStr > this.endDate) continue;
+								}
+
+								// 방송 제목 필터 적용
+								if (this.searchTitle && this.searchTitle.trim()) {
+									const searchLower = this.searchTitle.trim().toLowerCase();
+									if (!giftLiveTitle.toLowerCase().includes(searchLower)) continue;
+								}
+
+								this.giftEvents.push({
+									idx: row.idx,
+									liveId: liveId,
+									liveTitle: giftLiveTitle,
+									liveEvent: row.live_event,
+									data: data,
+									savedDate: giftSavedDate,
+									djProfileUrl: djProfileUrl,
+								});
+							} catch (e) {
+								console.error('선물 데이터 파싱 오류:', e);
+							}
 						}
+					} catch (error) {
+						console.error(`DB 파일 처리 오류 (${dbFile}):`, error);
 					}
-				} catch (error) {
-					console.error(`DB 파일 처리 오류 (${dbFile}):`, error);
 				}
-			}
 
-			this.currentFileIndex = endIndex;
-			this.hasMore = this.currentFileIndex < this.allDbFiles.length;
+				this.currentFileIndex = endIndex;
+				this.hasMore = this.currentFileIndex < this.allDbFiles.length;
+
+			} while (
+				isFiltering &&
+				this.hasMore &&
+				this.giftEvents.length < minResults
+			);
 
 		} catch (error) {
 			console.error('선물 목록 로드 실패:', error);
@@ -586,9 +754,69 @@ export default class ReceivedSpoonModal extends Mixins(GlobalMixins) {
 	background: transparent !important;
 }
 
+.search-filters {
+	padding: 12px;
+	background: #fafafa;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+.filter-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+
+	&:last-child {
+		margin-bottom: 0;
+	}
+}
+
+.date-input {
+	flex: 1;
+	max-width: 140px;
+
+	:deep(.v-input__slot) {
+		min-height: 36px !important;
+	}
+
+	:deep(.v-label) {
+		font-size: 12px;
+	}
+
+	:deep(input) {
+		font-size: 12px;
+	}
+}
+
+.date-separator {
+	color: #666;
+	font-size: 14px;
+}
+
+.title-input {
+	flex: 1;
+
+	:deep(.v-input__slot) {
+		min-height: 36px !important;
+	}
+
+	:deep(.v-label) {
+		font-size: 12px;
+	}
+
+	:deep(input) {
+		font-size: 12px;
+	}
+}
+
+.search-btn {
+	height: 36px !important;
+	min-width: 60px !important;
+}
+
 .gift-scroll-container {
 	flex: 1;
-	height: calc(100% - 48px);
+	height: calc(100% - 48px - 120px); // section-header + search-filters
 }
 
 .gift-list {

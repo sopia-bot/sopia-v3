@@ -114,6 +114,9 @@ const IgnoreEvent = [
 	LiveEvent.LIVE_LAZY_UPDATE,
 ];
 
+// 서비스 종료 날짜 (KST)
+const SERVICE_SHUTDOWN_DATE = new Date('2026-02-01T00:00:00+09:00');
+
 
 @Component({
 	components: {
@@ -221,6 +224,18 @@ export default class LivePlayer extends Mixins(GlobalMixins) {
 			}
 		});
 		if ( this.live ) {
+			// 서비스 종료 시간 체크
+			if (new Date() >= SERVICE_SHUTDOWN_DATE) {
+				this.$swal({
+					icon: 'info',
+					title: '서비스 종료 안내',
+					html: '2026년 2월 1일부로 방송 매니저 서비스가 종료되었습니다.<br><br>그동안 SOPIA를 이용해 주셔서 감사합니다.',
+					confirmButtonText: '확인',
+				});
+				this.$evt.$emit('live-leave');
+				return;
+			}
+
 			console.log("🚀 ~ LivePlayer ~ created ~ live:", this.live);
 			this.$sopia.liveMap.forEach((live: LiveInfo, liveId: number) => {
 				//socket.destroy(); TODO:

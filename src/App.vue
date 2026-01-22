@@ -6,6 +6,7 @@
 -->
 <template>
 	<v-app style="">
+		<service-shutdown-dialog />
 		<title-bar :isLogin="isLogin" />
 		<donation />
 		<update-dialog v-if="isLogin"/>
@@ -52,6 +53,7 @@ import SideMenu from '@/views/Components/SideMenu.vue';
 import Tutorials from '@/views/Tutorials/Index.vue';
 import Donation from '@/views/Components/Donation.vue';
 import AgreeLiveInfoDialog from '@/views/Components/AgreeLiveInfoDialog.vue';
+import ServiceShutdownDialog from '@/views/Components/ServiceShutdownDialog.vue';
 
 const fs = window.require('fs');
 
@@ -78,6 +80,7 @@ declare global {
 		Tutorials,
 		Donation,
 		AgreeLiveInfoDialog,
+		ServiceShutdownDialog,
 	},
 })
 export default class App extends Mixins(GlobalMixins) {

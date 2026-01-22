@@ -385,6 +385,9 @@ export default function createMainWindow(hideWindow: boolean = false) {
 
     app.userAgentFallback = USER_AGENT;
 
+    // 서비스 종료 날짜 (KST)
+    const SERVICE_SHUTDOWN_DATE = new Date('2026-02-01T00:00:00+09:00');
+
     // This method will be called when Electron has finished
     // initialization and is ready to create browser windows.
     // Some APIs can only be used after this event occurs.
@@ -394,6 +397,17 @@ export default function createMainWindow(hideWindow: boolean = false) {
 
         // Register IPC handlers once at app startup
         registerIpcHandler();
+
+        // 서비스 종료 시간 이후 static.spooncast.net 요청 차단
+        if (new Date() >= SERVICE_SHUTDOWN_DATE) {
+            session.defaultSession.webRequest.onBeforeRequest(
+                { urls: ['*://static.spooncast.net/*'] },
+                (details, callback) => {
+                    console.log('[Service Shutdown] Blocked request to:', details.url);
+                    callback({ cancel: true });
+                }
+            );
+        }
 
         session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
             details.requestHeaders['Accept-Encoding'] = 'gzip, deflate, br';
