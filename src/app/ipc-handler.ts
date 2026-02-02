@@ -5,7 +5,6 @@ import { install as npmInstall, InstallItem, InstallOptions } from 'npkgi';
 import express, { Application } from 'express';
 import cors from 'cors';
 import { Server as HttpServer } from 'http';
-import axios from 'axios';
 import Module, { createRequire } from 'module';
 import { bun, bunx } from './bun';
 import AdmZip from 'adm-zip';
@@ -293,17 +292,6 @@ export function registerIpcHandler() {
 			}
 
 			checkExtVersion(pkg.version);
-
-			const extensionPath = getPath('userData', 'login-ext');
-			if (!fs.existsSync(extensionPath)) {
-				console.log('Downloading Chrome extension');
-				const res = await axios.get('https://sopia-v3.s3.ap-northeast-2.amazonaws.com/sopia-login-ext.zip', {
-					responseType: 'arraybuffer',
-				});
-				const buf = res.data;
-				const archive = new AdmZip(buf);
-				archive.extractAllTo(extensionPath);
-			}
 
 			// 기존 서버가 있으면 종료
 			if (loginServer) {

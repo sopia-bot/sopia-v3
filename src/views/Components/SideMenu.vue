@@ -93,14 +93,6 @@ export default class SideMenu extends Mixins(GlobalMixins) {
 				await ipcRenderer.invoke('open-bundle-manager');
 			},
 		},
-		{
-			href: 'https://sopia.dev/docs',
-			label: this.$t('page.guide'),
-			icon: 'mdi-book-open-page-variant',
-			activeIcon: 'mdi-book-open-page-variant-outline',
-			openNew: true,
-			isActive: () => false,
-		},
 		// {
 		// 	href: 'https://github.com/sopia-bot/SOPIA',
 		// 	label: this.$t('page.github'),

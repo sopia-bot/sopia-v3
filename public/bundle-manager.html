@@ -972,11 +972,11 @@
                             reloadModules();
                         }, 500);
                     } else {
-                        showSnackbar('번들 설치에 실패했습니다.');
+                        showSnackbar('번들 서버에 연결할 수 없습니다. 번들 스토어 기능이 비활성화되었습니다.', 'error');
                     }
                 })
                 .catch(error => {
-                    showSnackbar('번들 설치 중 오류가 발생했습니다.');
+                    showSnackbar('번들 서버에 연결할 수 없습니다. 번들 스토어 기능이 비활성화되었습니다.', 'error');
                 })
                 .finally(() => {
                     activeOperations.delete(operationId);
@@ -1092,6 +1092,83 @@
             filterByTab(activeTab.dataset.filter);
         });
 
+        function getLocalBundles() {
+            const localBundles = [];
+            try {
+                if (!fs.existsSync(bundleRootPath)) return localBundles;
+                const items = fs.readdirSync(bundleRootPath);
+                items.forEach(item => {
+                    try {
+                        const bundlePath = path.join(bundleRootPath, item);
+                        const pkg = JSON.parse(fs.readFileSync(path.join(bundlePath, 'package.json'), 'utf8'));
+
+                        const stats = fs.lstatSync(bundlePath);
+                        const isLocalLink = stats.isSymbolicLink() || (os.platform() === 'win32' && stats.isDirectory() && fs.readlinkSync && (() => {
+                            try {
+                                fs.readlinkSync(bundlePath);
+                                return true;
+                            } catch {
+                                return false;
+                            }
+                        })());
+
+                        localBundles.push({
+                            ...pkg,
+                            isUsed: true,
+                            installedVersion: pkg.version,
+                            isLocalLink: isLocalLink
+                        });
+                    } catch (err) {
+                        console.error(err);
+                        const bundlePath = path.join(bundleRootPath, item);
+                        let isLocalLink = false;
+                        try {
+                            const stats = fs.lstatSync(bundlePath);
+                            isLocalLink = stats.isSymbolicLink() || (os.platform() === 'win32' && stats.isDirectory() && fs.readlinkSync && (() => {
+                                try {
+                                    fs.readlinkSync(bundlePath);
+                                    return true;
+                                } catch {
+                                    return false;
+                                }
+                            })());
+                        } catch { }
+
+                        localBundles.push({
+                            name: item,
+                            description: '번들 파일이 손상되었습니다.',
+                            version: '1.0.0',
+                            isUsed: true,
+                            installedVersion: '1.0.0',
+                            isLocalLink: isLocalLink
+                        });
+                    }
+                });
+            } catch (err) {
+                console.error('Error reading local bundles:', err);
+            }
+            return localBundles;
+        }
+
+        function applyModulesAndFilter() {
+            if (currentFilter === 'installed') {
+                const installedModules = modules.filter(module => module.isUsed);
+                if (installedModules.length === 0) {
+                    currentFilter = 'all';
+                    document.querySelectorAll('.tab-button').forEach(btn => {
+                        if (btn.dataset.filter === 'all') {
+                            btn.classList.remove('text-gray-600', 'bg-white', 'border-gray-200');
+                            btn.classList.add('active', 'text-blue-600', 'bg-blue-50', 'border-blue-200');
+                        } else {
+                            btn.classList.remove('active', 'text-blue-600', 'bg-blue-50', 'border-blue-200');
+                            btn.classList.add('text-gray-600', 'bg-white', 'border-gray-200');
+                        }
+                    });
+                }
+            }
+            filterByTab(currentFilter);
+        }
+
         function reloadModules() {
             // 로딩 상태 표시
             const moduleList = document.getElementById('moduleList');
@@ -1115,121 +1192,29 @@
                 .then(data => {
                     if (data.msg === 'success') {
                         const serverBundles = data.data;
-                        const items = fs.readdirSync(bundleRootPath);
-                        items.forEach(item => {
-                            try {
-                                const bundlePath = path.join(bundleRootPath, item);
-                                const pkg = JSON.parse(fs.readFileSync(path.join(bundlePath, 'package.json'), 'utf8'));
-
-                                // 심볼릭 링크인지 확인
-                                const stats = fs.lstatSync(bundlePath);
-                                const isLocalLink = stats.isSymbolicLink() || (os.platform() === 'win32' && stats.isDirectory() && fs.readlinkSync && (() => {
-                                    try {
-                                        fs.readlinkSync(bundlePath);
-                                        return true;
-                                    } catch {
-                                        return false;
-                                    }
-                                })());
-
-                                const localBundle = serverBundles.find((b) => b.name === pkg.name);
-                                if (localBundle) {
-                                    localBundle.isUsed = true;
-                                    localBundle.installedVersion = pkg.version;
-                                    localBundle.isLocalLink = isLocalLink;
-                                } else {
-                                    serverBundles.push({
-                                        ...pkg,
-                                        isUsed: true,
-                                        installedVersion: pkg.version,
-                                        isLocalLink: isLocalLink
-                                    });
-                                }
-                            } catch (err) {
-                                console.error(err);
-                                const bundlePath = path.join(bundleRootPath, item);
-                                let isLocalLink = false;
-                                try {
-                                    const stats = fs.lstatSync(bundlePath);
-                                    isLocalLink = stats.isSymbolicLink() || (os.platform() === 'win32' && stats.isDirectory() && fs.readlinkSync && (() => {
-                                        try {
-                                            fs.readlinkSync(bundlePath);
-                                            return true;
-                                        } catch {
-                                            return false;
-                                        }
-                                    })());
-                                } catch { }
-
-                                serverBundles.push({
-                                    name: item,
-                                    description: '번들 파일이 손상되었습니다.',
-                                    version: '1.0.0',
-                                    isUsed: true,
-                                    installedVersion: '1.0.0',
-                                    isLocalLink: isLocalLink
-                                });
+                        const localBundles = getLocalBundles();
+                        localBundles.forEach(local => {
+                            const existing = serverBundles.find((b) => b.name === local.name);
+                            if (existing) {
+                                existing.isUsed = true;
+                                existing.installedVersion = local.installedVersion;
+                                existing.isLocalLink = local.isLocalLink;
+                            } else {
+                                serverBundles.push(local);
                             }
                         });
                         modules = serverBundles;
-
-                        // 최초 진입시 설치된 번들이 없으면 all 탭으로 변경
-                        if (currentFilter === 'installed') {
-                            const installedModules = modules.filter(module => module.isUsed);
-                            if (installedModules.length === 0) {
-                                currentFilter = 'all';
-                                document.querySelectorAll('.tab-button').forEach(btn => {
-                                    if (btn.dataset.filter === 'all') {
-                                        btn.classList.remove('text-gray-600', 'bg-white', 'border-gray-200');
-                                        btn.classList.add('active', 'text-blue-600', 'bg-blue-50', 'border-blue-200');
-                                    } else {
-                                        btn.classList.remove('active', 'text-blue-600', 'bg-blue-50', 'border-blue-200');
-                                        btn.classList.add('text-gray-600', 'bg-white', 'border-gray-200');
-                                    }
-                                });
-                            }
-                        }
-
-                        filterByTab(currentFilter);
                     } else {
-                        // 오류 발생 시 오류 메시지 표시
-                        const moduleList = document.getElementById('moduleList');
-                        moduleList.innerHTML = `
-                            <tr>
-                                <td colspan="4" class="px-6 py-8 text-center">
-                                    <div class="flex flex-col items-center justify-center">
-                                        <svg class="h-12 w-12 text-red-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                        </svg>
-                                        <div class="text-gray-600 mb-2">번들 목록을 불러오는데 실패했습니다.</div>
-                                        <button onclick="reloadModules()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                                            다시 시도
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        `;
+                        // 서버 응답 오류 시 로컬 번들만 표시
+                        modules = getLocalBundles();
                     }
+                    applyModulesAndFilter();
                 })
                 .catch(error => {
-                    console.error('Error loading modules:', error);
-                    // 네트워크 오류 등의 경우 오류 메시지 표시
-                    const moduleList = document.getElementById('moduleList');
-                    moduleList.innerHTML = `
-                        <tr>
-                            <td colspan="4" class="px-6 py-8 text-center">
-                                <div class="flex flex-col items-center justify-center">
-                                    <svg class="h-12 w-12 text-red-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <div class="text-gray-600 mb-2">네트워크 연결을 확인해주세요.</div>
-                                    <button onclick="reloadModules()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                                        다시 시도
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
+                    console.error('Error loading modules from server:', error);
+                    // 네트워크 오류 시 로컬 번들만 표시
+                    modules = getLocalBundles();
+                    applyModulesAndFilter();
                 });
         }
 
@@ -1337,7 +1322,7 @@
 
                 } catch (err) {
                     console.error('Package upload error', err);
-                    showSnackbar('업로드 중 오류가 발생했습니다: ' + err.message, 'error');
+                    showSnackbar('번들 서버에 연결할 수 없어 업로드가 실패했습니다.', 'error');
                     if (fs.existsSync(zipFile)) {
                         fs.unlinkSync(zipFile);
                     }

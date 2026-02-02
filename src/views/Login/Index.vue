@@ -33,32 +33,15 @@
 							
 							<!-- Progress indicator -->
 							<div class="progress-container">
-								<v-chip-group
-									v-model="currentStep"
-									mandatory
-									class="justify-center"
+								<v-chip
+									color="primary"
+									text-color="white"
+									label
+									class="mx-2"
 								>
-									<v-chip
-										:value="0"
-										:color="sopiaShow ? 'primary' : 'grey lighten-3'"
-										:text-color="sopiaShow ? 'white' : 'grey darken-1'"
-										label
-										class="mx-2"
-									>
-										<v-icon left>mdi-account</v-icon>
-										SOPIA 로그인
-									</v-chip>
-									<v-chip
-										:value="1"
-										:color="spoonShow ? 'primary' : 'grey lighten-3'"
-										:text-color="spoonShow ? 'white' : 'grey darken-1'"
-										label
-										class="mx-2"
-									>
-										<v-icon left>mdi-microphone</v-icon>
-										스푼 연동
-									</v-chip>
-								</v-chip-group>
+									<v-icon left>mdi-microphone</v-icon>
+									스푼 로그인
+								</v-chip>
 							</div>
 						</div>
 					</v-col>
@@ -66,18 +49,10 @@
 					<!-- Right side - Login forms -->
 					<v-col cols="6" class="d-flex flex-column justify-center login-right-panel">
 						<div class="login-form-container pa-12">
-							<v-fade-transition mode="out-in">
-								<login-sopia 
-									v-if="sopiaShow" 
-									@logon="sopiaLogon"
-									key="sopia-login"
-								/>
-								<login-spoon 
-									v-else-if="spoonShow" 
-									@logon="spoonLogon"
-									key="spoon-login"
-								/>
-							</v-fade-transition>
+							<login-spoon
+								@logon="spoonLogon"
+								key="spoon-login"
+							/>
 						</div>
 					</v-col>
 				</v-row>
@@ -142,30 +117,22 @@
 </template>
 <script lang="ts">
 import { Component, Mixins, Prop } from 'vue-property-decorator';
-import { UserDto } from '@sopia-bot/api-dto';
 import { LogonUser } from '@sopia-bot/core';
 
-import LoginSopia from '@/views/Login/LoginSopia.vue';
 import LoginSpoon from '@/views/Login/LoginSpoonNew.vue';
 import GlobalMixins from '@/plugins/mixins';
 const { ipcRenderer } = window.require('electron');
 
 @Component({
 	components: {
-		LoginSopia,
 		LoginSpoon,
 	},
 })
 export default class Login extends Mixins(GlobalMixins) {
 
 	@Prop(Boolean) public value!: boolean;
-	public sopiaShow: boolean = true;
-	public spoonShow: boolean = false;
-
-	public sopiaUser!: UserDto;
 	public countEGG: number = 0;
 	public dialog: boolean = false;
-	public currentStep: number = 0;
 
 	public upEGG() {
 		this.countEGG += 1;
@@ -175,77 +142,19 @@ export default class Login extends Mixins(GlobalMixins) {
 		}
 	}
 
-	public created() {
-		this.$evt.$on('login:skip-sopia-login', (user: UserDto) => {
-			this.sopiaUser = user;
-			this.sopiaShow = false;
-			this.spoonShow = true;
-			this.currentStep = 1;
-		});
-		const sopia = this.$cfg.get('auth.sopia');
-		if ( sopia ) {
-			this.$evt.$emit('login:skip-sopia-login', sopia);
-		}
-	}
-
-	public beforeUnmount() {
-		this.$evt.$off('login:skip-sopia-login');
-	}
-
-	public async sopiaLogon(user: UserDto) {
-		this.sopiaUser = user;
-		this.$cfg.set('sopia', this.sopiaUser);
-		if ( this.sopiaUser.spoon_id === '0' ) {
-			this.sopiaShow = false;
-			this.spoonShow = true;
-			this.currentStep = 1;
-		} else {
-			const { id, token, refresh_token } = this.$cfg.get('auth.spoon') || {};
-			if ( !token || !refresh_token ) {
-				this.sopiaShow = false;
-				this.spoonShow = true;
-				this.currentStep = 1;
-			} else {
-				await this.$sopia.loginToken(id, token, refresh_token);
-				this.onLoginSpoon(this.$sopia.logonUser);
-			}
-		}
-	}
-
-
 	public async spoonLogon(user: LogonUser) {
 		this.$logger.info('Spoon login user', user);
-		this.sopiaUser.spoon_id = user.id.toString();
-		this.sopiaUser.name = user.tag;
-		this.sopiaUser.gender = user.gender;
-
-		try {
-			await this.$api.setUserInfo(this.sopiaUser);
-		} catch {
-			await this.$swal({
-				icon: 'error',
-				title: this.$t('error'),
-				html: this.$t('app.login.unauthorized-logout'),
-			});
-			window.logout();
-			return;
-		}
-
-		if ( +this.sopiaUser.spoon_id !== user.id ) {
-			await this.$swal({
-				icon: 'warning',
-				title: this.$t('msg.alert'),
-				html: this.$t('app.login.error.diff_id'),
-				confirmButtonText: this.$t('confirm'),
-			});
-			return;
-		}
 
 		const { id, token, refresh_token } = this.$sopia.logonUser;
 		this.$cfg.set('auth.spoon.id', id);
 		this.$cfg.set('auth.spoon.token', token);
 		this.$cfg.set('auth.spoon.refresh_token', refresh_token);
-		this.$cfg.set('auth.sopia', this.sopiaUser);
+		// 호환성을 위한 빈 sopia auth 객체
+		this.$cfg.set('auth.sopia', {
+			spoon_id: user.id.toString(),
+			name: user.tag,
+			gender: user.gender,
+		});
 		this.$cfg.save();
 		console.log('spoon login complete', id, token, refresh_token);
 
@@ -256,11 +165,7 @@ export default class Login extends Mixins(GlobalMixins) {
 		this.$emit('input', false);
 		this.$evt.$emit('user', user);
 		this.$store.commit('user', user);
-		this.sopiaShow = false;
-		this.spoonShow = false;
 
-		this.$api.activityLog('logon');
-		
 		this.$assign('/');
 	}
 

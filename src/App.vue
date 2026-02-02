@@ -41,7 +41,6 @@ import { Component, Mixins } from 'vue-property-decorator';
 import GlobalMixins from '@/plugins/mixins';
 import { User, Live, SpoonClient, ApiLivesInfo } from '@sopia-bot/core';
 import CfgLite from '@/plugins/cfg-lite-ipc';
-import path from 'path';
 import { BundlePackage } from '@/interface/bundle';
 
 import LivePlayer from '@/views/Live/Player.vue';
@@ -54,8 +53,6 @@ import Tutorials from '@/views/Tutorials/Index.vue';
 import Donation from '@/views/Components/Donation.vue';
 import AgreeLiveInfoDialog from '@/views/Components/AgreeLiveInfoDialog.vue';
 import ServiceShutdownDialog from '@/views/Components/ServiceShutdownDialog.vue';
-
-const fs = window.require('fs');
 
 declare global {
 	interface Window {
@@ -228,103 +225,81 @@ export default class App extends Mixins(GlobalMixins) {
 			}, 100);
 		};
 
-		if ( auth && auth.sopia && auth.spoon ) {
-			const res = await this.$api.req('GET', `/user/${auth.sopia.user_id}`);
-			if ( res.error ) {
-				this.$cfg.delete('auth');
-				this.$cfg.save();
-				this.isLogin = false;
-				this.$assign('/login');
-			} else {
-				this.$api.user = {
-					...auth.sopia,
-					...res.data[0],
-				};
-				this.$cfg.set('auth.sopia', this.$api.user);
-				this.$cfg.save();
+		if ( auth && auth.spoon ) {
+			let payload: any = null;
+			let isExpired: boolean = false;
+			try {
+				payload = JSON.parse(
+					Buffer.from(auth.spoon.token?.split('.')?.[1] || '', 'base64').toString('utf8')
+				);
+				isExpired = payload.exp < Date.now() / 1000;
+				this.$sopia.deviceUUID = payload.did;
+			} catch(err) {
+				console.log(err);
+			}
 
-				let payload: any = null;
-				let isExpired: boolean = false;
-				try {
-					payload = JSON.parse(
-						Buffer.from(auth.spoon.token?.split('.')?.[1] || '', 'base64').toString('utf8')
-					);
-					isExpired = payload.exp < Date.now() / 1000;
-					this.$sopia.deviceUUID = payload.did;
-				} catch(err) {
-					console.log(err);
+			if ( isExpired ) {
+				if ( auth.spoon.refresh_token) {
+					try {
+						const res = await fetch('https://kr-auth.spooncast.net/tokens/', {
+							method: 'PUT',
+							headers: {
+								'Content-Type': 'application/json',
+							},
+							body: JSON.stringify({
+								device_unique_id: this.$sopia.deviceUUID,
+								refresh_token: auth.spoon.refresh_token,
+								user_id: auth.spoon.id,
+							}),
+						}).then((res) => res.json())
+						.catch((err) => {
+							window.logout();
+						});
+						if ( res?.data?.jwt ) {
+							auth.spoon.token = res.data.jwt;
+							this.$cfg.set('auth.spoon.token', res.data.jwt);
+							this.$cfg.save();
+
+							this.$sopia.loginToken(auth.spoon.id, auth.spoon.token)
+								.then(async (user) => {
+									this.$store.commit('user', user);
+									this.$evt.$emit('user', user);
+								})
+								.catch((err) => {
+									window.logout();
+								});
+						} else {
+							window.logout();
+						}
+					} catch(err) {
+						window.logout();
+					}
+				} else {
+					window.logout();
 				}
-
-				if ( isExpired ) {
-					if ( auth.spoon.refresh_token) {
+			} else {
+				this.$sopia.loginToken(auth.spoon.id, auth.spoon.token, auth.spoon.refresh_token)
+					.then(async (user) => {
 						try {
-							const res = await fetch('https://kr-auth.spooncast.net/tokens/', {
-								method: 'PUT',
-								headers: {
-									'Content-Type': 'application/json',
-								},
-								body: JSON.stringify({
-									device_unique_id: this.$sopia.deviceUUID,
-									refresh_token: auth.spoon.refresh_token,
-									user_id: auth.spoon.id,
-								}),
-							}).then((res) => res.json())
-							.catch((err) => {
-								window.logout();
-							});
-							if ( res?.data?.jwt ) {
-								auth.spoon.token = res.data.jwt;
-								this.$cfg.set('auth.spoon.token', res.data.jwt);
+							const token = await this.$sopia.refreshToken(user.id, auth.spoon.token, auth.spoon.refresh_token);
+							if ( token ) {
+								auth.spoon.token = token;
+								this.$store.commit('user', user);
+								this.$evt.$emit('user', user);
+								this.$cfg.set('auth.spoon.token', token);
 								this.$cfg.save();
 
-								this.$sopia.loginToken(auth.spoon.id, auth.spoon.token)
-									.then(async (user) => {
-										this.$store.commit('user', user);
-										this.$evt.$emit('user', user);
-										await this.$api.activityLog('relogon');
-									})
-									.catch((err) => {
-										window.logout();
-									});
+								this.isLogin = true;
 							} else {
 								window.logout();
 							}
 						} catch(err) {
 							window.logout();
 						}
-					} else {
-						window.logout();
-					}
-				} else {
-					this.$sopia.loginToken(auth.spoon.id, auth.spoon.token, auth.spoon.refresh_token)
-						.then(async (user) => {
-							try {
-								const token = await this.$sopia.refreshToken(user.id, auth.spoon.token, auth.spoon.refresh_token);
-								if ( token ) {
-									auth.spoon.token = token;
-									this.$store.commit('user', user);
-									this.$evt.$emit('user', user);
-									this.$cfg.set('auth.spoon.token', token);
-									this.$cfg.save();
-
-									this.isLogin = true;
-
-									await this.$api.activityLog('logon');
-
-									if ( !this.$api.user.agree_live_info ) {
-										this.showAgreeLiveInfoDialog();
-									}
-								} else {
-									window.logout();
-								}
-							} catch(err) {
-								window.logout();
-							}
-						})
-					.catch((err) => {
-						window.logout();
-					});
-				}
+					})
+				.catch((err) => {
+					window.logout();
+				});
 			}
 		} else {
 			this.isLogin = false;
@@ -366,7 +341,6 @@ export default class App extends Mixins(GlobalMixins) {
 				this.currentLive = req.res.results[0];
 				this.isMemberShip = isMembership;
 				this.isRejoin = isRejoin;
-				this.$api.activityLog('live-join', req.res.results[0].id.toString());
 			};
 
 			if ( isRejoin ) {
@@ -418,60 +392,7 @@ export default class App extends Mixins(GlobalMixins) {
 	}
 
 	public async checkBundleUpldate() {
-		const bundleDirectory = this.$path('userData', 'bundles');
-		const updateRequest = fs.readdirSync(bundleDirectory)
-			.filter((item: string) => fs.lstatSync(path.join(bundleDirectory, item)).isDirectory())
-			.map(async (item: string) => {
-				try {
-					return await this.$api.req('GET', `/bundle/${item}`)
-				} catch {
-					return;
-				}
-			});
-
-		const deleteQueue: any[] = [];
-		const bundleInfoList = (await Promise.all(updateRequest) as any[])
-			.filter((res) => res && !res.error)
-			.map((res) => res.data[0])
-			.filter((bundle) => {
-				const pkgPath = path.join(bundleDirectory, bundle.name, 'package.json');
-				const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-				console.log(pkg.name, pkg.version, bundle.version);
-				if ( bundle.deleted === 1 ) {
-					deleteQueue.push(bundle);
-				}
-				return pkg.version !== bundle.version;
-			});
-
-		if ( bundleInfoList.length > 0 ) {
-			this.bundleUpdateList = bundleInfoList;
-			this.bundleUpdateDialogShow = true;
-		}
-
-		if ( deleteQueue.length > 0 ) {
-			const bundleNames = deleteQueue.map((bundle) => bundle.name).join(', ');
-			await this.$swal({
-				title: '번들 삭제',
-				html: `다음 번들이 삭제됩니다:<br><br><strong>${bundleNames}</strong>`,
-				icon: 'warning',
-				confirmButtonText: '확인',
-				allowOutsideClick: false,
-			});
-
-			// 번들 폴더 삭제
-			for (const bundle of deleteQueue) {
-				try {
-					const bundlePath = path.join(bundleDirectory, bundle.name);
-					if (fs.existsSync(bundlePath)) {
-						fs.rmSync(bundlePath, { recursive: true, force: true });
-						console.log(`Deleted bundle: ${bundle.name}`);
-					}
-				} catch (err) {
-					console.error(`Failed to delete bundle: ${bundle.name}`, err);
-				}
-			}
-			location.reload();
-		}
+		// no-op: bundle update check removed (was dependent on api.sopia.dev)
 	}
 
 	public async showAgreeLiveInfoDialog() {

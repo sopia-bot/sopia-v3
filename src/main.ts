@@ -71,16 +71,6 @@ Vue.prototype.$cfg = window.appCfg = new CfgLite(appCfgPath);
 Vue.prototype.$api = new SopiaAPI();
 window.axios = axios;
 
-const api = window.appCfg.get('api');
-if ( api ) {
-	if ( api.host ) {
-		Vue.prototype.$api.host = api.host;
-	}
-	if ( api.protocol ) {
-		Vue.prototype.$api.protocol = api.protocol;
-	}
-}
-
 Vue.config.productionTip = false;
 window.$spoon = spoon;
 Vue.prototype.$sopia = window.$sopia = new spoon.SpoonClient(uuidv4()); // TODO: set country
