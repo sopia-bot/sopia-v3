@@ -24,11 +24,6 @@ export const routes: RouteConfig[] = [
 		isMenu: true,
 	},
 	{
-		name: 'Login',
-		path: '/login',
-		component: () => import('@/views/Login/Index.vue'),
-	},
-	{
 		name: 'Search',
 		path: '/search/:type/:query(.*)/',
 		component: () => import('@/views/Search/Index.vue'),

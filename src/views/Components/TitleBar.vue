@@ -5,7 +5,7 @@
 		:elevation="0"
 		style="z-index: 10; height: var(--titlebar-height) !important; max-height: var(--titlebar-height);"
 		class="sopia-title-bar">
-		<v-btn icon plain class="mr-2 no-drag" v-if="$route.name !== 'Home' && isLogin" @click="$assign('/')">
+		<v-btn icon plain class="mr-2 no-drag" v-if="$route.name !== 'Home'" @click="$assign('/')">
 			<v-icon>mdi-arrow-left-thin</v-icon>
 		</v-btn>
 
@@ -14,98 +14,67 @@
 			<span class="text-caption">SOPIA - {{ version }}</span>
 		</div>
 		<v-spacer></v-spacer>
-		<template v-if="isLogin">
-			<search-box></search-box>
-			<v-spacer></v-spacer>
-			<v-menu
-				v-model="avatarMenu"
-				:close-on-content-click="false"
-				offset-y
-				left
-				transition="slide-y-transition"
-				:nudge-width="280"
-				:nudge-bottom="10">
-				<template v-slot:activator="{ on, attrs }">
-					<v-btn
-						class="no-drag profile-menu-btn"
-						text
-						rounded
-						v-bind="attrs"
-						v-on="on">
-						<v-avatar size="28" class="mr-2">
-							<img :src="$store.getters.user.profile_url">
-						</v-avatar>
-						<span class="profile-name">{{ $store.getters.user.nickname }}</span>
-						<v-icon small class="ml-1">mdi-chevron-down</v-icon>
-					</v-btn>
-				</template>
-				<v-card class="profile-menu-card" elevation="8">
-					<v-list-item class="profile-header" @click="$assign(userLink)">
-						<v-list-item-avatar size="48">
-							<v-img :src="$store.getters.user.profile_url"></v-img>
-						</v-list-item-avatar>
+		<search-box></search-box>
+		<v-spacer></v-spacer>
+		<v-menu
+			v-model="avatarMenu"
+			:close-on-content-click="false"
+			offset-y
+			left
+			transition="slide-y-transition"
+			:nudge-width="220"
+			:nudge-bottom="10">
+			<template v-slot:activator="{ on, attrs }">
+				<v-btn
+					class="no-drag"
+					icon
+					v-bind="attrs"
+					v-on="on">
+					<v-icon>mdi-menu</v-icon>
+				</v-btn>
+			</template>
+			<v-card elevation="8">
+				<v-list dense>
+					<v-list-item link @click="$assign('/release-note')">
+						<v-list-item-icon>
+							<v-icon color="blue">mdi-information</v-icon>
+						</v-list-item-icon>
 						<v-list-item-content>
-							<v-list-item-title class="font-weight-medium">{{ $store.getters.user.nickname }}</v-list-item-title>
-							<v-list-item-subtitle class="text-caption">@{{ $store.getters.user.tag }}</v-list-item-subtitle>
+							<v-list-item-title>{{ $t('show-release-note') }}</v-list-item-title>
 						</v-list-item-content>
-						<v-list-item-action>
-							<v-icon small color="grey">mdi-open-in-new</v-icon>
-						</v-list-item-action>
 					</v-list-item>
-					
-					<v-divider></v-divider>
-					
-					<v-list dense>
-						<v-list-item link @click="$assign('/release-note')">
-							<v-list-item-icon>
-								<v-icon color="blue">mdi-information</v-icon>
-							</v-list-item-icon>
-							<v-list-item-content>
-								<v-list-item-title>{{ $t('show-release-note') }}</v-list-item-title>
-							</v-list-item-content>
-						</v-list-item>
 
-						<v-list-item link @click="openDevTools">
-							<v-list-item-icon>
-								<v-icon>mdi-console</v-icon>
-							</v-list-item-icon>
-							<v-list-item-content>
-								<v-list-item-title>개발자도구 열기</v-list-item-title>
-							</v-list-item-content>
-						</v-list-item>
-						
-						<v-list-item link @click="$evt.$emit('donation:open')">
-							<v-list-item-icon>
-								<v-icon color="pink lighten-1">mdi-hand-coin</v-icon>
-							</v-list-item-icon>
-							<v-list-item-content>
-								<v-list-item-title>{{ $t('donation') }}</v-list-item-title>
-							</v-list-item-content>
-						</v-list-item>
-						
-						<v-divider class="my-1"></v-divider>
+					<v-list-item link @click="openDevTools">
+						<v-list-item-icon>
+							<v-icon>mdi-console</v-icon>
+						</v-list-item-icon>
+						<v-list-item-content>
+							<v-list-item-title>개발자도구 열기</v-list-item-title>
+						</v-list-item-content>
+					</v-list-item>
 
-						<v-list-item link @click.stop="spoonLogout">
-							<v-list-item-icon>
-								<v-icon color="red">mdi-logout</v-icon>
-							</v-list-item-icon>
-							<v-list-item-content>
-								<v-list-item-title>{{ $t('spoon-logout') }}</v-list-item-title>
-							</v-list-item-content>
-						</v-list-item>
+					<v-list-item link @click="$evt.$emit('donation:open')">
+						<v-list-item-icon>
+							<v-icon color="pink lighten-1">mdi-hand-coin</v-icon>
+						</v-list-item-icon>
+						<v-list-item-content>
+							<v-list-item-title>{{ $t('donation') }}</v-list-item-title>
+						</v-list-item-content>
+					</v-list-item>
 
-						<v-list-item link @click.stop="resetApp">
-							<v-list-item-icon>
-								<v-icon color="orange darken-1">mdi-refresh</v-icon>
-							</v-list-item-icon>
-							<v-list-item-content>
-								<v-list-item-title>초기화</v-list-item-title>
-							</v-list-item-content>
-						</v-list-item>
-					</v-list>
-				</v-card>
-			</v-menu>
-		</template>
+					<v-divider class="my-1"></v-divider>
+
+					<v-list-item link @click.stop="resetApp">
+						<v-list-item-icon>
+							<v-icon color="orange darken-1">mdi-refresh</v-icon>
+						</v-list-item-icon>
+						<v-list-item-content>
+							<v-list-item-title>초기화</v-list-item-title>
+						</v-list-item-content>
+					</v-list-item>
+				</v-list>
+			</v-card>
+		</v-menu>
 
 		<v-spacer></v-spacer>
 
@@ -125,7 +94,7 @@
 			<span class="text-caption">SOPIA - {{ version }}</span>
 		</div>
 
-		<template v-if="isLogin" v-slot:extension>
+		<template v-slot:extension>
 			<div class="no-drag compact-nav" style="padding-left: calc(var(--sidebar-width) - 15px); height: 28px; display: flex; align-items: flex-end;">
 				<div class="chrome-tabs">
 					<div
@@ -163,7 +132,7 @@
 	</v-app-bar>
 </template>
 <script lang="ts">
-import { Component, Mixins, Prop, Watch } from 'vue-property-decorator';
+import { Component, Mixins, Watch } from 'vue-property-decorator';
 import GlobalMixins from '@/plugins/mixins';
 import pkg from '../../../package.json';
 import SearchBox from '../Search/SearchBox.vue';
@@ -191,8 +160,6 @@ export default class TitleBar extends Mixins(GlobalMixins) {
 	public showDragHandle: number = -1;
 	public dropTargetIndex: number = -1;
 	public bundleOrder: { order: number, name: string }[] = [];
-
-	@Prop(Boolean) public isLogin!: boolean;
 
 	public get version() {
 		console.log(this.$route);
@@ -271,11 +238,6 @@ export default class TitleBar extends Mixins(GlobalMixins) {
 	}
 
 	private checkAndShowTutorial() {
-		// 로그인 먼저 확인
-		if (!this.$sopia.logonUser) {
-			return;
-		}
-
 		// localStorage에서 튜토리얼 완료 플래그 확인
 		const tutorialCompleted = localStorage.getItem('sopia-bundle-tabs-tutorial-completed');
 		
@@ -326,15 +288,6 @@ export default class TitleBar extends Mixins(GlobalMixins) {
 			this.countEGG = 0;
 			ipcRenderer.send('open-dev-tools');
 		}
-	}
-
-	public spoonLogout() {
-		window.logout();
-		/*
-		this.$cfg.delete('auth.spoon');
-		this.$cfg.save();
-		this.$store.state.loginDialog = true;
-		*/
 	}
 
 	public async resetApp() {

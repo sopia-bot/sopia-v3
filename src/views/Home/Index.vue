@@ -189,67 +189,58 @@ export default class Home extends Mixins(GlobalMixins) {
 		}
 		this.asyncMutex = true;
 
-		if ( this.liveManager ) {
-
-			if ( this.liveManager.res.next === '' ) {
-				this.loadComplete = true;
+		try {
+			if ( this.liveManager ) {
+				if ( this.liveManager.res.next === '' ) {
+					this.loadComplete = true;
+				} else {
+					const res = await this.liveManager.next();
+					console.log('res', res);
+					this.liveManager.res = res;
+					this.liveList = this.liveList.concat(res.results);
+				}
 			} else {
-				const res = await this.liveManager.next();
-				console.log('res', res);
-				this.liveManager.res = res;
-				this.liveList = this.liveList.concat(res.results);
+				this.liveManager = await this.$sopia.api.lives.popular();
+				this.liveList = this.liveManager.res.results;
 			}
-		} else {
-			this.liveManager = await this.$sopia.api.lives.popular();
-			this.liveList = this.liveManager.res.results;
+		} catch (err) {
+			console.warn('Failed to fetch live list (service may be shutdown):', err);
+			this.loadComplete = true;
 		}
 
 		this.asyncMutex = false;
 	}
 
 	public async created() {
-		let partners = this.$store.state.partners || [];
-		if ( partners.length === 0 ) {
-			const req = await this.$sopia.api.users.followings(4324890);
-			this.$store.commit('partners', req.res.results);
-			partners = req.res.results;
-		}
+		try {
+			let partners = this.$store.state.partners || [];
+			if ( partners.length === 0 ) {
+				const req = await this.$sopia.api.users.followings(4324890);
+				this.$store.commit('partners', req.res.results);
+				partners = req.res.results;
+			}
 
-		this.livePartner = (await Promise.all(
-			partners.filter((user) => user.current_live?.id)
-			.map((user) => this.$sopia.api.lives.info(user.current_live.id)),
-		)).map((r: any) => r.res.results[0])
-		.map((live) => {
-      if ( live ) {
-        const u = partners.find((user) => live.author.id === user.id);
-        live.author = u as User;
-        return live;
-      }
-		}).filter((v) => !!v);
-		this.currentBanner = this.livePartner[0];
+			this.livePartner = (await Promise.all(
+				partners.filter((user: User) => user.current_live?.id)
+				.map((user: User) => this.$sopia.api.lives.info(user.current_live.id)),
+			)).map((r: any) => r.res.results[0])
+			.map((live: Live) => {
+				if ( live ) {
+					const u = partners.find((user: User) => live.author.id === user.id);
+					live.author = u as User;
+					return live;
+				}
+			}).filter((v): v is Live => !!v);
+			this.currentBanner = this.livePartner[0];
+		} catch (err) {
+			console.warn('Failed to fetch partner lives (service may be shutdown):', err);
+		}
 	}
 
 	public async mounted() {
 		this.$evt.$on('user', async (user: User) => {
-			this.liveSubscribed = [];
-
-			const req = await this.$sopia.api.lives.subscribed();
-			const lives = req.res.results;
-			for ( const live of lives ) {
-				this.liveSubscribed.push(live);
-			}
-
-			const membershipReq = await this.$sopia.api.lives.membership();
-			const membershipLives = membershipReq.res.results;
-			for ( const live of membershipLives ) {
-				this.liveMembership.push(live);
-			}
-		});
-		this.getNextLiveList();
-		setTimeout(async () => {
-			if ( window.$sopia.logonUser ) {
+			try {
 				this.liveSubscribed = [];
-
 				const req = await this.$sopia.api.lives.subscribed();
 				const lives = req.res.results;
 				for ( const live of lives ) {
@@ -261,6 +252,35 @@ export default class Home extends Mixins(GlobalMixins) {
 				for ( const live of membershipLives ) {
 					this.liveMembership.push(live);
 				}
+			} catch (err) {
+				console.warn('Failed to fetch subscribed/membership lives:', err);
+			}
+		});
+
+		try {
+			await this.getNextLiveList();
+		} catch (err) {
+			console.warn('Failed to fetch popular lives:', err);
+		}
+
+		setTimeout(async () => {
+			try {
+				if ( window.$sopia.logonUser ) {
+					this.liveSubscribed = [];
+					const req = await this.$sopia.api.lives.subscribed();
+					const lives = req.res.results;
+					for ( const live of lives ) {
+						this.liveSubscribed.push(live);
+					}
+
+					const membershipReq = await this.$sopia.api.lives.membership();
+					const membershipLives = membershipReq.res.results;
+					for ( const live of membershipLives ) {
+						this.liveMembership.push(live);
+					}
+				}
+			} catch (err) {
+				console.warn('Failed to fetch subscribed/membership lives:', err);
 			}
 		}, 1000);
 	}

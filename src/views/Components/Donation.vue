@@ -59,13 +59,11 @@ export default class Donation extends Mixins(GlobalMixins) {
 	public message = '혜택 대상 아이디 2개(검색 가능 단어, DJ/소피아 ID):\n입금자 확인:\n기타 문의:\n\n후원해 주셔서 감사합니다.';
 
 	public async created(this: any) {
-		await this.refreshSponsor();
-		this.$nextTick(async () => {
-			while ( !this.$sopia.logonUser ) await this.$sleep(1000);
-			if ( !this.$store.getters.isSponsor ) {
-				//this.open = true;
-			}
-		});
+		try {
+			await this.refreshSponsor();
+		} catch (err) {
+			console.warn('Failed to refresh sponsor (service may be shutdown):', err);
+		}
 		this.$evt.$off('donation:open');
 		this.$evt.$on('donation:open', () => {
 			this.message = '혜택 대상 아이디 2개(검색 가능 단어, DJ/소피아 ID):\n입금자 확인:\n기타 문의:\n\n후원해 주셔서 감사합니다.';
@@ -74,8 +72,12 @@ export default class Donation extends Mixins(GlobalMixins) {
 	}
 
 	public async refreshSponsor() {
-		const res = await this.$api.req('GET', '/user/sponsor');
-		this.$store.state.sponsors = res.data || [];
+		try {
+			const res = await this.$api.req('GET', '/user/sponsor');
+			this.$store.state.sponsors = res.data || [];
+		} catch (err) {
+			console.warn('Failed to fetch sponsors:', err);
+		}
 	}
 
 	public beforeUnmount() {
@@ -85,8 +87,9 @@ export default class Donation extends Mixins(GlobalMixins) {
 	public async sendSponsor() {
 		this.loading = true;
 		try {
+			const userId = this.$sopia.logonUser?.id || 0;
 			await this.$api.req('PUT', '/user/sponsor', {
-				id: this.$sopia.logonUser.id,
+				id: userId,
 				message: this.message,
 			});
 		} catch {
@@ -98,14 +101,6 @@ export default class Donation extends Mixins(GlobalMixins) {
 
 	public closeDialog() {
 		this.open = false;
-		this.itv = setTimeout(async () => {
-			await this.refreshSponsor();
-			this.$nextTick(() => {
-				if ( !this.$store.getters.isSponsor ) {
-					//this.open = true;
-				}
-			});
-		}, 1000 * 60 * 30 /* 30min */);
 	}
 
 }

@@ -34,5 +34,5 @@ if (args.mode === 'bundle-manager') {
 } else {
 	process.title = 'Sopia';
 	app.setName('Sopia');
-	createMainWindow();	
+	createMainWindow();
 }

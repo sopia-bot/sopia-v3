@@ -18,8 +18,8 @@ export default new Vuex.Store({
 	state: {
 		user: {
 			id: 0,
-			nickname: 'Not Login',
-			tag: 'Not Login',
+			nickname: 'SOPIA User',
+			tag: 'SOPIA User',
 			profile_url: require('assets/default-profile.png'),
 		} as User,
 		sideopen: false,
@@ -35,8 +35,8 @@ export default new Vuex.Store({
 		streamingPartners(state: State): User[] {
 			return state.partners.filter((partner) => !!partner.current_live?.id) || [];
 		},
-		isSponsor(state: State): boolean {
-			return !!state.sponsors.find((s) => s.spoon_id == window.$sopia.logonUser.id);
+		isSponsor(): boolean {
+			return false;
 		},
 	},
 	mutations: {
